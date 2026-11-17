@@ -6,8 +6,11 @@ import { createServer, type Server } from "node:http";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import {
+  boardDescription,
+  boardName,
   ConfigError,
   cleanUsername,
+  defaultLocale,
   describeConfig,
   emailProblem,
   hashPassword,
@@ -16,6 +19,7 @@ import {
   passwordProblem,
   usernameProblem,
 } from "@postmodem/core";
+import { anonymise, importPrzemo, type LegacySource, openMysqlSource, summarise } from "@postmodem/importer";
 import { type AppContext, createContext, readConfig } from "../lib/server/bootstrap.ts";
 import { DEMO_PASSWORD, seedDemo } from "../lib/server/demo.ts";
 
@@ -31,6 +35,10 @@ Usage: postmodem <command>
   doctor        check configuration, data directory and database
   init          create the first administrator from POSTMODEM_ADMIN_* (idempotent)
   seed-demo     fill an empty board with demo content (refuses if forums exist)
+  import przemo --source mysql://user:pass@host/db [--prefix phpbb_] [--charset latin2|cp1250|utf8]
+                [--dry-run] [--report <file>] [--report-bundle <file>]
+                import a phpBB2 / Przemo board into a fresh board (resumable); the
+                source URL can also come from POSTMODEM_IMPORT_SOURCE(_FILE)
   perms explain --user <name|guest> --capability <key> [--node <id>]
                 show whether a user may do something, and which grants decided it
   user set-password <name> [--password-file <path>]
@@ -161,6 +169,69 @@ async function setPassword(args: string[]): Promise<number> {
     ctx.log.info("password set", { userId: user.id, username: user.username, sessionsEnded: ended });
     return 0;
   } finally {
+    await ctx.db.close();
+  }
+}
+
+async function importBoard(args: string[]): Promise<number> {
+  const env = process.env;
+  const sourceUrl =
+    flag(args, "source") ??
+    (env.POSTMODEM_IMPORT_SOURCE_FILE
+      ? readFileSync(env.POSTMODEM_IMPORT_SOURCE_FILE, "utf8").trim()
+      : env.POSTMODEM_IMPORT_SOURCE);
+  if (!sourceUrl?.startsWith("mysql://")) {
+    console.error("import: --source mysql://user:password@host:3306/database is required");
+    return 2;
+  }
+  const charset = flag(args, "charset");
+  if (charset && !["latin2", "cp1250", "utf8"].includes(charset)) {
+    console.error("import: --charset must be latin2, cp1250 or utf8 (default: detect per value)");
+    return 2;
+  }
+  const dryRun = args.includes("--dry-run");
+  const ctx = await createContext({ migrate: true });
+  let source: LegacySource | undefined;
+  try {
+    source = await openMysqlSource(sourceUrl, flag(args, "prefix") ?? "phpbb_");
+    ctx.log.info(dryRun ? "import dry run started" : "import started", { prefix: source.prefix });
+    const report = await importPrzemo(ctx.db.repos, source, {
+      dryRun,
+      charset: charset as "latin2" | "cp1250" | "utf8" | undefined,
+      log: (msg, fields) => ctx.log.info(`import: ${msg}`, fields),
+    });
+    if (!dryRun) {
+      await ctx.db.syncIdSequences();
+      const s = report.settings;
+      if (s.boardName) await ctx.settings.set(boardName, s.boardName.slice(0, 80));
+      if (s.boardDescription !== undefined)
+        await ctx.settings.set(boardDescription, s.boardDescription.slice(0, 300));
+      if (s.defaultLocale) await ctx.settings.set(defaultLocale, s.defaultLocale);
+      await ctx.db.repos.audit.append({
+        actorId: null,
+        action: "board.imported",
+        targetType: "board",
+        targetId: "przemo",
+        details: { counts: report.counts },
+      });
+    }
+    const reportFile =
+      flag(args, "report") ??
+      join(ctx.config.dataDir, `import-report-${new Date().toISOString().replace(/[:.]/g, "-")}.json`);
+    writeFileSync(reportFile, `${JSON.stringify(report, null, 2)}\n`);
+    const bundle = flag(args, "report-bundle");
+    if (bundle) writeFileSync(bundle, `${JSON.stringify(anonymise(report), null, 2)}\n`);
+    console.log(summarise(report));
+    console.log(
+      `\nFull report: ${reportFile}${bundle ? `\nAnonymised bundle for bug reports: ${bundle}` : ""}`,
+    );
+    return 0;
+  } catch (e) {
+    ctx.log.error("import failed", { error: (e as Error).message });
+    console.error(`import failed: ${(e as Error).message}\nRun the same command again to resume.`);
+    return 1;
+  } finally {
+    await source?.close();
     await ctx.db.close();
   }
 }
@@ -403,6 +474,9 @@ async function main(argv: string[]): Promise<number> {
     }
     case "init":
       return init(process.env);
+    case "import":
+      if (sub !== "przemo") break;
+      return importBoard(argv.slice(2));
     case "user":
       if (sub !== "set-password") break;
       return setPassword(argv.slice(2));

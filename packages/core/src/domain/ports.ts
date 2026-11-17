@@ -99,6 +99,11 @@ export interface TopicRepository {
   listByNode(nodeId: Id, page: PageRequest, opts?: { visibility?: VisibilityState[] }): Promise<Page<Topic>>;
   /** Recomputes reply count, first/last post and last activity from posts. */
   recount(id: Id): Promise<Topic>;
+  /**
+   * Bulk insert with explicit ids (importers). Slugs are `<title-slug>-<id>`; counters stay
+   * zero until `recount`.
+   */
+  insertMany(rows: (NewTopic & { id: Id })[]): Promise<void>;
   addViews(id: Id, n: number): Promise<void>;
 }
 
@@ -124,6 +129,8 @@ export interface PostRepository {
   /** 0-based position of a post within its topic (for `?p=` permalinks to the right page). */
   positionInTopic(postId: Id): Promise<number | undefined>;
   setRendered(id: Id, html: string, renderVersion: number): Promise<void>;
+  /** Bulk insert with explicit ids and node (importers); no per-row lookups. */
+  insertMany(rows: (NewPost & { id: Id; nodeId: Id })[]): Promise<void>;
 }
 
 export interface NewUser {

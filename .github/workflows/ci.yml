@@ -24,6 +24,9 @@ jobs:
   checks:
     name: Lint, typecheck, unit tests, licences
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read # the private Przemo fixture image
     services:
       # The database suite runs on SQLite and PGlite everywhere, and on this real server in CI.
       postgres:
@@ -40,6 +43,18 @@ jobs:
       - uses: actions/setup-node@v7
         with: { node-version-file: .node-version, cache: pnpm }
       - run: pnpm install --frozen-lockfile
+      # The importer suite runs against the generated Przemo board (tools/fixtures). Its image
+      # is private, so forks skip this step and the suite skips itself.
+      - name: Start the Przemo fixture database
+        if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          fixture="ghcr.io/postmodem-bbs/fixture-przemo:$(jq -r .version tools/fixtures/package.json)-small"
+          docker run -d --name fixture -p 3306:3306 "$fixture"
+          for _ in $(seq 1 60); do docker exec fixture mariadb-admin ping -uprzemo -pprzemo --silent && break; sleep 1; done
+          mkdir -p var && docker cp fixture:/fixture/manifest.json var/fixture-manifest.json
+          echo "PM_TEST_MYSQL_URL=mysql://przemo:przemo@127.0.0.1:3306/przemo" >> "$GITHUB_ENV"
+          echo "PM_TEST_FIXTURE_MANIFEST=$PWD/var/fixture-manifest.json" >> "$GITHUB_ENV"
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm test

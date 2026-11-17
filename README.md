@@ -47,6 +47,7 @@ The image's entrypoint is the `postmodem` CLI. One image, many roles:
 | `migrate`                      | apply database migrations (safe to run concurrently)                     |
 | `init`                         | create the first administrator from `POSTMODEM_ADMIN_*` (idempotent)     |
 | `seed-demo`                    | fill an empty board with demo content (refuses if forums exist)          |
+| `import przemo`                | move a phpBB2 / Przemo board over ([guide](docs/IMPORTING.md))           |
 | `perms explain`                | why a user may or may not do something in a forum                        |
 | `user set-password <name>`     | set a password (prompted without echo, or `--password-file`)             |
 | `doctor`                       | check configuration, data directory, database, migrations                |

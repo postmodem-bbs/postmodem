@@ -463,7 +463,8 @@ Kysely for portable SQL ([ADR 0013](adr/0013-kysely-for-portable-sql.md)),
 post markup dialect, class-based output and reader holes ([ADR 0014](adr/0014-post-markup.md)),
 permission resolution: never, nearest scope, most specific subject ([ADR 0015](adr/0015-permission-resolution.md)),
 accounts and sessions: Argon2id, opaque server-side sessions, delays not lockouts ([ADR 0016](adr/0016-accounts-and-sessions.md)),
-job queue v0 in the database, and mail only through it ([ADR 0017](adr/0017-job-queue-v0-and-mail.md)).
+job queue v0 in the database, and mail only through it ([ADR 0017](adr/0017-job-queue-v0-and-mail.md)),
+the Przemo importer: keep ids, decode per value, self-contained forum grants ([ADR 0018](adr/0018-przemo-importer.md)).
 
 No architecture decisions are open. Owner actions before going public:
 register `postmodem.app`, create the `postmodem-bbs` GitHub and `@postmodem`

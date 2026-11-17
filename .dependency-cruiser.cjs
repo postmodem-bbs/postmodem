@@ -23,6 +23,14 @@ module.exports = {
       },
     },
     {
+      name: "importer-talks-to-ports-only",
+      comment:
+        "The importer writes through core's repository interfaces, never the database layer or the app.",
+      severity: "error",
+      from: { path: "^packages/importer/", pathNot: "\\.test\\.ts$" },
+      to: { path: "(svelte|@sveltejs|kysely|^packages/(db|ui|i18n)|@postmodem/(db|ui|i18n|server)|^apps/)" },
+    },
+    {
       name: "svelte-only-at-the-edge",
       comment: "Only apps/* and packages/ui may import Svelte.",
       severity: "error",

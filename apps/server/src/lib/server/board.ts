@@ -120,13 +120,19 @@ export async function loadIndex(repos: Repositories, perms: Permissions) {
   const groups: { id: Id; title: string; nodes: Node[] }[] = [];
   const loose = top.filter((n) => n.kind !== "category");
   if (loose.length) groups.push({ id: 0, title: "", nodes: loose });
-  for (const cat of top.filter((n) => n.kind === "category")) {
+  // Every category gets its own section, nested ones too (Przemo allowed categories inside
+  // categories), titled with their trail: "Ogólne › Sondy".
+  const byParent = (id: Id) => all.filter((n) => n.parentId === id);
+  const walk = (cat: Node, trail: string[]) => {
+    const title = [...trail, cat.title];
     groups.push({
       id: cat.id,
-      title: cat.title,
-      nodes: all.filter((n) => n.parentId === cat.id && n.kind !== "category"),
+      title: title.join(" › "),
+      nodes: byParent(cat.id).filter((n) => n.kind !== "category"),
     });
-  }
+    for (const sub of byParent(cat.id).filter((n) => n.kind === "category")) walk(sub, title);
+  };
+  for (const cat of top.filter((n) => n.kind === "category")) walk(cat, []);
   const categories = await Promise.all(
     groups
       .filter((g) => g.nodes.length)

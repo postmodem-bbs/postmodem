@@ -379,6 +379,36 @@ export function createRepositories(db: Db): Repositories {
       const r = await db.selectFrom("topics").selectAll().where("id", "=", id).executeTakeFirst();
       return r && toTopic(r);
     },
+    async insertMany(rows) {
+      if (!rows.length) return;
+      await db
+        .insertInto("topics")
+        .values(
+          rows.map((t) => {
+            const at = t.createdAt ?? Date.now();
+            return {
+              id: t.id,
+              nodeId: t.nodeId,
+              title: t.title,
+              slug: `${slugify(t.title, 60) || "topic"}-${t.id}`,
+              authorId: t.authorId,
+              authorName: t.authorName ?? "",
+              type: t.type ?? "normal",
+              locked: t.locked ? 1 : 0,
+              movedToTopicId: t.movedToTopicId ?? null,
+              replyCount: 0,
+              viewCount: t.viewCount ?? 0,
+              firstPostId: null,
+              lastPostId: null,
+              lastPostAt: null,
+              visibility: t.visibility ?? "core:public",
+              createdAt: at,
+              updatedAt: at,
+            };
+          }),
+        )
+        .execute();
+    },
     async getMany(ids) {
       if (!ids.length) return new Map();
       const rows = await db
@@ -468,6 +498,29 @@ export function createRepositories(db: Db): Repositories {
     async get(id) {
       const r = await db.selectFrom("posts").selectAll().where("id", "=", id).executeTakeFirst();
       return r && toPost(r);
+    },
+    async insertMany(rows) {
+      if (!rows.length) return;
+      await db
+        .insertInto("posts")
+        .values(
+          rows.map((p) => ({
+            id: p.id,
+            topicId: p.topicId,
+            nodeId: p.nodeId,
+            authorId: p.authorId,
+            authorName: p.authorName ?? "",
+            source: p.source,
+            format: p.format,
+            rendered: null,
+            renderVersion: 0,
+            visibility: p.visibility ?? "core:public",
+            createdAt: p.createdAt ?? Date.now(),
+            editedAt: p.editedAt ?? null,
+            editCount: p.editCount ?? 0,
+          })),
+        )
+        .execute();
     },
     async getMany(ids) {
       if (!ids.length) return new Map();

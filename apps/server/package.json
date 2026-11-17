@@ -21,6 +21,7 @@
     "@postmodem/core": "workspace:*",
     "@postmodem/db": "workspace:*",
     "@postmodem/i18n": "workspace:*",
+    "@postmodem/importer": "workspace:*",
     "@postmodem/markup": "workspace:*",
     "@postmodem/ui": "workspace:*",
     "nodemailer": "10.6.0"
