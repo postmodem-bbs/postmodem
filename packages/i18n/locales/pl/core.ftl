@@ -88,3 +88,66 @@ error-403-body = To forum istnieje, ale nie masz uprawnień do czytania go. Zalo
 error-other-title = Coś poszło nie tak
 error-other-body = Nie udało się wyświetlić tej strony. Spróbuj ponownie za chwilę.
 error-back = Wróć do strony głównej forum
+
+## Accounts
+signed-in-as = Zalogowano jako { $name }
+login-link = Zaloguj się
+register-link = Zarejestruj się
+logout = Wyloguj się
+logout-everywhere = Wyloguj na wszystkich urządzeniach
+logout-everywhere-hint = { $count ->
+    [0] Nie jesteś zalogowany(-a) nigdzie indziej.
+    [one] Jesteś zalogowany(-a) również na jednym innym urządzeniu.
+    [few] Jesteś zalogowany(-a) również na { $count } innych urządzeniach.
+   *[many] Jesteś zalogowany(-a) również na { $count } innych urządzeniach.
+}
+login-title = Logowanie
+login-signed-in-as = Jesteś zalogowany(-a) jako { $name }.
+login-name = Nazwa użytkownika lub adres e-mail
+login-password = Hasło
+login-submit = Zaloguj się
+login-no-account = Nie masz jeszcze konta?
+login-error-invalid = Nieprawidłowa nazwa użytkownika lub hasło.
+login-error-inactive = To konto nie może się teraz zalogować. Jeśli to pomyłka, skontaktuj się z administracją forum.
+login-error-throttled = Zbyt wiele prób. Odczekaj { $seconds ->
+    [one] sekundę
+    [few] { $seconds } sekundy
+   *[many] { $seconds } sekund
+} i spróbuj ponownie.
+register-title = Rejestracja
+register-username = Nazwa użytkownika
+register-username-hint = Od 2 do 25 liter lub cyfr; spacje, kropki, myślniki i podkreślenia mogą stać między nimi.
+register-email = Adres e-mail
+register-email-hint = Służy do logowania i resetu hasła. Nigdy nie jest pokazywany innym użytkownikom.
+register-password = Hasło
+register-password-hint = Co najmniej 10 znaków. Kilka niezwiązanych ze sobą słów to mocne hasło.
+register-rules = Regulamin forum
+register-accept-rules = Przeczytałem(-am) i akceptuję regulamin forum
+register-submit = Załóż konto
+register-have-account = Masz już konto?
+register-error-throttled = Zbyt wiele rejestracji z Twojej sieci. Spróbuj ponownie za { $minutes ->
+    [one] minutę
+    [few] { $minutes } minuty
+   *[many] { $minutes } minut
+}.
+register-welcome = Witaj na pokładzie, { $name }! Jesteś zalogowany(-a).
+form-has-errors = Popraw pola oznaczone poniżej.
+username-error-too-short = Nazwa użytkownika jest za krótka.
+username-error-too-long = Nazwa użytkownika jest za długa (najwyżej 25 znaków).
+username-error-characters = Używaj tylko liter, cyfr, spacji, kropek, myślników i podkreśleń.
+username-error-edges = Spacje, kropki, myślniki i podkreślenia mogą stać tylko pojedynczo, między literami lub cyframi.
+username-error-mixed-scripts = Użyj jednego alfabetu: mieszanie np. liter łacińskich i cyrylicy jest niedozwolone.
+username-error-disallowed = Ta nazwa użytkownika jest zarezerwowana.
+username-error-taken = Ta nazwa użytkownika, albo bardzo do niej podobna, jest już zajęta.
+email-error-invalid = To nie wygląda na adres e-mail.
+email-error-taken = Konto z tym adresem e-mail już istnieje.
+password-error-too-short = Hasło musi mieć co najmniej 10 znaków.
+password-error-too-long = Hasło jest za długie.
+password-error-same-as-name = Hasło nie może być Twoją nazwą użytkownika ani adresem e-mail.
+rules-error-required = Aby się zarejestrować, musisz zaakceptować regulamin.
+rules-default =
+    Bądź życzliwy(-a). Spieraj się z poglądami, nie z ludźmi.
+
+    Bez spamu, reklam i treści niezgodnych z prawem. Posty łamiące regulamin mogą zostać poprawione lub usunięte przez moderatorów.
+
+    Pisz tak, by inni mogli to przeczytać: opisowy tytuł tematu pomaga wszystkim.

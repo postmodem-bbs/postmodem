@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { defaultLocale } from "@postmodem/core";
+import { defaultLocale, resolveSession } from "@postmodem/core";
 import { negotiate } from "@postmodem/i18n";
 import type { Handle } from "@sveltejs/kit/hooks";
+import { clearSessionCookie, sessionCookieName } from "#lib/server/auth.ts";
 import { getContext } from "#lib/server/bootstrap.ts";
 import { LANG_COOKIE, parseTheme, THEME_COOKIE } from "#lib/server/preferences.ts";
 
@@ -49,8 +50,14 @@ export const handle: Handle = async ({ event, resolve }) => {
     boardDefault: ctx.settings.get(defaultLocale),
   });
   event.locals.theme = parseTheme(event.cookies.get(THEME_COOKIE));
-  // Accounts arrive in slice 4; until then everyone is a guest.
-  event.locals.perms = await ctx.permissions(null);
+  // Session: an opaque cookie whose hash names a server-side session (core accounts.ts).
+  const cookieName = sessionCookieName(ctx.config);
+  const token = event.cookies.get(cookieName);
+  const auth = token ? await resolveSession(ctx.db.repos, token) : null;
+  if (token && !auth) clearSessionCookie(event.cookies, ctx.config);
+  event.locals.user = auth?.user ?? null;
+  event.locals.session = auth?.session ?? null;
+  event.locals.perms = await ctx.permissions(auth?.user.id ?? null);
 
   const response = await resolve(event, {
     transformPageChunk: ({ html }) =>
@@ -59,5 +66,8 @@ export const handle: Handle = async ({ event, resolve }) => {
         .replace("%pm.theme%", event.locals.theme === "system" ? "" : event.locals.theme),
   });
   for (const [k, v] of Object.entries(SECURITY_HEADERS)) response.headers.set(k, v);
+  // Pages rendered for a signed-in user must never land in a shared cache.
+  if (event.locals.user && !response.headers.has("cache-control"))
+    response.headers.set("cache-control", "private, no-cache");
   return response;
 };

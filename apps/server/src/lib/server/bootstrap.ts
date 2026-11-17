@@ -12,13 +12,17 @@ import {
   createLogger,
   type Id,
   installCorePermissions,
+  LOGIN_IP_POLICY,
+  LOGIN_POLICY,
   type LoadedConfig,
   type Logger,
   loadConfig,
   loadSnapshot,
   type Permissions,
   permissionsFor,
+  REGISTER_POLICY,
   Settings,
+  Throttle,
   viewerFor,
 } from "@postmodem/core";
 import { type Database, openDatabase } from "@postmodem/db";
@@ -31,6 +35,8 @@ export interface AppContext {
   settings: Settings;
   renderer: Renderer;
   capabilities: CapabilityRegistry;
+  /** Progressive delays (in memory, per process; see core throttle.ts). */
+  throttles: { login: Throttle; loginIp: Throttle; register: Throttle };
   /** Permission view for one request (null = guest). Loads a fresh snapshot each call. */
   permissions(userId: Id | null): Promise<Permissions>;
   log: Logger;
@@ -102,6 +108,11 @@ export async function createContext(opts: { migrate: boolean; loaded?: LoadedCon
     settings,
     renderer: createRenderer(db.repos),
     capabilities,
+    throttles: {
+      login: new Throttle(LOGIN_POLICY),
+      loginIp: new Throttle(LOGIN_IP_POLICY),
+      register: new Throttle(REGISTER_POLICY),
+    },
     async permissions(userId) {
       const [snapshot, viewer] = await Promise.all([loadSnapshot(db.repos), viewerFor(db.repos, userId)]);
       return permissionsFor(capabilities, snapshot, viewer);

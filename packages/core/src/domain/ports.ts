@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Repository ports: what the core needs from storage. Implemented once in @postmodem/db
-// for SQLite and Postgres (ADR 0013). Sessions and e-mail tokens arrive with auth (slice 4).
+// for SQLite and Postgres (ADR 0013). E-mail tokens arrive with mail (slice 4b).
 import type {
   AuditEntry,
   Effect,
@@ -15,6 +15,7 @@ import type {
   Post,
   Rank,
   Role,
+  Session,
   Smiley,
   Subject,
   Topic,
@@ -140,6 +141,8 @@ export interface NewUser {
   website?: string;
   locale?: string | null;
   timezone?: string | null;
+  rulesVersion?: number | null;
+  rulesAcceptedAt?: Millis | null;
 }
 
 export interface UserRepository {
@@ -147,13 +150,15 @@ export interface UserRepository {
   get(id: Id): Promise<User | undefined>;
   getMany(ids: Id[]): Promise<Map<Id, User>>;
   byUsername(username: string): Promise<User | undefined>;
+  /** A local user whose name looks the same (same `skeleton()`), if any. */
+  lookalike(username: string): Promise<User | undefined>;
   byEmail(email: string): Promise<User | undefined>;
   update(id: Id, patch: Partial<Omit<User, "id" | "usernameKey" | "createdAt">>): Promise<User>;
   count(): Promise<number>;
   newest(): Promise<User | undefined>;
 }
 
-export type PasswordScheme = "argon2id" | "phpbb2-md5";
+export type PasswordScheme = "argon2id" | "phpbb2-md5" | "phpass";
 export interface Credential {
   userId: Id;
   scheme: PasswordScheme;
@@ -163,6 +168,18 @@ export interface Credential {
 export interface CredentialRepository {
   get(userId: Id): Promise<Credential | undefined>;
   set(userId: Id, scheme: PasswordScheme, hash: string): Promise<void>;
+}
+
+export interface SessionRepository {
+  create(session: Session): Promise<void>;
+  get(id: string): Promise<Session | undefined>;
+  /** Slides the idle window: records activity and the new expiry. */
+  touch(id: string, lastSeenAt: Millis, expiresAt: Millis): Promise<void>;
+  remove(id: string): Promise<void>;
+  /** Signs a user out everywhere (optionally keeping one session). Returns how many ended. */
+  removeForUser(userId: Id, keep?: string): Promise<number>;
+  listForUser(userId: Id): Promise<Session[]>;
+  purgeExpired(now: Millis): Promise<number>;
 }
 
 export interface GroupRepository {
@@ -230,6 +247,7 @@ export interface Repositories {
   posts: PostRepository;
   users: UserRepository;
   credentials: CredentialRepository;
+  sessions: SessionRepository;
   groups: GroupRepository;
   roles: RoleRepository;
   grants: GrantRepository;

@@ -127,7 +127,7 @@ are never editable from the browser).
 | `POSTMODEM_PROFILE` | `przemo` | `vanilla` · `przemo` · `modern` (first boot only; see PACKAGES.md §5) |
 | `POSTMODEM_SECRET_KEY(_FILE)` | generated into `/data/secrets` | Compose secret |
 | `POSTMODEM_TRUSTED_PROXIES` | — | `10.0.0.0/8` |
-| `POSTMODEM_ADMIN_EMAIL/PASSWORD_FILE` | used by `postmodem init` on first boot | |
+| `POSTMODEM_ADMIN_EMAIL/PASSWORD_FILE` | used by `postmodem init` on first boot (`POSTMODEM_ADMIN_USERNAME` optional, default `admin`) | |
 
 Config is validated at startup against a schema; invalid config fails fast
 with a readable message (container exits non-zero, Compose shows why).

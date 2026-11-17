@@ -24,6 +24,54 @@ export const defaultLocale = defineSetting<Locale>({
   default: "en",
 });
 
+export const registrationOpen = defineSetting({
+  key: "core.registration.open",
+  schema: z.boolean(),
+  default: true,
+});
+
+/** Board rules shown at registration; empty = the built-in default text for the reader's language. */
+export const boardRules = defineSetting({
+  key: "core.registration.rules",
+  schema: z.string().max(20_000),
+  default: "",
+});
+
+/** Bump when the rules change materially; users record which version they accepted. */
+export const rulesVersion = defineSetting({
+  key: "core.registration.rulesVersion",
+  schema: z.number().int().min(1),
+  default: 1,
+});
+
+/** phpBB2's "disallow usernames" list; `*` is a wildcard. Lookalikes of plain entries are blocked too. */
+export const disallowedUsernames = defineSetting<string[]>({
+  key: "core.registration.disallowedUsernames",
+  schema: z.array(z.string().trim().min(1).max(50)).max(1000),
+  default: [
+    "admin*",
+    "administrator",
+    "moderator*",
+    "mod",
+    "postmodem*",
+    "root",
+    "system",
+    "guest",
+    "gość",
+    "anonymous",
+    "anonim",
+    "webmaster",
+  ],
+});
+
 export function coreSettings(): SettingsRegistry {
-  return new SettingsRegistry().register(boardName, boardDescription, defaultLocale);
+  return new SettingsRegistry().register(
+    boardName,
+    boardDescription,
+    defaultLocale,
+    registrationOpen,
+    boardRules,
+    rulesVersion,
+    disallowedUsernames,
+  );
 }

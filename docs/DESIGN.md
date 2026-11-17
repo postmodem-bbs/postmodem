@@ -461,7 +461,8 @@ the name **Postmodem** and its identifiers ([ADR 0011](adr/0011-name-postmodem.m
 configurable permalinks with phpBB2-classic as default ([ADR 0012](adr/0012-configurable-permalinks.md)),
 Kysely for portable SQL ([ADR 0013](adr/0013-kysely-for-portable-sql.md)),
 post markup dialect, class-based output and reader holes ([ADR 0014](adr/0014-post-markup.md)),
-permission resolution: never, nearest scope, most specific subject ([ADR 0015](adr/0015-permission-resolution.md)).
+permission resolution: never, nearest scope, most specific subject ([ADR 0015](adr/0015-permission-resolution.md)),
+accounts and sessions: Argon2id, opaque server-side sessions, delays not lockouts ([ADR 0016](adr/0016-accounts-and-sessions.md)).
 
 No architecture decisions are open. Owner actions before going public:
 register `postmodem.app`, create the `postmodem-bbs` GitHub and `@postmodem`

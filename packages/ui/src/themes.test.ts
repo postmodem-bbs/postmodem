@@ -15,6 +15,8 @@ const TEXT_PAIRS: [ColorToken, ColorToken][] = [
   ["link", "surfaceAlt"],
   ["linkHover", "surface"],
   ["headerText", "headerBg"],
+  ["danger", "surface"],
+  ["danger", "bg"],
 ];
 // Non-text UI (focus ring, borders that convey state) needs 3:1.
 const UI_PAIRS: [ColorToken, ColorToken][] = [

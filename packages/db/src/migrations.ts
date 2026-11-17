@@ -2,6 +2,8 @@
 // Embedded migrations (bundle-safe; no filesystem lookup). Rules (CONTAINERS.md §4.4):
 // append only, expand/contract, never edit a released migration.
 // They run without the CamelCasePlugin, so names here are the real snake_case names.
+
+import { skeleton } from "@postmodem/core";
 import { type ColumnDefinitionBuilder, type CreateTableBuilder, type Kysely, sql } from "kysely";
 import type { Migration } from "kysely/migration";
 
@@ -251,6 +253,26 @@ export function migrations(dialect: Dialect): Record<string, Migration> {
           .addColumn("entity_id", "bigint", notNull)
           .addColumn("created_at", "bigint", notNull)
           .addPrimaryKeyConstraint("slug_history_pk", ["kind", "slug"])
+          .execute();
+      },
+    },
+    "0003_accounts": {
+      async up(db: Db) {
+        // Board rules acceptance (slice 4): which version of the rules, and when.
+        await db.schema.alterTable("users").addColumn("rules_version", "bigint").execute();
+        await db.schema.alterTable("users").addColumn("rules_accepted_at", "bigint").execute();
+        await db.schema.alterTable("sessions").addColumn("ip", "text", empty).execute();
+        // Lookalike-folded username (core `skeleton()`), so "Admin" and Cyrillic "Аdmin" collide.
+        await db.schema.alterTable("users").addColumn("username_skeleton", "text", empty).execute();
+        const rows = await sql<{ id: number; username: string }>`select id, username from users`.execute(db);
+        for (const r of rows.rows)
+          await sql`update users set username_skeleton = ${skeleton(r.username)} where id = ${r.id}`.execute(
+            db,
+          );
+        await db.schema
+          .createIndex("users_username_skeleton")
+          .on("users")
+          .column("username_skeleton")
           .execute();
       },
     },

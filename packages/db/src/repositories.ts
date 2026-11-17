@@ -18,21 +18,24 @@ import {
   nameKey,
   type Page,
   type PageRequest,
+  type PasswordScheme,
   type Post,
   planMove,
   type Rank,
   type Repositories,
   type Role,
   rootPath,
+  type Session,
   type Smiley,
   type Subject,
+  skeleton,
   slugify,
   type Topic,
   type User,
   type UserStatus,
 } from "@postmodem/core";
 import { type Kysely, type Selectable, sql } from "kysely";
-import type { NodesTable, PostsTable, Schema, TopicsTable, UsersTable } from "./schema.ts";
+import type { NodesTable, PostsTable, Schema, SessionsTable, TopicsTable, UsersTable } from "./schema.ts";
 
 type Db = Kysely<Schema>;
 const PUBLIC = ["core:public"];
@@ -134,6 +137,18 @@ const toUser = (r: Selectable<UsersTable>): User => ({
   website: r.website,
   locale: r.locale,
   timezone: r.timezone,
+  rulesVersion: r.rulesVersion === null ? null : n(r.rulesVersion),
+  rulesAcceptedAt: r.rulesAcceptedAt === null ? null : n(r.rulesAcceptedAt),
+});
+
+const toSession = (r: Selectable<SessionsTable>): Session => ({
+  id: r.id,
+  userId: n(r.userId),
+  createdAt: n(r.createdAt),
+  lastSeenAt: n(r.lastSeenAt),
+  expiresAt: n(r.expiresAt),
+  userAgent: r.userAgent,
+  ip: r.ip,
 });
 
 const emailKey = (email: string | null | undefined) => (email ? email.trim().toLowerCase() : null);
@@ -483,6 +498,7 @@ export function createRepositories(db: Db): Repositories {
           ...(input.id !== undefined ? { id: input.id } : {}),
           username: input.username,
           usernameKey: nameKey(input.username),
+          usernameSkeleton: skeleton(input.username),
           email: input.email,
           emailKey: emailKey(input.email),
           origin: input.origin ?? "local",
@@ -498,6 +514,8 @@ export function createRepositories(db: Db): Repositories {
           website: input.website ?? "",
           locale: input.locale ?? null,
           timezone: input.timezone ?? null,
+          rulesVersion: input.rulesVersion ?? null,
+          rulesAcceptedAt: input.rulesAcceptedAt ?? null,
         })
         .returning("id")
         .executeTakeFirstOrThrow();
@@ -525,6 +543,17 @@ export function createRepositories(db: Db): Repositories {
         .executeTakeFirst();
       return r && toUser(r);
     },
+    async lookalike(username) {
+      const r = await db
+        .selectFrom("users")
+        .selectAll()
+        .where("origin", "=", "local")
+        .where("usernameSkeleton", "=", skeleton(username))
+        .orderBy("id")
+        .limit(1)
+        .executeTakeFirst();
+      return r && toUser(r);
+    },
     async byEmail(email) {
       const r = await db
         .selectFrom("users")
@@ -539,6 +568,9 @@ export function createRepositories(db: Db): Repositories {
         .updateTable("users")
         .set({
           ...rest,
+          ...(rest.username !== undefined
+            ? { usernameKey: nameKey(rest.username), usernameSkeleton: skeleton(rest.username) }
+            : {}),
           ...(email !== undefined ? { email, emailKey: emailKey(email) } : {}),
         })
         .where("id", "=", id)
@@ -578,7 +610,7 @@ export function createRepositories(db: Db): Repositories {
       return (
         r && {
           userId: r.userId,
-          scheme: r.scheme as "argon2id" | "phpbb2-md5",
+          scheme: r.scheme as PasswordScheme,
           hash: r.hash,
           updatedAt: n(r.updatedAt),
         }
@@ -907,12 +939,48 @@ export function createRepositories(db: Db): Repositories {
     },
   };
 
+  const sessions: Repositories["sessions"] = {
+    async create(session) {
+      await db.insertInto("sessions").values(session).execute();
+    },
+    async get(id) {
+      const r = await db.selectFrom("sessions").selectAll().where("id", "=", id).executeTakeFirst();
+      return r && toSession(r);
+    },
+    async touch(id, lastSeenAt, expiresAt) {
+      await db.updateTable("sessions").set({ lastSeenAt, expiresAt }).where("id", "=", id).execute();
+    },
+    async remove(id) {
+      await db.deleteFrom("sessions").where("id", "=", id).execute();
+    },
+    async removeForUser(userId, keep) {
+      let q = db.deleteFrom("sessions").where("userId", "=", userId);
+      if (keep !== undefined) q = q.where("id", "!=", keep);
+      const r = await q.executeTakeFirst();
+      return Number(r.numDeletedRows);
+    },
+    async listForUser(userId) {
+      const rows = await db
+        .selectFrom("sessions")
+        .selectAll()
+        .where("userId", "=", userId)
+        .orderBy("lastSeenAt", "desc")
+        .execute();
+      return rows.map(toSession);
+    },
+    async purgeExpired(now) {
+      const r = await db.deleteFrom("sessions").where("expiresAt", "<=", now).executeTakeFirst();
+      return Number(r.numDeletedRows);
+    },
+  };
+
   return {
     nodes,
     topics,
     posts,
     users,
     credentials,
+    sessions,
     groups,
     roles,
     grants,

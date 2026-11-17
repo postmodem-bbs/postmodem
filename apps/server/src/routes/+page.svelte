@@ -13,6 +13,10 @@
 
 <h1 class="page-title">{t("nav-index")}</h1>
 
+{#if data.welcome}
+  <p class="panel notice" role="status">{t("register-welcome", { name: data.welcome })}</p>
+{/if}
+
 {#if data.categories.length === 0}
   <p class="panel">{t("board-empty")}</p>
 {/if}

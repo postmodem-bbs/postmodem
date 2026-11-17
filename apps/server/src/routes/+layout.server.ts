@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { boardName } from "@postmodem/core";
+import { boardName, registrationOpen } from "@postmodem/core";
 import type { LayoutServerLoad } from "./$types";
 
 export const load: LayoutServerLoad = ({ locals, url }) => {
@@ -14,5 +14,7 @@ export const load: LayoutServerLoad = ({ locals, url }) => {
       config.sourceUrl ??
       `https://github.com/postmodem-bbs/postmodem/tree/${config.revision === "unknown" ? "main" : config.revision}`,
     returnTo: url.pathname + url.search,
+    user: locals.user ? { id: locals.user.id, username: locals.user.username } : null,
+    registrationOpen: settings.get(registrationOpen),
   };
 };

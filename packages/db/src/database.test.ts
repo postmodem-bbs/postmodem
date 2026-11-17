@@ -1,7 +1,21 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // One behavioural suite, run on every engine (ADR 0013): SQLite, PGlite, and a real
 // Postgres server when PM_TEST_PG_URL is set.
-import { boardName, coreSettings, type Repositories, Settings, TreeError } from "@postmodem/core";
+import { createHash } from "node:crypto";
+import {
+  authenticate,
+  boardName,
+  coreSettings,
+  endSession,
+  type Repositories,
+  register,
+  resolveSession,
+  SESSION_ABSOLUTE_MS,
+  SESSION_IDLE_MS,
+  Settings,
+  startSession,
+  TreeError,
+} from "@postmodem/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { Database } from "./database.ts";
 import { migrations } from "./migrations.ts";
@@ -281,6 +295,88 @@ describe.each(testEngines())("%s", (engine) => {
         }),
       ).rejects.toThrow("boom");
       expect(await r.nodes.tree()).toEqual([]);
+    });
+  });
+
+  describe("accounts and sessions", () => {
+    const policy = { disallowedUsernames: ["admin*"], rulesVersion: 3 };
+    const input = { username: "Ola", email: "ola@example.org", password: "correct horse", acceptRules: true };
+
+    it("registers, refusing lookalike names, taken e-mails and missing consent", async () => {
+      const ok = await register(r, policy, input, 1000);
+      expect(ok.ok).toBe(true);
+      if (!ok.ok) return;
+      expect(ok.user).toMatchObject({
+        username: "Ola",
+        rulesVersion: 3,
+        rulesAcceptedAt: 1000,
+        status: "active",
+      });
+      expect((await r.credentials.get(ok.user.id))?.scheme).toBe("argon2id");
+
+      const again = await register(r, policy, {
+        ...input,
+        username: "0la",
+        email: "OLA@example.org",
+        acceptRules: false,
+      });
+      expect(again).toEqual({ ok: false, errors: { username: "taken", email: "taken", rules: "required" } });
+      const bad = await register(r, policy, {
+        ...input,
+        username: "AdminX",
+        email: "x@example.org",
+        password: "short",
+      });
+      expect(bad).toEqual({ ok: false, errors: { username: "disallowed", password: "too-short" } });
+    });
+
+    it("signs in by name or e-mail and upgrades legacy hashes", async () => {
+      const u = await r.users.create({ username: "Łukasz Żółć", email: "lukasz@example.org" });
+      await r.credentials.set(u.id, "phpbb2-md5", createHash("md5").update("stare-haslo").digest("hex"));
+      expect(await authenticate(r, "łukasz żółć", "wrong-password")).toEqual({
+        ok: false,
+        reason: "invalid",
+      });
+      expect((await authenticate(r, "  ŁUKASZ ŻÓŁĆ ", "stare-haslo")).ok).toBe(true);
+      expect((await r.credentials.get(u.id))?.scheme).toBe("argon2id");
+      expect((await authenticate(r, "lukasz@example.org", "stare-haslo")).ok).toBe(true);
+      expect(await authenticate(r, "nobody", "whatever-123")).toEqual({ ok: false, reason: "invalid" });
+      await r.users.update(u.id, { status: "banned" });
+      expect(await authenticate(r, "Łukasz Żółć", "stare-haslo")).toEqual({ ok: false, reason: "inactive" });
+    });
+
+    it("keeps sessions server-side with idle and absolute expiry", async () => {
+      const u = await r.users.create({ username: "Ola", email: null });
+      const t0 = 1_000_000;
+      const { token, session } = await startSession(r, u.id, { userAgent: "test", ip: "127.0.0.1" }, t0);
+      expect(session.id).not.toBe(token); // only the hash is stored
+      expect((await resolveSession(r, token, t0 + 1000))?.user.id).toBe(u.id);
+      expect(await resolveSession(r, "x".repeat(43), t0)).toBeNull();
+
+      // Activity slides the idle window...
+      const later = t0 + SESSION_IDLE_MS - 1;
+      expect(await resolveSession(r, token, later)).not.toBeNull();
+      expect((await r.sessions.get(session.id))?.lastSeenAt).toBe(later);
+      // ...but never past the absolute limit.
+      expect(await resolveSession(r, token, t0 + SESSION_ABSOLUTE_MS)).toBeNull();
+      expect(await r.sessions.get(session.id)).toBeUndefined();
+
+      const a = await startSession(r, u.id, { userAgent: "a", ip: "" }, t0);
+      const b = await startSession(r, u.id, { userAgent: "b", ip: "" }, t0);
+      expect(await r.sessions.removeForUser(u.id, a.session.id)).toBe(1);
+      expect(await resolveSession(r, b.token, t0)).toBeNull();
+      expect(await resolveSession(r, a.token, t0)).not.toBeNull();
+      await endSession(r, a.token);
+      expect(await resolveSession(r, a.token, t0)).toBeNull();
+    });
+
+    it("ends sessions of users who are no longer active, and purges expired ones", async () => {
+      const u = await r.users.create({ username: "retro_fan", email: null });
+      const { token } = await startSession(r, u.id, { userAgent: "", ip: "" }, 0);
+      await r.users.update(u.id, { status: "banned" });
+      expect(await resolveSession(r, token, 1)).toBeNull();
+      await startSession(r, u.id, { userAgent: "", ip: "" }, 0);
+      expect(await r.sessions.purgeExpired(SESSION_IDLE_MS + 1)).toBe(1);
     });
   });
 });

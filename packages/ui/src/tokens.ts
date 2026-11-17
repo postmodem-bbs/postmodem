@@ -14,6 +14,8 @@ export const COLOR_TOKENS = [
   "headerBg",
   "headerText",
   "focus",
+  /** Error messages and invalid-field markers. */
+  "danger",
 ] as const;
 export type ColorToken = (typeof COLOR_TOKENS)[number];
 export type Palette = Record<ColorToken, string>;

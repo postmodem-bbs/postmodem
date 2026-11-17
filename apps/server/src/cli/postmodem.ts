@@ -1,13 +1,22 @@
 #!/usr/bin/env node
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // The `postmodem` CLI: one image, many roles (CONTAINERS.md §2.2).
-import { accessSync, constants, mkdirSync, unlinkSync, writeFileSync } from "node:fs";
+import { accessSync, constants, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { createServer, type Server } from "node:http";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { ConfigError, describeConfig } from "@postmodem/core";
+import {
+  ConfigError,
+  cleanUsername,
+  describeConfig,
+  emailProblem,
+  hashPassword,
+  installCorePermissions,
+  passwordProblem,
+  usernameProblem,
+} from "@postmodem/core";
 import { type AppContext, createContext, readConfig } from "../lib/server/bootstrap.ts";
-import { seedDemo } from "../lib/server/demo.ts";
+import { DEMO_PASSWORD, seedDemo } from "../lib/server/demo.ts";
 
 const HELP = `postmodem — a modern bulletin board
 
@@ -19,6 +28,7 @@ Usage: postmodem <command>
   scheduler     periodic job scheduler (run exactly one)
   migrate       apply database migrations and exit
   doctor        check configuration, data directory and database
+  init          create the first administrator from POSTMODEM_ADMIN_* (idempotent)
   seed-demo     fill an empty board with demo content (refuses if forums exist)
   perms explain --user <name|guest> --capability <key> [--node <id>]
                 show whether a user may do something, and which grants decided it
@@ -90,7 +100,76 @@ async function startWeb(ctx: AppContext): Promise<Server> {
 }
 
 function startIdleRole(ctx: AppContext, role: "worker" | "scheduler") {
-  ctx.log.info(`${role} started`, { note: "no job types are registered yet (M0)" });
+  ctx.log.info(`${role} started`, { note: "no job types are registered yet" });
+  if (role !== "scheduler") return;
+  // Expired sessions are already refused on use; this only keeps the table small.
+  const purge = async () => {
+    try {
+      const n = await ctx.db.repos.sessions.purgeExpired(Date.now());
+      if (n) ctx.log.info("purged expired sessions", { sessions: n });
+    } catch (e) {
+      ctx.log.warn("session purge failed", { error: (e as Error).message });
+    }
+  };
+  setInterval(purge, 3600_000).unref();
+}
+
+/**
+ * First administrator, non-interactively (containers, CI): POSTMODEM_ADMIN_EMAIL plus
+ * POSTMODEM_ADMIN_PASSWORD_FILE (preferred) or POSTMODEM_ADMIN_PASSWORD, and optionally
+ * POSTMODEM_ADMIN_USERNAME (default "admin"; reserved names are allowed here). Does nothing
+ * if the board already has an administrator.
+ */
+async function init(env: Record<string, string | undefined>): Promise<number> {
+  const ctx = await createContext({ migrate: true });
+  try {
+    const { repos } = ctx.db;
+    await installCorePermissions(repos);
+    const adminRole = await repos.roles.byKey("core:admin");
+    const existing = (await repos.grants.all()).find(
+      (g) => g.roleId === adminRole?.id && g.nodeId === null && g.subject.type === "user",
+    );
+    if (existing) {
+      ctx.log.info("the board already has an administrator; nothing to do");
+      return 0;
+    }
+    const username = cleanUsername(env.POSTMODEM_ADMIN_USERNAME ?? "admin");
+    const email = (env.POSTMODEM_ADMIN_EMAIL ?? "").trim();
+    const file = env.POSTMODEM_ADMIN_PASSWORD_FILE;
+    const password = file
+      ? readFileSync(file, "utf8").replace(/\r?\n$/, "")
+      : (env.POSTMODEM_ADMIN_PASSWORD ?? "");
+    const problems = [
+      usernameProblem(username) && `POSTMODEM_ADMIN_USERNAME: ${usernameProblem(username)}`,
+      emailProblem(email) && "POSTMODEM_ADMIN_EMAIL: missing or invalid",
+      passwordProblem(password, [username, email]) &&
+        `POSTMODEM_ADMIN_PASSWORD(_FILE): ${passwordProblem(password, [username, email])}`,
+      ((await repos.users.lookalike(username)) || (await repos.users.byEmail(email))) &&
+        "a user with that name or e-mail already exists; grant it core:admin instead",
+    ].filter(Boolean);
+    if (problems.length) {
+      for (const p of problems) console.error(`init: ${p}`);
+      return 2;
+    }
+    const { scheme, hash } = await hashPassword(password);
+    const user = await repos.transaction(async (r) => {
+      const u = await r.users.create({ username, email });
+      await r.credentials.set(u.id, scheme, hash);
+      await r.grants.create(adminRole!.id, { type: "user", id: u.id }, null);
+      await r.audit.append({
+        actorId: null,
+        action: "board.initialised",
+        targetType: "user",
+        targetId: String(u.id),
+        details: {},
+      });
+      return u;
+    });
+    ctx.log.info("administrator created", { userId: user.id, username });
+    return 0;
+  } finally {
+    await ctx.db.close();
+  }
 }
 
 function onShutdown(ctx: AppContext, servers: Server[]) {
@@ -217,11 +296,17 @@ async function main(argv: string[]): Promise<number> {
     case "seed-demo": {
       const ctx = await createContext({ migrate: true });
       const result = await seedDemo(ctx.db.repos);
-      if (result.created) ctx.log.info("demo board created", { ...result });
+      if (result.created)
+        ctx.log.info("demo board created", {
+          ...result,
+          logins: `Łukasz Żółć, retro_fan, Ola (moderator group) with password "${DEMO_PASSWORD}"`,
+        });
       else ctx.log.warn("the board already has forums; demo content was not added");
       await ctx.db.close();
       return result.created ? 0 : 1;
     }
+    case "init":
+      return init(process.env);
     case "perms":
       if (sub !== "explain") break;
       return permsExplain(argv.slice(2));

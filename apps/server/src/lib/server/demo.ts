@@ -2,7 +2,13 @@
 // `postmodem seed-demo`: fills an EMPTY board with content that shows what's implemented —
 // nested forums, announcements and stickies, long paginated topics, guest posts, and posts
 // exercising every BBCode feature. Refuses to touch a board that already has forums.
-import { type Id, installCorePermissions, type Repositories } from "@postmodem/core";
+import { hashPassword, type Id, installCorePermissions, type Repositories } from "@postmodem/core";
+
+/**
+ * Demo members (not Admin) can sign in with this password, to try what registered users and
+ * the Moderatorzy group see. A demo board is for looking around, never for real use.
+ */
+export const DEMO_PASSWORD = "postmodem-demo";
 
 const DAY = 86_400_000;
 
@@ -59,6 +65,7 @@ export interface SeedResult {
 export async function seedDemo(repos: Repositories, now = Date.now()): Promise<SeedResult> {
   if ((await repos.nodes.tree()).length) return { created: false, forums: 0, topics: 0, posts: 0 };
 
+  const demoCredential = await hashPassword(DEMO_PASSWORD);
   return repos.transaction(async (r) => {
     let t = now - 30 * DAY;
     const tick = (ms = 47 * 60_000) => {
@@ -92,6 +99,8 @@ export async function seedDemo(repos: Repositories, now = Date.now()): Promise<S
     });
     const ola = await r.users.create({ username: "Ola", email: null, createdAt: tick() });
     const people = [admin, lukasz, fan, ola];
+    for (const person of [lukasz, fan, ola])
+      await r.credentials.set(person.id, demoCredential.scheme, demoCredential.hash);
     const moderators = await r.groups.create({
       name: "Moderatorzy",
       description: "Pilnują porządku.",

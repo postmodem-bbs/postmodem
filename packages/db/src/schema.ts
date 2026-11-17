@@ -37,6 +37,7 @@ export interface UsersTable {
   id: Generated<number>;
   username: string;
   usernameKey: string;
+  usernameSkeleton: string;
   email: string | null;
   emailKey: string | null;
   origin: string;
@@ -52,6 +53,8 @@ export interface UsersTable {
   website: string;
   locale: string | null;
   timezone: string | null;
+  rulesVersion: number | null;
+  rulesAcceptedAt: number | null;
 }
 
 export interface CredentialsTable {
@@ -78,6 +81,7 @@ export interface SessionsTable {
   lastSeenAt: number;
   expiresAt: number;
   userAgent: string;
+  ip: string;
 }
 
 export interface GroupsTable {

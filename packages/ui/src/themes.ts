@@ -17,6 +17,7 @@ export const classic: Theme = {
     headerBg: "#006699",
     headerText: "#ffffff",
     focus: "#9a4a00",
+    danger: "#b00020",
   },
   dark: {
     bg: "#12161a",
@@ -30,6 +31,7 @@ export const classic: Theme = {
     headerBg: "#0e3a52",
     headerText: "#ffffff",
     focus: "#f0a35e",
+    danger: "#ff8a8a",
   },
   bbColors: {
     light: {

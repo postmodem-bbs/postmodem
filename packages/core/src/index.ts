@@ -1,4 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
+export * from "./auth/accounts.ts";
+export * from "./auth/passwords.ts";
+export * from "./auth/throttle.ts";
+export * from "./auth/usernames.ts";
 export * from "./config.ts";
 export * from "./core-settings.ts";
 export * from "./domain/core-permissions.ts";

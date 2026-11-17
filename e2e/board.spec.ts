@@ -1,26 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Runs against a board seeded with `postmodem seed-demo` (CI does this before the suite).
-import AxeBuilder from "@axe-core/playwright";
 import { expect, type Page, test } from "@playwright/test";
+import { expectNoAxeViolations, guardCsp } from "./helpers.ts";
 
-const WCAG = ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"];
-
-async function expectNoAxeViolations(page: Page) {
-  const { violations } = await new AxeBuilder({ page }).withTags(WCAG).analyze();
-  expect(violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`)).toEqual([]);
-}
-
-// Every page must load without a single Content Security Policy violation.
-test.beforeEach(async ({ page }) => {
-  const violations: string[] = [];
-  page.on("console", (m) => {
-    if (m.type() === "error" && /Content Security Policy/i.test(m.text())) violations.push(m.text());
-  });
-  (page as Page & { cspViolations: string[] }).cspViolations = violations;
-});
-test.afterEach(async ({ page }) => {
-  expect((page as Page & { cspViolations?: string[] }).cspViolations ?? []).toEqual([]);
-});
+guardCsp();
 
 async function openHydepark(page: Page) {
   await page.goto("/");

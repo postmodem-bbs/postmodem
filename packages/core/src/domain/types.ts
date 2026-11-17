@@ -100,6 +100,20 @@ export interface User {
   website: string;
   locale: string | null;
   timezone: string | null;
+  /** Version of the board rules the user accepted, and when (null: never, e.g. imported). */
+  rulesVersion: number | null;
+  rulesAcceptedAt: Millis | null;
+}
+
+/** A signed-in browser. The id is a hash of the cookie value; the cookie itself is never stored. */
+export interface Session {
+  id: string;
+  userId: Id;
+  createdAt: Millis;
+  lastSeenAt: Millis;
+  expiresAt: Millis;
+  userAgent: string;
+  ip: string;
 }
 
 export type GroupKind = "open" | "closed" | "hidden" | "system";

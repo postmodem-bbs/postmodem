@@ -6,11 +6,13 @@ Classic forum layout, modern internals: accessible, themeable, extensible,
 works without JavaScript, and ships as one Docker image.
 
 > **Status: M1 in progress.** Read-only board: index, forums (with Przemo-style
-> sub-forums) and topics on phpBB2's own URLs, posts rendered from BBCode. No
-> accounts, posting or permissions yet. See [docs/milestones/M1.md](docs/milestones/M1.md).
+> sub-forums) and topics on phpBB2's own URLs, posts rendered from BBCode, per-forum
+> permissions, registration and sign-in. No posting yet. See
+> [docs/milestones/M1.md](docs/milestones/M1.md).
 >
 > Try it with demo content: `pnpm cli seed-demo`, then `pnpm dev`
-> (or `postmodem seed-demo` inside the container).
+> (or `postmodem seed-demo` inside the container). Demo members `Łukasz Żółć`,
+> `retro_fan` and `Ola` sign in with the password `postmodem-demo`.
 
 ## Run it
 
@@ -40,7 +42,9 @@ The image's entrypoint is the `postmodem` CLI. One image, many roles:
 | `run`                          | web + worker + scheduler in one process (default, solo mode)             |
 | `web` / `worker` / `scheduler` | single roles for stack mode                                              |
 | `migrate`                      | apply database migrations (safe to run concurrently)                     |
+| `init`                         | create the first administrator from `POSTMODEM_ADMIN_*` (idempotent)     |
 | `seed-demo`                    | fill an empty board with demo content (refuses if forums exist)          |
+| `perms explain`                | why a user may or may not do something in a forum                        |
 | `doctor`                       | check configuration, data directory, database, migrations                |
 | `healthcheck`                  | used by Docker's `HEALTHCHECK`                                           |
 | `config print`                 | effective configuration and where each value came from, secrets redacted |

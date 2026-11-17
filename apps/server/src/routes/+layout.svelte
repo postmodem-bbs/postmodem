@@ -19,6 +19,24 @@
         <li><a href="/" aria-current={page.url.pathname === "/" ? "page" : undefined}>{t("nav-index")}</a></li>
       </ul>
     </nav>
+    <div class="account">
+      {#if data.user}
+        <span>{t("signed-in-as", { name: data.user.username })}</span>
+        <form method="POST" action="/login.php?/logout">
+          <button type="submit" class="link-button">{t("logout")}</button>
+        </form>
+      {:else}
+        <a
+          href={`/login.php?redirect=${encodeURIComponent(data.returnTo)}`}
+          aria-current={page.url.pathname === "/login.php" ? "page" : undefined}>{t("login-link")}</a
+        >
+        {#if data.registrationOpen}
+          <a href="/register" aria-current={page.url.pathname === "/register" ? "page" : undefined}
+            >{t("register-link")}</a
+          >
+        {/if}
+      {/if}
+    </div>
   </div>
 </header>
 
