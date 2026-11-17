@@ -1,0 +1,171 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Core domain entities (DESIGN.md §5.2, M1 slice 1). Plain data; no persistence concerns.
+// Timestamps are epoch milliseconds; ids are positive integers (imported content keeps legacy ids).
+
+export type Id = number;
+export type Millis = number;
+
+/** Registered visibility states (EXTENSION-POINTS §2.1). Packages add their own, namespaced. */
+export type VisibilityState = "core:public" | "core:deleted" | (string & {});
+
+export type NodeKind = "category" | "forum" | "link";
+
+export interface Node {
+  id: Id;
+  parentId: Id | null;
+  /** Materialised path of ids, e.g. "/1/7/12/". Root-level nodes: "/<id>/". */
+  path: string;
+  depth: number;
+  position: number;
+  kind: NodeKind;
+  title: string;
+  slug: string;
+  description: string;
+  linkUrl: string | null;
+  locked: boolean;
+  topicCount: number;
+  postCount: number;
+  lastPostId: Id | null;
+  visibility: VisibilityState;
+  createdAt: Millis;
+  updatedAt: Millis;
+}
+
+export type TopicType = "normal" | "sticky" | "announcement" | (string & {});
+
+export interface Topic {
+  id: Id;
+  nodeId: Id;
+  title: string;
+  slug: string;
+  authorId: Id | null;
+  /** Shown when there's no author account: guests, deleted users, remote fallbacks. */
+  authorName: string;
+  type: TopicType;
+  locked: boolean;
+  movedToTopicId: Id | null;
+  replyCount: number;
+  viewCount: number;
+  firstPostId: Id | null;
+  lastPostId: Id | null;
+  lastPostAt: Millis | null;
+  visibility: VisibilityState;
+  createdAt: Millis;
+  updatedAt: Millis;
+}
+
+/** How a post's source is written. `html-remote` is sanitised federated content (ADR 0009). */
+export type MarkupFormat = "bbcode-phpbb2" | "markdown" | "html-remote" | (string & {});
+
+export interface Post {
+  id: Id;
+  topicId: Id;
+  nodeId: Id;
+  authorId: Id | null;
+  authorName: string;
+  source: string;
+  format: MarkupFormat;
+  /** Cached HTML; null until rendered. Valid while renderVersion matches the renderer's. */
+  rendered: string | null;
+  renderVersion: number;
+  visibility: VisibilityState;
+  createdAt: Millis;
+  editedAt: Millis | null;
+  editCount: number;
+}
+
+export type UserStatus = "pending" | "active" | "banned" | "deleted";
+
+export interface User {
+  id: Id;
+  username: string;
+  /** Normalised username for uniqueness (see username.ts). */
+  usernameKey: string;
+  email: string | null;
+  /** "local" or the remote host for federated actors (ADR 0009). */
+  origin: string;
+  status: UserStatus;
+  createdAt: Millis;
+  lastSeenAt: Millis | null;
+  postCount: number;
+  rankId: Id | null;
+  signatureSource: string;
+  signatureFormat: MarkupFormat;
+  avatar: string | null;
+  location: string;
+  website: string;
+  locale: string | null;
+  timezone: string | null;
+}
+
+export type GroupKind = "open" | "closed" | "hidden" | "system";
+
+export interface Group {
+  id: Id;
+  name: string;
+  nameKey: string;
+  description: string;
+  kind: GroupKind;
+  createdAt: Millis;
+}
+
+export interface Membership {
+  groupId: Id;
+  userId: Id;
+  role: "member" | "moderator";
+  pending: boolean;
+}
+
+export type Effect = "allow" | "deny" | "never";
+
+export interface Role {
+  id: Id;
+  /** Namespaced, e.g. "core:registered". */
+  key: string;
+  name: string;
+  builtin: boolean;
+  capabilities: Record<string, Effect>;
+}
+
+/** Who a grant applies to. Built-in audiences avoid materialising "everyone" groups. */
+export type Subject =
+  | { type: "everyone" }
+  | { type: "guests" }
+  | { type: "registered" }
+  | { type: "group"; id: Id }
+  | { type: "user"; id: Id };
+
+export interface Grant {
+  id: Id;
+  roleId: Id;
+  subject: Subject;
+  /** null = whole board; otherwise the node and its subtree. */
+  nodeId: Id | null;
+  createdAt: Millis;
+}
+
+export interface Rank {
+  id: Id;
+  title: string;
+  minPosts: number | null;
+  special: boolean;
+  image: string | null;
+}
+
+export interface Smiley {
+  id: Id;
+  code: string;
+  image: string;
+  emotion: string;
+  position: number;
+}
+
+export interface AuditEntry {
+  id: Id;
+  at: Millis;
+  actorId: Id | null;
+  action: string;
+  targetType: string;
+  targetId: string;
+  details: Record<string, unknown>;
+}

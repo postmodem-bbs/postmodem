@@ -5,17 +5,20 @@
   "type": "module",
   "license": "AGPL-3.0-or-later",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./testing": "./src/testing.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
     "@postmodem/core": "workspace:*",
-    "drizzle-orm": "0.45.4",
+    "kysely": "0.29.9",
+    "kysely-postgres-js": "5.1.0",
     "postgres": "4.1.1"
   },
   "devDependencies": {
-    "@electric-sql/pglite": "0.5.16"
+    "@electric-sql/pglite": "0.5.16",
+    "kysely-pglite-dialect": "1.4.0"
   }
 }

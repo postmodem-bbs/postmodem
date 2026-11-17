@@ -88,7 +88,7 @@ What M0 established, measured on 2026-11-17:
 |---|---|
 | **The runtime needs no `node_modules`** | SvelteKit's adapter-node output plus an esbuild-bundled CLI is fully self-contained (verified by running a copy of `build/` alone). The runtime stage copies one directory |
 | **Image size** | 225 MB uncompressed, **54 MB compressed** (budget: 150 MB) |
-| **SQLite without native modules** | `node:sqlite` (built into Node 24) behind Drizzle's `sqlite-proxy` driver, so nothing has to be compiled for arm64 |
+| **SQLite without native modules** | `node:sqlite` (built into Node 24) behind a small Kysely adapter (ADR 0013), so nothing has to be compiled for arm64 |
 | **Works without buildx** | No BuildKit-only syntax (no cache mounts), so plain `docker build` and `docker compose build` work on hosts without the buildx plugin. CI still uses buildx for multi-arch and layer caching |
 | **Read-only root** | Verified with `--read-only --tmpfs /tmp`; `/data` is created owned by UID 10001 so named volumes inherit it |
 | Not yet in M0 | `/metrics` on port 9090, the `-debug` image variant, `backup`/`restore`/`import`/`ext` commands |
@@ -374,7 +374,7 @@ runtime image never compiles anything:
 postmodem/
   apps/server/            # SvelteKit app + CLI entry (bin/Postmodem)
   packages/core/          # domain, permissions, settings
-  packages/db/            # Drizzle schema, migrations (sqlite + pg)
+  packages/db/            # Kysely schema, migrations, repositories (sqlite + pg)
   packages/sdk/           # public extension SDK (versioned separately)
   packages/ui/            # base components, theme tokens
   extensions/*            # first-party modules, built as .pmext too

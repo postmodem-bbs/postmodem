@@ -133,7 +133,7 @@ That's our niche.
 | Runtime | Node.js 24 LTS (Bun-compatible) | |
 | Web framework | **SvelteKit** (SSR, form actions), **as a replaceable web adapter only** | First-class progressive enhancement: forms work without JS |
 | UI contract for extensions | **Web Components** (custom elements) | Framework-neutral; first-party Svelte compiles to them |
-| DB | **Drizzle ORM**, SQLite (default) / PostgreSQL | One schema, two dialects; typed queries |
+| DB | **Kysely** query builder, SQLite (default, `node:sqlite`) / PostgreSQL | One schema and one repository implementation for both dialects ([ADR 0013](adr/0013-kysely-for-portable-sql.md)) |
 | Search | Built-in FTS (SQLite FTS5 / Postgres tsvector) behind a `SearchProvider` interface; Meilisearch adapter | |
 | Jobs | DB-backed queue (no Redis required) | Mail digests, pruning, federation delivery, thumbnails |
 | Realtime | SSE/WebSocket channel, optional | Live posts, shoutbox, presence |
@@ -422,7 +422,7 @@ disabled, which is how we keep feature parity with Przemo.
    Toolchain as built: Node 24, pnpm 12, TypeScript 6.0 (SvelteKit and
    svelte-check don't support TypeScript 7 yet), SvelteKit 3 (config lives in
    `vite.config.ts`; `#lib` replaces `$lib`), Svelte 5, Vite 8, Vitest 5,
-   Biome 2, Drizzle 0.45, Playwright + axe-core.
+   Biome 2, Drizzle 0.45 (replaced by Kysely 0.29 in M1, ADR 0013), Playwright + axe-core.
 2. **M1 — Readable board:** node tree, topics, posts, auth, registration,
    Classic theme, permissions engine. *Importer from Przemo* early so we can
    test against real-shaped data. Detailed plan: [milestones/M1.md](milestones/M1.md).
@@ -455,7 +455,8 @@ add-on islands on the same host with an opaque origin ([ADR 0008](adr/0008-same-
 federation as an optional, reversible module with a federation-ready core ([ADR 0009](adr/0009-federation-optional-module.md)),
 AGPL-3.0 core + Apache-2.0 SDK + DCO ([ADR 0010](adr/0010-agpl-core-apache-sdk.md)),
 the name **Postmodem** and its identifiers ([ADR 0011](adr/0011-name-postmodem.md)),
-configurable permalinks with phpBB2-classic as default ([ADR 0012](adr/0012-configurable-permalinks.md)).
+configurable permalinks with phpBB2-classic as default ([ADR 0012](adr/0012-configurable-permalinks.md)),
+Kysely for portable SQL ([ADR 0013](adr/0013-kysely-for-portable-sql.md)).
 
 No architecture decisions are open. Owner actions before going public:
 register `postmodem.app`, create the `postmodem-bbs` GitHub and `@postmodem`

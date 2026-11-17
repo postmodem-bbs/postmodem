@@ -10,7 +10,7 @@ module.exports = {
       severity: "error",
       from: { path: "^packages/core/" },
       to: {
-        path: "(svelte|@sveltejs|drizzle-orm|postgres|@electric-sql|node:sqlite|^packages/(db|ui|i18n)|@postmodem/(db|ui|i18n|server)|^apps/)",
+        path: "(svelte|@sveltejs|kysely|drizzle-orm|postgres|@electric-sql|node:sqlite|^packages/(db|ui|i18n)|@postmodem/(db|ui|i18n|server)|^apps/)",
       },
     },
     {

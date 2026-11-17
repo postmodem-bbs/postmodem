@@ -24,6 +24,16 @@ jobs:
   checks:
     name: Lint, typecheck, unit tests, licences
     runs-on: ubuntu-latest
+    services:
+      # The database suite runs on SQLite and PGlite everywhere, and on this real server in CI.
+      postgres:
+        image: postgres:18
+        env: { POSTGRES_USER: test, POSTGRES_PASSWORD: test, POSTGRES_DB: test }
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U test" --health-interval 3s --health-timeout 3s --health-retries 20
+    env:
+      PM_TEST_PG_URL: postgres://test:test@localhost:5432/test
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
