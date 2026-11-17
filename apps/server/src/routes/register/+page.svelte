@@ -66,10 +66,11 @@
   <p class="hint" id="password-hint">{t("register-password-hint")}</p>
   {#if errors.password}<p class="field-error" id="password-error">{t(`password-error-${errors.password}`)}</p>{/if}
 
-  <section class="rules" aria-labelledby="rules-title" tabindex="-1">
-    <h2 id="rules-title">{t("register-rules")}</h2>
+  <!-- Shown in full, as phpBB2 did: no scroll box to reach by keyboard, no extra landmark. -->
+  <div class="rules">
+    <h2>{t("register-rules")}</h2>
     {#each rules as paragraph, i (i)}<p>{paragraph}</p>{/each}
-  </section>
+  </div>
   <label class="check">
     <input
       type="checkbox"
