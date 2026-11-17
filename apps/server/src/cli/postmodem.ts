@@ -12,6 +12,7 @@ import {
   emailProblem,
   hashPassword,
   installCorePermissions,
+  PASSWORD_MIN,
   passwordProblem,
   usernameProblem,
 } from "@postmodem/core";
@@ -32,6 +33,9 @@ Usage: postmodem <command>
   seed-demo     fill an empty board with demo content (refuses if forums exist)
   perms explain --user <name|guest> --capability <key> [--node <id>]
                 show whether a user may do something, and which grants decided it
+  user set-password <name> [--password-file <path>]
+                set a password (prompted, read from stdin, or from a file); signs the
+                user out everywhere and activates a pending account
   healthcheck   exit 0 if the local web server answers /healthz
   config print  show the effective configuration (secrets redacted)
   version       print version information
@@ -76,6 +80,86 @@ async function permsExplain(args: string[]): Promise<number> {
     if (node) console.log(`node:   ${node.title} (${node.path})`);
     console.log(perms.explain(capability, node));
     return perms.can(capability, node) ? 0 : 1;
+  } finally {
+    await ctx.db.close();
+  }
+}
+
+/** A password typed without echo on a terminal, or the first line of piped stdin. */
+async function readSecret(prompt: string): Promise<string> {
+  const stdin = process.stdin;
+  if (!stdin.isTTY) {
+    let data = "";
+    for await (const chunk of stdin) data += chunk;
+    return data.split(/\r?\n/)[0] ?? "";
+  }
+  process.stderr.write(prompt);
+  stdin.setRawMode(true);
+  stdin.resume();
+  stdin.setEncoding("utf8");
+  return new Promise((resolve, reject) => {
+    let value = "";
+    const done = (fn: () => void) => {
+      stdin.setRawMode(false);
+      stdin.pause();
+      stdin.off("data", onData);
+      process.stderr.write("\n");
+      fn();
+    };
+    const onData = (chunk: string) => {
+      for (const ch of chunk) {
+        if (ch === "\r" || ch === "\n") return done(() => resolve(value));
+        if (ch === "\u0003") return done(() => reject(new Error("cancelled")));
+        if (ch === "\u007f" || ch === "\b") value = [...value].slice(0, -1).join("");
+        else value += ch;
+      }
+    };
+    stdin.on("data", onData);
+  });
+}
+
+async function setPassword(args: string[]): Promise<number> {
+  const name = args.find((a) => !a.startsWith("--") && a !== flag(args, "password-file"));
+  if (!name) {
+    console.error("usage: postmodem user set-password <name> [--password-file <path>]");
+    return 2;
+  }
+  const ctx = await createContext({ migrate: false });
+  try {
+    const { repos } = ctx.db;
+    const user = await repos.users.byUsername(name);
+    if (!user) {
+      console.error(`no user named '${name}'`);
+      return 2;
+    }
+    const file = flag(args, "password-file");
+    let password: string;
+    if (file) password = readFileSync(file, "utf8").replace(/\r?\n$/, "");
+    else {
+      password = await readSecret(`New password for ${user.username}: `);
+      if (process.stdin.isTTY && (await readSecret("Again: ")) !== password) {
+        console.error("the passwords don't match");
+        return 2;
+      }
+    }
+    const problem = passwordProblem(password, [user.username, user.email ?? ""]);
+    if (problem) {
+      console.error(`password rejected: ${problem} (at least ${PASSWORD_MIN} characters)`);
+      return 2;
+    }
+    const { scheme, hash } = await hashPassword(password);
+    await repos.credentials.set(user.id, scheme, hash);
+    const ended = await repos.sessions.removeForUser(user.id);
+    if (user.status === "pending") await repos.users.update(user.id, { status: "active" });
+    await repos.audit.append({
+      actorId: null,
+      action: "user.password-set-by-cli",
+      targetType: "user",
+      targetId: String(user.id),
+      details: {},
+    });
+    ctx.log.info("password set", { userId: user.id, username: user.username, sessionsEnded: ended });
+    return 0;
   } finally {
     await ctx.db.close();
   }
@@ -319,6 +403,9 @@ async function main(argv: string[]): Promise<number> {
     }
     case "init":
       return init(process.env);
+    case "user":
+      if (sub !== "set-password") break;
+      return setPassword(argv.slice(2));
     case "perms":
       if (sub !== "explain") break;
       return permsExplain(argv.slice(2));

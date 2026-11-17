@@ -48,6 +48,7 @@ The image's entrypoint is the `postmodem` CLI. One image, many roles:
 | `init`                         | create the first administrator from `POSTMODEM_ADMIN_*` (idempotent)     |
 | `seed-demo`                    | fill an empty board with demo content (refuses if forums exist)          |
 | `perms explain`                | why a user may or may not do something in a forum                        |
+| `user set-password <name>`     | set a password (prompted without echo, or `--password-file`)             |
 | `doctor`                       | check configuration, data directory, database, migrations                |
 | `healthcheck`                  | used by Docker's `HEALTHCHECK`                                           |
 | `config print`                 | effective configuration and where each value came from, secrets redacted |
