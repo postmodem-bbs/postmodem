@@ -1,0 +1,56 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Development stack (CONTAINERS.md §5): Vite dev server with live sync, Postgres, Mailpit.
+#   docker compose -f deploy/dev/compose.dev.yaml up --build --watch
+# Board: http://localhost:5173 · Mail: http://localhost:8025
+# Development-only credentials below; never reuse them.
+name: postmodem-dev
+
+services:
+  app:
+    build:
+      context: ../..
+      target: dev
+    ports: ["5173:5173"]
+    environment:
+      POSTMODEM_DATA_DIR: /data
+      POSTMODEM_PUBLIC_URL: http://localhost:5173
+      POSTMODEM_DATABASE_URL: postgres://postmodem:postmodem@db:5432/postmodem
+      POSTMODEM_LOG_LEVEL: debug
+      POSTMODEM_MAIL_URL: smtp://mailpit:1025
+    volumes: ["dev-data:/data"]
+    depends_on:
+      db: { condition: service_healthy }
+    develop:
+      watch:
+        - action: sync
+          path: ../../apps/server/src
+          target: /src/apps/server/src
+        - action: sync
+          path: ../../packages
+          target: /src/packages
+          ignore: [node_modules/]
+        - action: rebuild
+          path: ../../pnpm-lock.yaml
+        - action: rebuild
+          path: ../../apps/server/vite.config.ts
+
+  db:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: postmodem
+      POSTGRES_PASSWORD: postmodem
+      POSTGRES_DB: postmodem
+    ports: ["127.0.0.1:5432:5432"]
+    volumes: ["dev-pg:/var/lib/postgresql"]
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postmodem"]
+      interval: 3s
+      retries: 30
+
+  mailpit:
+    image: axllent/mailpit:v1.27
+    ports: ["8025:8025"]
+
+volumes:
+  dev-data: {}
+  dev-pg: {}

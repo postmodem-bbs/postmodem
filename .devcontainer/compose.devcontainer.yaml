@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Dev Container override: bind-mount the repository instead of syncing it, keep node_modules in a volume.
+services:
+  app:
+    volumes:
+      - ../:/src:cached
+      - devcontainer-node-modules:/src/node_modules
+    command: ["sleep", "infinity"]
+
+volumes:
+  devcontainer-node-modules: {}

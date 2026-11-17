@@ -1,0 +1,11 @@
+{
+  "name": "spike-cel-rules",
+  "private": true,
+  "type": "module",
+  "description": "Throwaway spike for ADR 0007: CEL subset rules -> evaluator + SQL compiler",
+  "dependencies": {
+    "@bufbuild/cel": "0.6.2",
+    "@electric-sql/pglite": "0.5.16",
+    "esbuild": "0.28.2"
+  }
+}

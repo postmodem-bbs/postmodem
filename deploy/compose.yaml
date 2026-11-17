@@ -1,0 +1,112 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Postmodem, stack mode (CONTAINERS.md §4.3). One image, several roles.
+#
+#   cp .env.example .env            # then edit
+#   mkdir -p secrets && openssl rand -base64 32 > secrets/db_password && openssl rand -base64 48 > secrets/secret_key
+#   docker compose up -d
+#
+# Optional profiles: --profile scale (Valkey), search (Meilisearch), s3 (Garage), av (ClamAV).
+# Profiles are wired up as each feature lands; in M0 only the core services are used.
+name: postmodem
+
+x-postmodem: &postmodem
+  image: ${POSTMODEM_IMAGE:-ghcr.io/postmodem-bbs/postmodem:edge}
+  environment: &postmodem-env
+    POSTMODEM_PUBLIC_URL: ${POSTMODEM_PUBLIC_URL:?set POSTMODEM_PUBLIC_URL in .env}
+    POSTMODEM_DATABASE_URL: postgres://postmodem@db:5432/postmodem
+    POSTMODEM_DATABASE_PASSWORD_FILE: /run/secrets/db_password
+    # Every replica must share the same key, so it can't be generated per container here.
+    POSTMODEM_SECRET_KEY_FILE: /run/secrets/secret_key
+    POSTMODEM_TRUSTED_PROXIES: ${POSTMODEM_TRUSTED_PROXIES:-172.16.0.0/12}
+    POSTMODEM_LOG_LEVEL: ${POSTMODEM_LOG_LEVEL:-info}
+  secrets: [db_password, secret_key]
+  volumes: ["postmodem-data:/data"]
+  read_only: true
+  tmpfs: ["/tmp"]
+  restart: unless-stopped
+  depends_on:
+    migrate: { condition: service_completed_successfully }
+
+services:
+  migrate:
+    <<: *postmodem
+    command: ["migrate"]
+    restart: "no"
+    healthcheck: { disable: true }
+    depends_on:
+      db: { condition: service_healthy }
+
+  web:
+    <<: *postmodem
+    command: ["web"]
+    deploy:
+      replicas: ${POSTMODEM_WEB_REPLICAS:-2}
+
+  worker:
+    <<: *postmodem
+    command: ["worker"]
+    healthcheck: { disable: true }
+
+  scheduler:
+    <<: *postmodem
+    command: ["scheduler"]
+    healthcheck: { disable: true }
+
+  proxy:
+    image: caddy:2.10
+    ports: ["${POSTMODEM_HTTP_PORT:-80}:80", "${POSTMODEM_HTTPS_PORT:-443}:443"]
+    environment:
+      POSTMODEM_DOMAIN: ${POSTMODEM_DOMAIN:-localhost}
+    volumes:
+      - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on: [web]
+    restart: unless-stopped
+
+  db:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: postmodem
+      POSTGRES_DB: postmodem
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+    secrets: [db_password]
+    volumes: ["pg-data:/var/lib/postgresql"]
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "postmodem", "-d", "postmodem"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+  valkey:
+    image: valkey/valkey:8
+    profiles: ["scale"]
+    restart: unless-stopped
+
+  search:
+    image: getmeili/meilisearch:v1.15
+    profiles: ["search"]
+    volumes: ["meili-data:/meili_data"]
+    restart: unless-stopped
+
+  storage:
+    image: dxflrs/garage:v2.1.0
+    profiles: ["s3"]
+    restart: unless-stopped
+
+  clamav:
+    image: clamav/clamav:stable
+    profiles: ["av"]
+    restart: unless-stopped
+
+secrets:
+  db_password: { file: ./secrets/db_password }
+  secret_key: { file: ./secrets/secret_key }
+
+volumes:
+  postmodem-data: {}
+  pg-data: {}
+  caddy-data: {}
+  caddy-config: {}
+  meili-data: {}

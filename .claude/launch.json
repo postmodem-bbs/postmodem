@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "postmodem-dev",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--filter", "@postmodem/server", "dev"],
+      "port": 5173
+    },
+    {
+      "name": "island-spike",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["spikes/island-origin/server.mjs"],
+      "port": 8090
+    }
+  ]
+}

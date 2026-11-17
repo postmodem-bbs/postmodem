@@ -1,0 +1,33 @@
+{
+  "name": "postmodem-monorepo",
+  "private": true,
+  "type": "module",
+  "description": "Postmodem — a modern bulletin board in the Przemo tradition",
+  "license": "AGPL-3.0-or-later",
+  "packageManager": "pnpm@12.19.0",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @postmodem/server dev",
+    "build": "pnpm --filter @postmodem/server build",
+    "typecheck": "pnpm -r --parallel typecheck",
+    "lint": "biome check . && depcruise --config .dependency-cruiser.cjs packages apps/server/src",
+    "format": "biome format --write .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "e2e": "playwright test",
+    "check:spdx": "node scripts/check-spdx.mjs",
+    "check:licenses": "node scripts/check-licenses.mjs",
+    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm check:spdx && pnpm check:licenses"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.14.0",
+    "@biomejs/biome": "2.6.8",
+    "@playwright/test": "1.65.1",
+    "@types/node": "26.6.6",
+    "dependency-cruiser": "18.8.0",
+    "typescript": "6.0.3",
+    "vitest": "5.1.0"
+  }
+}

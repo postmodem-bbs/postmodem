@@ -1,0 +1,12 @@
+packages:
+  - apps/*
+  - packages/*
+
+# Only these packages may run install scripts (pnpm refuses all others).
+allowBuilds:
+  esbuild: true
+
+# pnpm refuses package versions younger than its minimum release age (supply-chain
+# protection). Exceptions are listed explicitly and should be removed once they age out.
+minimumReleaseAgeExclude:
+  - dependency-cruiser@18.8.0

@@ -1,0 +1,20 @@
+node_modules/
+build/
+dist/
+out/
+.svelte-kit/
+coverage/
+test-results/
+playwright-report/
+*.tsbuildinfo
+.env
+.DS_Store
+
+# Local dev data
+/data/
+deploy/secrets/
+
+# Legacy phpBB2 "modified by Przemo" reference code (GPL-2.0-or-later).
+# Kept locally for the importer and parity work; not part of this repository.
+/old_przemo_phpBB/
+/phpBB_modified_by_Przemo.zip
