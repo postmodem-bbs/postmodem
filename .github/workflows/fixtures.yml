@@ -29,9 +29,9 @@ jobs:
       REPO: ghcr.io/postmodem-bbs/fixture-przemo
       CAN_PUSH: ${{ github.event_name != 'pull_request' && github.repository == 'postmodem-bbs/postmodem' }}
     steps:
-      - uses: actions/checkout@v5
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
         with: { node-version-file: .node-version, cache: pnpm }
       - run: pnpm install --frozen-lockfile
       - name: Verify vendored schema is untouched

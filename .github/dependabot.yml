@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Keeps workflow actions current (e.g. runtime moves like Node 20 → 24) without any app install.
+# npm and container dependencies are left to Renovate (renovate.json) once it is enabled.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      actions:
+        patterns: ["*"]
+    commit-message:
+      prefix: "CI"
