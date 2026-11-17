@@ -20,7 +20,9 @@ export default defineConfig(({ command }) => {
             "script-src": ["self"],
             // Vite injects styles at runtime in dev only.
             "style-src": dev ? ["self", "unsafe-inline"] : ["self"],
-            "img-src": ["self", "data:"],
+            // [img] in posts points at external hosts (loaded with no-referrer). An image proxy
+            // for reader privacy is a later option.
+            "img-src": ["self", "data:", "https:"],
             "font-src": ["self"],
             "connect-src": dev ? ["self", "ws:"] : ["self"],
             "object-src": ["none"],

@@ -22,3 +22,6 @@ theme-label = Theme
 theme-light = Light
 theme-dark = Dark
 theme-system = System
+
+bb-you-guest = guest
+bb-hidden-content = This content is hidden.

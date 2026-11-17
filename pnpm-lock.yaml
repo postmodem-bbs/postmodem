@@ -208,6 +208,9 @@ importers:
       '@postmodem/i18n':
         specifier: workspace:*
         version: link:../../packages/i18n
+      '@postmodem/markup':
+        specifier: workspace:*
+        version: link:../../packages/markup
       '@postmodem/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -274,9 +277,15 @@ importers:
         specifier: 0.7.0
         version: 0.7.0
 
+  packages/markup: {}
+
   packages/ui: {}
 
-  tools/fixtures: {}
+  tools/fixtures:
+    devDependencies:
+      '@postmodem/markup':
+        specifier: workspace:*
+        version: link:../../packages/markup
 
 packages:
 

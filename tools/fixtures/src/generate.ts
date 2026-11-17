@@ -3,11 +3,11 @@
 // schema + install data. Deterministic for a given (preset, seed), and deliberately messy in
 // the ways real boards are (see QUIRKS). The manifest tells importer tests what to expect.
 import { createHash } from "node:crypto";
-import { LANGS, type Lang, POLISH_PANGRAM, postBody, sentence, title } from "./content.ts";
+import { LANGS, type Lang, POLISH_PANGRAM, phpbbStore, postBody, sentence, title } from "./content.ts";
 import { Rng } from "./rng.ts";
 import { type Charset, encode, InsertBatcher, type Value } from "./sql.ts";
 
-export const GENERATOR_VERSION = 1; // bump when output for the same seed changes
+export const GENERATOR_VERSION = 2; // bump when output for the same seed changes
 
 export interface Preset {
   users: number;
@@ -448,9 +448,14 @@ export function generate(presetName: string, seed: number, write: (chunk: Buffer
             "starts with the Polish pangram as raw UTF-8 bytes",
           );
       } else if (q < 0.012) {
-        body = `Cena: 100 &euro; &quot;okazja&quot; &#8364; &#8222;cudzysłów&#8221; ${body}`;
+        body = `Cena: 100 € "okazja" „cudzysłów” & <b>nie HTML</b> ${body}`; // escaped like prepare_message, below
         if (quirkBudget.entities++ < 100)
-          quirk("html-entities", "phpbb_posts_text", pid, "contains &quot; &euro; &#8364; &#8222; &#8221;");
+          quirk(
+            "html-entities",
+            "phpbb_posts_text",
+            pid,
+            "stored as &quot;okazja&quot; &amp; &lt;b&gt; and &#8364; &#8222; &#8221; (outside latin2)",
+          );
       } else if (q < 0.016) {
         body = `[b:${uid}]niezamknięte [i:${rng.hex(10)}]zły uid[/i:${rng.hex(10)}] ${body}`;
         if (quirkBudget.broken++ < 100)
@@ -474,15 +479,15 @@ export function generate(presetName: string, seed: number, write: (chunk: Buffer
       texts.add([
         pid,
         Buffer.from(uid),
-        enc(r === 0 ? ttitle : rng.chance(0.2) ? `Re: ${ttitle}` : ""),
-        encode(body, charset),
+        enc(phpbbStore(r === 0 ? ttitle : rng.chance(0.2) ? `Re: ${ttitle}` : "")),
+        encode(phpbbStore(body), charset),
       ]);
     }
     const last = postId - 1;
     topics.add([
       tid,
       fid,
-      enc(ttitle),
+      enc(phpbbStore(ttitle)),
       starter,
       time,
       rng.int(replies, replies * 40 + 5),

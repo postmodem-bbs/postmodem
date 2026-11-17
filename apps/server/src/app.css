@@ -147,3 +147,151 @@ main:focus {
   border-radius: var(--pm-radius);
   padding: var(--pm-space-1) var(--pm-space-2);
 }
+
+/* ── Post content (BBCode output, @postmodem/markup) ───────────────────────── */
+/* Colours come from theme tokens (--pm-bb-*, contrast-tested in @postmodem/ui).
+   White and black get a contrasting chip so they stay readable in both variants. */
+.bb-color-darkred {
+  color: var(--pm-bb-darkred);
+}
+.bb-color-red {
+  color: var(--pm-bb-red);
+}
+.bb-color-orange {
+  color: var(--pm-bb-orange);
+}
+.bb-color-brown {
+  color: var(--pm-bb-brown);
+}
+.bb-color-yellow {
+  color: var(--pm-bb-yellow);
+}
+.bb-color-green {
+  color: var(--pm-bb-green);
+}
+.bb-color-olive {
+  color: var(--pm-bb-olive);
+}
+.bb-color-cyan {
+  color: var(--pm-bb-cyan);
+}
+.bb-color-blue {
+  color: var(--pm-bb-blue);
+}
+.bb-color-darkblue {
+  color: var(--pm-bb-darkblue);
+}
+.bb-color-indigo {
+  color: var(--pm-bb-indigo);
+}
+.bb-color-violet {
+  color: var(--pm-bb-violet);
+}
+.bb-color-gray {
+  color: var(--pm-bb-gray);
+}
+.bb-color-white {
+  color: #fff;
+  background: #333;
+  padding-inline: 0.2em;
+}
+.bb-color-black {
+  color: #000;
+  background: #e6e6e6;
+  padding-inline: 0.2em;
+}
+
+.bb-size-xs {
+  font-size: 0.7em;
+}
+.bb-size-s {
+  font-size: 0.85em;
+}
+.bb-size-m {
+  font-size: 1em;
+}
+.bb-size-l {
+  font-size: 1.3em;
+}
+.bb-size-xl {
+  font-size: 1.7em;
+}
+
+.bb-center {
+  text-align: center;
+}
+.bb-glow {
+  text-shadow: 0 0 0.35em currentColor;
+}
+.bb-shadow {
+  text-shadow: 0.1em 0.1em 0.1em color-mix(in srgb, currentColor 45%, transparent);
+}
+.bb-fade {
+  animation: pm-bb-fade 2.4s ease-in-out infinite alternate;
+}
+@keyframes pm-bb-fade {
+  to {
+    opacity: 0.35;
+  }
+}
+.bb-scroll {
+  overflow: hidden;
+  white-space: nowrap;
+}
+.bb-scroll > span {
+  display: inline-block;
+  padding-inline-start: 100%;
+  animation: pm-bb-scroll 12s linear infinite;
+}
+@keyframes pm-bb-scroll {
+  to {
+    transform: translateX(-100%);
+  }
+}
+/* Reduced motion (rule above disables animations): scrolling text simply sits still. */
+@media (prefers-reduced-motion: reduce) {
+  .bb-scroll > span {
+    padding-inline-start: 0;
+  }
+}
+
+.bb-quote {
+  margin: var(--pm-space-2) 0;
+  padding: var(--pm-space-2) var(--pm-space-3);
+  border-inline-start: 4px solid var(--pm-color-border);
+  background: var(--pm-color-surface-alt);
+}
+.bb-quote-author {
+  display: block;
+  font-style: normal;
+  font-weight: 700;
+  margin-block-end: var(--pm-space-1);
+}
+.bb-code {
+  margin: var(--pm-space-2) 0;
+  padding: var(--pm-space-2) var(--pm-space-3);
+  font-family: var(--pm-font-mono);
+  font-size: 0.9em;
+  background: var(--pm-color-surface-alt);
+  border: 1px solid var(--pm-color-border);
+  overflow-x: auto;
+  white-space: pre;
+}
+.bb-list {
+  margin: var(--pm-space-2) 0;
+  padding-inline-start: 1.5em;
+}
+.bb-img {
+  max-width: 100%;
+  height: auto;
+}
+.smiley {
+  vertical-align: middle;
+}
+.bb-hidden {
+  margin: var(--pm-space-2) 0;
+  padding: var(--pm-space-2) var(--pm-space-3);
+  border: 1px dashed var(--pm-color-border);
+  color: var(--pm-color-text-muted);
+  font-style: italic;
+}

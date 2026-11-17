@@ -18,11 +18,31 @@ export const COLOR_TOKENS = [
 export type ColorToken = (typeof COLOR_TOKENS)[number];
 export type Palette = Record<ColorToken, string>;
 
+/** phpBB2's BBCode colour names; every theme supplies readable values for both variants. */
+export const BB_COLORS = [
+  "darkred",
+  "red",
+  "orange",
+  "brown",
+  "yellow",
+  "green",
+  "olive",
+  "cyan",
+  "blue",
+  "darkblue",
+  "indigo",
+  "violet",
+  "gray",
+] as const;
+export type BbColor = (typeof BB_COLORS)[number];
+
 export interface Theme {
   id: string;
   name: string;
   light: Palette;
   dark: Palette;
+  /** Post-content colours ([color=…]), per variant. */
+  bbColors: { light: Record<BbColor, string>; dark: Record<BbColor, string> };
   fonts: { body: string; mono: string };
   /** Base font size in px; Przemo-era boards used 11px, we don't. */
   baseSize: number;
@@ -31,14 +51,18 @@ export interface Theme {
 }
 
 const kebab = (s: string) => s.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);
-const vars = (p: Palette) => COLOR_TOKENS.map((k) => `  --pm-color-${kebab(k)}: ${p[k]};`).join("\n");
+const vars = (p: Palette, bb: Record<BbColor, string>) =>
+  [
+    ...COLOR_TOKENS.map((k) => `  --pm-color-${kebab(k)}: ${p[k]};`),
+    ...BB_COLORS.map((c) => `  --pm-bb-${c}: ${bb[c]};`),
+  ].join("\n");
 
 /** CSS for a theme. Dark applies via OS preference unless the reader picked light, or via data-theme="dark". */
 export function themeCss(t: Theme): string {
   const space = t.density === "compact" ? [2, 4, 8, 12] : [4, 8, 12, 20];
   return `/* Postmodem theme: ${t.name} (generated from tokens) */
 :root {
-${vars(t.light)}
+${vars(t.light, t.bbColors.light)}
   --pm-font-body: ${t.fonts.body};
   --pm-font-mono: ${t.fonts.mono};
   --pm-font-size: ${t.baseSize}px;
@@ -48,12 +72,12 @@ ${space.map((s, i) => `  --pm-space-${i + 1}: ${s}px;`).join("\n")}
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-${vars(t.dark).replace(/^ {2}/gm, "    ")}
+${vars(t.dark, t.bbColors.dark).replace(/^ {2}/gm, "    ")}
     color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
-${vars(t.dark)}
+${vars(t.dark, t.bbColors.dark)}
   color-scheme: dark;
 }
 `;

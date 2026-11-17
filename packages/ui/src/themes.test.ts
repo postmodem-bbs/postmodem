@@ -3,7 +3,7 @@
 import { describe, expect, it } from "vitest";
 import { contrast } from "./contrast.ts";
 import { THEMES } from "./themes.ts";
-import { type ColorToken, themeCss } from "./tokens.ts";
+import { BB_COLORS, type ColorToken, themeCss } from "./tokens.ts";
 
 const TEXT_PAIRS: [ColorToken, ColorToken][] = [
   ["text", "bg"],
@@ -42,9 +42,25 @@ describe.each(Object.values(THEMES))("theme $name", (theme) => {
     });
   }
 
+  for (const variant of ["light", "dark"] as const) {
+    it(`${variant}: every BBCode colour reaches 4.5:1 on post surfaces`, () => {
+      const p = theme[variant];
+      const failing = BB_COLORS.flatMap((c) =>
+        (["surface", "surfaceAlt"] as const)
+          .map((bg) => ({
+            pair: `${c}/${bg}`,
+            ratio: +contrast(theme.bbColors[variant][c], p[bg]).toFixed(2),
+          }))
+          .filter((x) => x.ratio < 4.5),
+      );
+      expect(failing).toEqual([]);
+    });
+  }
+
   it("generates CSS with light, OS-dark and forced-dark blocks", () => {
     const css = themeCss(theme);
     expect(css).toContain("--pm-color-text-muted:");
+    expect(css).toContain("--pm-bb-darkred:");
     expect(css).toContain("@media (prefers-color-scheme: dark)");
     expect(css).toContain(':root:not([data-theme="light"])');
     expect(css).toContain(':root[data-theme="dark"]');

@@ -24,3 +24,6 @@ theme-label = Motyw
 theme-light = Jasny
 theme-dark = Ciemny
 theme-system = Systemowy
+
+bb-you-guest = gość
+bb-hidden-content = Ta treść jest ukryta.

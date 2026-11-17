@@ -39,6 +39,19 @@ export const LANGS: Record<"pl" | "en", Lang> = {
   en: { words: EN, code: "en" },
 };
 
+/**
+ * phpBB2's prepare_message: escape & (except numeric entities), <, > and " before storing.
+ * The first pass then re-wrote quote tags with real quote marks around the name.
+ */
+export function phpbbStore(text: string): string {
+  return text
+    .replace(/&(?!#[0-9]+;)/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/\[quote:([0-9a-f]{10})=&quot;(.*?)&quot;\]/g, '[quote:$1="$2"]');
+}
+
 export function sentence(rng: Rng, lang: Lang, min = 4, max = 14): string {
   const n = rng.int(min, max);
   const ws = Array.from({ length: n }, () => rng.pick(lang.words));
@@ -65,7 +78,8 @@ export function postBody(rng: Rng, lang: Lang, uid: string, quoteName?: string):
     else if (r < 0.3)
       p = `${p} ${t("color", sentence(rng, lang, 2, 4), rng.pick(["red", "#336699", "green"]))}`;
     else if (r < 0.33) p = `${t("size", p, String(rng.pick([9, 18, 24])))}`;
-    else if (r < 0.36) p = `${t("code", "for (i = 0; i < 10; i++) {\r\n  echo $i;\r\n}")}`;
+    else if (r < 0.36)
+      p = `[code:1:${uid}]for (i = 0; i < 10; i++) {\r\n  echo "<b>" . $i;\r\n}[/code:1:${uid}]`;
     else if (r < 0.39)
       p = `[list:${uid}]\r\n[*]${title(rng, lang)}\r\n[*]${title(rng, lang)}\r\n[/list:u:${uid}]`;
     else if (r < 0.41)
@@ -76,6 +90,6 @@ export function postBody(rng: Rng, lang: Lang, uid: string, quoteName?: string):
     if (rng.chance(0.15)) p += ` ${rng.pick(SMILIES)}`;
     paras.push(p);
   }
-  if (quoteName) paras.unshift(`[quote="${quoteName}":${uid}]${sentence(rng, lang)}[/quote:${uid}]`);
+  if (quoteName) paras.unshift(`[quote:${uid}="${quoteName}"]${sentence(rng, lang)}[/quote:${uid}]`);
   return paras.join("\r\n\r\n");
 }

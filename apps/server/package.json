@@ -21,6 +21,7 @@
     "@postmodem/core": "workspace:*",
     "@postmodem/db": "workspace:*",
     "@postmodem/i18n": "workspace:*",
+    "@postmodem/markup": "workspace:*",
     "@postmodem/ui": "workspace:*"
   },
   "devDependencies": {

@@ -456,7 +456,8 @@ federation as an optional, reversible module with a federation-ready core ([ADR 
 AGPL-3.0 core + Apache-2.0 SDK + DCO ([ADR 0010](adr/0010-agpl-core-apache-sdk.md)),
 the name **Postmodem** and its identifiers ([ADR 0011](adr/0011-name-postmodem.md)),
 configurable permalinks with phpBB2-classic as default ([ADR 0012](adr/0012-configurable-permalinks.md)),
-Kysely for portable SQL ([ADR 0013](adr/0013-kysely-for-portable-sql.md)).
+Kysely for portable SQL ([ADR 0013](adr/0013-kysely-for-portable-sql.md)),
+post markup dialect, class-based output and reader holes ([ADR 0014](adr/0014-post-markup.md)).
 
 No architecture decisions are open. Owner actions before going public:
 register `postmodem.app`, create the `postmodem-bbs` GitHub and `@postmodem`

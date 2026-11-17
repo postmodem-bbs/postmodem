@@ -54,7 +54,11 @@ export interface Topic {
   updatedAt: Millis;
 }
 
-/** How a post's source is written. `html-remote` is sanitised federated content (ADR 0009). */
+/**
+ * How a post's source is written. `bbcode-phpbb2` is Postmodem's BBCode dialect (phpBB2's tags
+ * plus Przemo's, without uids or HTML escaping: @postmodem/markup converts legacy storage on import).
+ * `html-remote` is sanitised federated content (ADR 0009).
+ */
 export type MarkupFormat = "bbcode-phpbb2" | "markdown" | "html-remote" | (string & {});
 
 export interface Post {
