@@ -30,6 +30,13 @@ export const registrationOpen = defineSetting({
   default: true,
 });
 
+/** New accounts must confirm their e-mail address before they can sign in. */
+export const verifyEmailOnRegistration = defineSetting({
+  key: "core.registration.verifyEmail",
+  schema: z.boolean(),
+  default: true,
+});
+
 /** Board rules shown at registration; empty = the built-in default text for the reader's language. */
 export const boardRules = defineSetting({
   key: "core.registration.rules",
@@ -70,6 +77,7 @@ export function coreSettings(): SettingsRegistry {
     boardDescription,
     defaultLocale,
     registrationOpen,
+    verifyEmailOnRegistration,
     boardRules,
     rulesVersion,
     disallowedUsernames,

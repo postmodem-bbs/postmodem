@@ -5,6 +5,7 @@ import { randomBytes } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import {
+  boardName,
   type CapabilityRegistry,
   type Config,
   coreRegistry,
@@ -18,6 +19,8 @@ import {
   type Logger,
   loadConfig,
   loadSnapshot,
+  MAIL_IP_POLICY,
+  MAIL_POLICY,
   type Permissions,
   permissionsFor,
   REGISTER_POLICY,
@@ -27,6 +30,8 @@ import {
 } from "@postmodem/core";
 import { type Database, openDatabase } from "@postmodem/db";
 import { createRenderer, type Renderer } from "./content.ts";
+import { Worker } from "./jobs.ts";
+import { createMailer, defaultSender, type Mailer, type MailMessage } from "./mail.ts";
 
 export interface AppContext {
   config: Config;
@@ -35,8 +40,19 @@ export interface AppContext {
   settings: Settings;
   renderer: Renderer;
   capabilities: CapabilityRegistry;
-  /** Progressive delays (in memory, per process; see core throttle.ts). */
-  throttles: { login: Throttle; loginIp: Throttle; register: Throttle };
+  /** Progressive delays, shared by every replica through the database (core throttle.ts). */
+  throttles: {
+    login: Throttle;
+    loginIp: Throttle;
+    register: Throttle;
+    mail: Throttle;
+    mailIp: Throttle;
+  };
+  mailer: Mailer;
+  /** Queues an e-mail; the worker sends it (with retries), never the web request. */
+  sendMail(message: MailMessage): Promise<void>;
+  /** This process's job worker; started only by roles that run one (run, worker, dev). */
+  worker: Worker;
   /** Permission view for one request (null = guest). Loads a fresh snapshot each call. */
   permissions(userId: Id | null): Promise<Permissions>;
   log: Logger;
@@ -100,6 +116,10 @@ export async function createContext(opts: { migrate: boolean; loaded?: LoadedCon
   };
   await tryLoadSettings();
   const capabilities = coreRegistry();
+  const mailer = createMailer(config, log, () => defaultSender(config, settings.get(boardName)));
+  if (mailer.kind === "log")
+    log.warn("e-mail goes to the log (POSTMODEM_MAIL_URL=log://); set an smtp:// URL to deliver it");
+  const worker = new Worker(db.repos, { "mail.send": (payload) => mailer.send(payload as MailMessage) }, log);
 
   return {
     config,
@@ -109,9 +129,21 @@ export async function createContext(opts: { migrate: boolean; loaded?: LoadedCon
     renderer: createRenderer(db.repos),
     capabilities,
     throttles: {
-      login: new Throttle(LOGIN_POLICY),
-      loginIp: new Throttle(LOGIN_IP_POLICY),
-      register: new Throttle(REGISTER_POLICY),
+      login: new Throttle(LOGIN_POLICY, db.repos.throttle, "login"),
+      loginIp: new Throttle(LOGIN_IP_POLICY, db.repos.throttle, "login-ip"),
+      register: new Throttle(
+        { ...REGISTER_POLICY, free: config.registrationsPerIpHour || Number.POSITIVE_INFINITY },
+        db.repos.throttle,
+        "register-ip",
+      ),
+      mail: new Throttle(MAIL_POLICY, db.repos.throttle, "mail"),
+      mailIp: new Throttle(MAIL_IP_POLICY, db.repos.throttle, "mail-ip"),
+    },
+    mailer,
+    worker,
+    async sendMail(message) {
+      await db.repos.jobs.enqueue("mail.send", message);
+      worker.nudge();
     },
     async permissions(userId) {
       const [snapshot, viewer] = await Promise.all([loadSnapshot(db.repos), viewerFor(db.repos, userId)]);
@@ -138,8 +170,14 @@ declare global {
   var __postmodem: Promise<AppContext> | undefined;
 }
 
-/** The context the CLI installed, or (dev server) a new one that migrates on start. */
+/**
+ * The context the CLI installed, or (dev server) a new one that migrates on start and runs
+ * the job worker in-process, like solo mode.
+ */
 export function getContext(): Promise<AppContext> {
-  globalThis.__postmodem ??= createContext({ migrate: true });
+  globalThis.__postmodem ??= createContext({ migrate: true }).then((ctx) => {
+    ctx.worker.start();
+    return ctx;
+  });
   return globalThis.__postmodem;
 }

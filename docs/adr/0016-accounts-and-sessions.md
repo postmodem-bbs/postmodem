@@ -29,14 +29,23 @@ magic quotes, so passwords containing `'`, `"` or `\` were stored with backslash
 - **CSRF:** every state change is a POST form; SvelteKit's origin check rejects cross-site
   posts. Sign-out is POST only (phpBB2's `login.php?logout=true` GET is not honoured).
 - **Throttling:** progressive delays per account (5 free failures, then 1 s doubling to
-  5 min) and per IP (50 free), registrations per IP (10 per hour). No lockouts. In memory
-  per process for now.
+  5 min) and per IP (50 free), registrations per IP (10 per hour,
+  `POSTMODEM_REGISTRATIONS_PER_IP_HOUR`), visitor-triggered e-mails per target and per IP.
+  No lockouts. Counts live in the database, so every replica shares them.
+- **E-mail verification and password reset** (slice 4b): single-use links whose token is
+  stored hashed, 7 days to confirm an address, 1 hour to reset. Opening a link only shows a
+  button; the POST uses it, so mail scanners that prefetch links can't burn it. A reset
+  ends every session and activates a pending account (the link proves the mailbox). Asking
+  for a reset answers the same whether or not the address has an account. phpBB2 mailed a
+  new plain-text password; Postmodem never sends passwords.
 - **First admin:** `postmodem init` from `POSTMODEM_ADMIN_*`, idempotent, exempt from the
   reserved-name list.
 
 ## Consequences
-- Stack mode with several web replicas throttles per replica until the DB-backed store lands
-  with the job queue (slice 4b), together with mail, e-mail verification and password reset.
-  Until then registrations are active immediately.
+- Registration still says when a name or address is taken (phpBB2 did too); hiding that
+  would need a mail-first sign-up flow, a possible later option.
+- Someone can register with another person's address and leave it unconfirmed; the real
+  owner recovers it with "forgot password", which activates the account under the name the
+  squatter chose. Admins can rename it.
 - The importer (slice 6) stores `user_password` with `legacyScheme()`; no user has to reset.
 - A lookalike rule can refuse a legitimate name ("Oia" vs "Ola"); admins can still create it.

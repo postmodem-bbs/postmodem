@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// /register (phpBB2: profile.php?mode=register). Account is active immediately until e-mail
-// verification arrives with mail (slice 4b).
+// /register (phpBB2: profile.php?mode=register). With e-mail verification on (the default)
+// the account starts pending and a confirmation link is mailed; otherwise it signs in at once.
 import {
   boardRules,
   disallowedUsernames,
@@ -8,9 +8,11 @@ import {
   registrationOpen,
   rulesVersion,
   startSession,
+  verifyEmailOnRegistration,
 } from "@postmodem/core";
 import { error, fail, redirect } from "@sveltejs/kit";
 import { setSessionCookie } from "#lib/server/auth.ts";
+import { sendAccountMail } from "#lib/server/emails.ts";
 import type { Actions, PageServerLoad } from "./$types";
 
 export const load: PageServerLoad = ({ locals }) => {
@@ -30,7 +32,7 @@ export const actions: Actions = {
     };
     const ip = getClientAddress();
     const now = Date.now();
-    const wait = ctx.throttles.register.wait(ip, now);
+    const wait = await ctx.throttles.register.wait(ip, now);
     if (wait > 0) return fail(429, { values, errors: {}, throttled: Math.ceil(wait / 60_000) });
 
     const result = await register(
@@ -38,6 +40,7 @@ export const actions: Actions = {
       {
         disallowedUsernames: ctx.settings.get(disallowedUsernames),
         rulesVersion: ctx.settings.get(rulesVersion),
+        verifyEmail: ctx.settings.get(verifyEmailOnRegistration),
       },
       {
         ...values,
@@ -50,13 +53,17 @@ export const actions: Actions = {
     if (!result.ok) return fail(400, { values, errors: result.errors, throttled: 0 });
 
     // Every successful registration counts, so one address can't mint accounts in bulk.
-    ctx.throttles.register.fail(ip, now);
+    await ctx.throttles.register.fail(ip, now);
+    ctx.log.info("registered", { userId: result.user.id, status: result.user.status });
+    if (result.user.status === "pending") {
+      await sendAccountMail(ctx, result.user, "verify-email", locals.locale);
+      redirect(303, "/verify?sent=1");
+    }
     const { token } = await startSession(ctx.db.repos, result.user.id, {
       userAgent: request.headers.get("user-agent") ?? "",
       ip,
     });
     setSessionCookie(cookies, ctx.config, token);
-    ctx.log.info("registered", { userId: result.user.id });
-    redirect(303, "/?welcome=1");
+    redirect(303, "/?notice=welcome");
   },
 };

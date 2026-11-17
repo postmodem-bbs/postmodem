@@ -10,6 +10,10 @@ services:
     ports: ["${POSTMODEM_HTTP_PORT:-8080}:8080"]
     environment:
       POSTMODEM_PUBLIC_URL: ${POSTMODEM_PUBLIC_URL:-http://localhost:8080}
+      # smtp://user:pass@host:587 to deliver mail; log:// only writes it to the log.
+      POSTMODEM_MAIL_URL: ${POSTMODEM_MAIL_URL:-log://}
+      POSTMODEM_MAIL_FROM: ${POSTMODEM_MAIL_FROM:-}
+      POSTMODEM_REGISTRATIONS_PER_IP_HOUR: ${POSTMODEM_REGISTRATIONS_PER_IP_HOUR:-10}
     volumes: ["postmodem-data:/data"]
     read_only: true
     tmpfs: ["/tmp"]

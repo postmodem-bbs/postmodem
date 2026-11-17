@@ -3,7 +3,7 @@ import { createHash } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { disallowedUsernames } from "../core-settings.ts";
 import { hashPassword, legacyScheme, passwordProblem, phpassHash, verifyPassword } from "./passwords.ts";
-import { Throttle } from "./throttle.ts";
+import { MemoryThrottleStore, Throttle } from "./throttle.ts";
 import { cleanUsername, emailProblem, isDisallowed, skeleton, usernameProblem } from "./usernames.ts";
 
 const md5hex = (s: string) => createHash("md5").update(s).digest("hex");
@@ -124,31 +124,40 @@ describe("usernames", () => {
 });
 
 describe("throttle", () => {
-  it("allows free attempts, then doubles the delay, and forgets after the window", () => {
-    const t = new Throttle({ free: 2, baseMs: 1000, maxMs: 8000, windowMs: 60_000 });
+  it("allows free attempts, then doubles the delay, and forgets after the window", async () => {
+    const t = new Throttle(
+      { free: 2, baseMs: 1000, maxMs: 8000, windowMs: 60_000 },
+      new MemoryThrottleStore(),
+      "x",
+    );
     let now = 0;
-    t.fail("k", now);
-    expect(t.wait("k", now)).toBe(0);
-    t.fail("k", now);
-    expect(t.wait("k", now)).toBe(1000);
-    t.fail("k", now);
-    expect(t.wait("k", now)).toBe(2000);
-    for (let i = 0; i < 10; i++) t.fail("k", now);
-    expect(t.wait("k", now)).toBe(8000); // capped
+    await t.fail("k", now);
+    expect(await t.wait("k", now)).toBe(0);
+    await t.fail("k", now);
+    expect(await t.wait("k", now)).toBe(1000);
+    await t.fail("k", now);
+    expect(await t.wait("k", now)).toBe(2000);
+    for (let i = 0; i < 10; i++) await t.fail("k", now);
+    expect(await t.wait("k", now)).toBe(8000); // capped
     now += 8000;
-    expect(t.wait("k", now)).toBe(0);
-    expect(t.wait("other", now)).toBe(0);
+    expect(await t.wait("k", now)).toBe(0);
+    expect(await t.wait("other", now)).toBe(0);
     now += 61_000;
-    t.fail("k", now);
-    expect(t.wait("k", now)).toBe(0); // window passed: counting starts again
-    t.reset("k");
-    expect(t.wait("k", now)).toBe(0);
+    await t.fail("k", now);
+    expect(await t.wait("k", now)).toBe(0); // window passed: counting starts again
+    await t.reset("k");
+    expect(await t.wait("k", now)).toBe(0);
   });
 
-  it("bounds memory", () => {
-    const t = new Throttle({ free: 0, baseMs: 1000, maxMs: 1000, windowMs: 60_000 }, 3);
-    for (const k of ["a", "b", "c", "d"]) t.fail(k, 0);
-    expect(t.wait("a", 0)).toBe(0); // evicted
-    expect(t.wait("d", 0)).toBe(1000);
+  it("namespaces keys and bounds memory", async () => {
+    const store = new MemoryThrottleStore(3);
+    const policy = { free: 0, baseMs: 1000, maxMs: 1000, windowMs: 60_000 };
+    const a = new Throttle(policy, store, "a");
+    const b = new Throttle(policy, store, "b");
+    await a.fail("k", 0);
+    expect(await b.wait("k", 0)).toBe(0);
+    for (const k of ["1", "2", "3"]) await b.fail(k, 0);
+    expect(await a.wait("k", 0)).toBe(0); // evicted
+    expect(await b.wait("3", 0)).toBe(1000);
   });
 });

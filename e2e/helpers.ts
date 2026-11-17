@@ -23,3 +23,42 @@ export function guardCsp() {
     expect((page as Page & { cspViolations?: string[] }).cspViolations ?? []).toEqual([]);
   });
 }
+
+/** Mailpit's HTTP API (CI and the dev stack). Mail-dependent tests need it. */
+export const MAILPIT = process.env.PM_MAILPIT_URL;
+
+/** Waits for the newest e-mail to `to` (optionally newer than `after`), and returns its text. */
+export async function latestMail(to: string, opts: { after?: string; timeoutMs?: number } = {}) {
+  if (!MAILPIT) throw new Error("PM_MAILPIT_URL is not set");
+  const deadline = Date.now() + (opts.timeoutMs ?? 15_000);
+  while (Date.now() < deadline) {
+    const res = await fetch(`${MAILPIT}/api/v1/search?query=${encodeURIComponent(`to:"${to}"`)}&limit=1`);
+    const { messages } = (await res.json()) as { messages: { ID: string }[] };
+    const id = messages[0]?.ID;
+    if (id && id !== opts.after) {
+      const msg = (await (await fetch(`${MAILPIT}/api/v1/message/${id}`)).json()) as {
+        Subject: string;
+        Text: string;
+      };
+      return { id, subject: msg.Subject, text: msg.Text };
+    }
+    await new Promise((r) => setTimeout(r, 250));
+  }
+  throw new Error(`no e-mail to ${to} arrived`);
+}
+
+/** The first link in an e-mail that points at `path` on any host, as a path + query. */
+export function linkIn(text: string, path: string): string {
+  const m = new RegExp(`https?://[^\\s/]+(${path.replace(/[.?]/g, "\\$&")}\\?token=[A-Za-z0-9_-]+)`).exec(
+    text,
+  );
+  if (!m) throw new Error(`no ${path} link in:\n${text}`);
+  return m[1]!;
+}
+
+/** Counts e-mails to an address (to prove that nothing was sent). */
+export async function mailCount(to: string): Promise<number> {
+  if (!MAILPIT) throw new Error("PM_MAILPIT_URL is not set");
+  const res = await fetch(`${MAILPIT}/api/v1/search?query=${encodeURIComponent(`to:"${to}"`)}`);
+  return ((await res.json()) as { messages_count: number }).messages_count;
+}

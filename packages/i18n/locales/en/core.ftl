@@ -144,3 +144,43 @@ rules-default =
     No spam, advertising or illegal content. Posts that break the rules may be edited or removed by moderators.
 
     Write in a way others can read: a descriptive topic title helps everyone.
+
+## E-mail verification and password reset
+mail-verify-subject = Confirm your e-mail address for { $board }
+mail-verify-body =
+    Hello { $name },
+
+    someone (hopefully you) registered the account “{ $name }” on { $board } with this e-mail address. To finish, open this link:
+
+    { $link }
+
+    The link works once and for 7 days. If this wasn’t you, ignore this message and the account won’t be activated.
+mail-reset-subject = Reset your password on { $board }
+mail-reset-body =
+    Hello { $name },
+
+    someone (hopefully you) asked to reset the password of the account “{ $name }” on { $board }. To choose a new password, open this link:
+
+    { $link }
+
+    The link works once and for one hour. If this wasn’t you, ignore this message: your password stays as it is.
+verify-title = Confirm your e-mail address
+verify-sent = Almost there! We’ve sent a link to your e-mail address. Open it to activate your account. It may take a minute to arrive; check your spam folder too.
+verify-confirm-text = Confirm the e-mail address of the account “{ $name }” and sign in.
+verify-confirm-submit = Confirm and sign in
+verify-invalid = This link has expired or has already been used. Sign in to get a new one.
+verified-notice = Thanks, { $name }! Your e-mail address is confirmed and you are signed in.
+login-error-unverified = Your e-mail address isn’t confirmed yet. Open the link we sent you, or get a new one.
+login-resend = Send a new link
+login-resent = If that account is waiting for confirmation, we’ve sent a new link to its e-mail address.
+login-forgot = Forgot your password?
+reset-title = Reset your password
+reset-request-text = Enter the e-mail address of your account and we’ll send you a link to choose a new password.
+reset-request-submit = Send the link
+reset-requested = If an account uses that address, we’ve sent it a link. It works for one hour.
+reset-error-throttled = Too many requests from your network. Please try again later.
+reset-new-text = Choose a new password for “{ $name }”. You will be signed out everywhere else.
+reset-new-password = New password
+reset-submit = Save and sign in
+reset-invalid = This link has expired or has already been used. You can ask for a new one below.
+reset-done-notice = Your password has been changed and you are signed in. Other devices have been signed out.

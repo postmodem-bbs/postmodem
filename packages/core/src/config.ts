@@ -18,6 +18,14 @@ const FIELDS = {
   trustedProxies: { env: "TRUSTED_PROXIES", toml: "trusted_proxies", secret: false },
   logLevel: { env: "LOG_LEVEL", toml: "log_level", secret: false },
   sourceUrl: { env: "SOURCE_URL", toml: "source_url", secret: false },
+  // Shown with any password redacted (redactUrl), so not marked secret as a whole.
+  mailUrl: { env: "MAIL_URL", toml: "mail_url", secret: false },
+  mailFrom: { env: "MAIL_FROM", toml: "mail_from", secret: false },
+  registrationsPerIpHour: {
+    env: "REGISTRATIONS_PER_IP_HOUR",
+    toml: "registrations_per_ip_hour",
+    secret: false,
+  },
   profile: { env: "PROFILE", toml: "profile", secret: false },
 } as const;
 type FieldName = keyof typeof FIELDS;
@@ -33,7 +41,6 @@ const RESERVED = new Set([
   "QUEUE",
   "STORAGE_URL",
   "SEARCH_URL",
-  "MAIL_URL",
   "AV_URL",
   "EXTENSIONS",
   "ADMIN_EMAIL",
@@ -53,6 +60,11 @@ const ConfigSchema = z.object({
   trustedProxies: z.array(z.string()),
   logLevel: z.enum(["debug", "info", "warn", "error"]),
   sourceUrl: z.url().optional(),
+  mailUrl: z.string().regex(/^(log|smtps?):\/\//, "must start with log://, smtp:// or smtps://"),
+  /** Sender address; defaults to noreply@<public host>. */
+  mailFrom: z.string().optional(),
+  /** Registrations one IP address can make per hour before delays start; 0 = unlimited. */
+  registrationsPerIpHour: z.coerce.number().int().min(0),
   profile: z.enum(["vanilla", "przemo", "modern"]),
   version: z.string(),
   revision: z.string(),
@@ -86,6 +98,8 @@ export function loadConfig(io: ConfigIo): LoadedConfig {
     databaseUrl: `sqlite://${dataDir}/db/postmodem.sqlite`,
     trustedProxies: [],
     logLevel: "info",
+    mailUrl: "log://",
+    registrationsPerIpHour: 10,
     profile: "przemo",
     version: env[`${ENV_PREFIX}VERSION`] ?? "0.0.0-dev",
     revision: env[`${ENV_PREFIX}REVISION`] ?? "unknown",

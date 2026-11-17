@@ -120,7 +120,9 @@ are never editable from the browser).
 | `POSTMODEM_QUEUE` | `db` | `db` (or `redis`) |
 | `POSTMODEM_STORAGE_URL` | `file:///data/uploads` | `s3://postmodem-uploads?endpoint=http://garage:3900` |
 | `POSTMODEM_SEARCH_URL` | `builtin://` | `meilisearch://search:7700` |
-| `POSTMODEM_MAIL_URL` | `log://` | `smtp://mail.example.org:587` |
+| `POSTMODEM_MAIL_URL` | `log://` | `smtp://user:pass@mail.example.org:587`, `smtps://…:465` |
+| `POSTMODEM_MAIL_FROM` | `"<board name>" <noreply@<public host>>` | `"Forum" <forum@example.org>` |
+| `POSTMODEM_REGISTRATIONS_PER_IP_HOUR` | `10` | `0` (unlimited: LAN parties, schools, CI) |
 | `POSTMODEM_REALTIME_URL` | `memory://` | `postgres://` (LISTEN/NOTIFY, default in stack) or `redis://valkey:6379` |
 | `POSTMODEM_COUNTERS_URL` | `memory://` (flush every 10 s) | `redis://valkey:6379` |
 | `POSTMODEM_AV_URL` | — (scanning off) | `clamd://clamav:3310` |

@@ -99,16 +99,22 @@ async function startWeb(ctx: AppContext): Promise<Server> {
   return server;
 }
 
-function startIdleRole(ctx: AppContext, role: "worker" | "scheduler") {
-  ctx.log.info(`${role} started`, { note: "no job types are registered yet" });
-  if (role !== "scheduler") return;
-  // Expired sessions are already refused on use; this only keeps the table small.
+function startRole(ctx: AppContext, role: "worker" | "scheduler") {
+  if (role === "worker") {
+    ctx.worker.start();
+    return;
+  }
+  ctx.log.info("scheduler started");
+  // Housekeeping only: expired rows are already refused on use.
   const purge = async () => {
+    const now = Date.now();
     try {
-      const n = await ctx.db.repos.sessions.purgeExpired(Date.now());
-      if (n) ctx.log.info("purged expired sessions", { sessions: n });
+      const sessions = await ctx.db.repos.sessions.purgeExpired(now);
+      const jobs = await ctx.db.repos.jobs.purgeFinished(now - 7 * 24 * 3600_000);
+      const throttle = await ctx.db.repos.throttle.purge(now - 24 * 3600_000);
+      if (sessions + jobs + throttle) ctx.log.info("housekeeping", { sessions, jobs, throttle });
     } catch (e) {
-      ctx.log.warn("session purge failed", { error: (e as Error).message });
+      ctx.log.warn("housekeeping failed", { error: (e as Error).message });
     }
   };
   setInterval(purge, 3600_000).unref();
@@ -183,7 +189,7 @@ function onShutdown(ctx: AppContext, servers: Server[]) {
       for (const s of servers) s.closeAllConnections();
     }, SHUTDOWN_GRACE_MS);
     force.unref();
-    await Promise.all(servers.map((s) => new Promise((r) => s.close(r))));
+    await Promise.all([...servers.map((s) => new Promise((r) => s.close(r))), ctx.worker.stop()]);
     await ctx.db.close();
     ctx.log.info("bye");
     process.exit(0);
@@ -241,6 +247,12 @@ async function doctor(): Promise<number> {
         if (pending.length) throw new Error(`pending: ${pending.join(", ")} (run \`postmodem migrate\`)`);
         return undefined;
       });
+      await check("mail transport", async () => {
+        await ctx!.mailer.verify();
+        return ctx!.mailer.kind === "log"
+          ? "log:// (messages go to the log, nothing is delivered)"
+          : "SMTP server answers";
+      });
     }
     await ctx?.db.close();
   }
@@ -265,8 +277,8 @@ async function main(argv: string[]): Promise<number> {
     case "run": {
       const ctx = await createContext({ migrate: true });
       const web = await startWeb(ctx);
-      startIdleRole(ctx, "worker");
-      startIdleRole(ctx, "scheduler");
+      startRole(ctx, "worker");
+      startRole(ctx, "scheduler");
       onShutdown(ctx, [web]);
       return -1; // keep running
     }
@@ -281,7 +293,7 @@ async function main(argv: string[]): Promise<number> {
     case "worker":
     case "scheduler": {
       const ctx = await createContext({ migrate: false });
-      startIdleRole(ctx, cmd);
+      startRole(ctx, cmd);
       onShutdown(ctx, []);
       setInterval(() => {}, 1 << 30); // keep the event loop alive
       return -1;

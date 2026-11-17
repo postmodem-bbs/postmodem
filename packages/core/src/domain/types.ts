@@ -116,6 +116,26 @@ export interface Session {
   ip: string;
 }
 
+export type JobStatus = "queued" | "running" | "done" | "failed";
+
+/** A unit of background work (job queue v0, CONTAINERS.md §2). Payloads are JSON. */
+export interface Job {
+  id: Id;
+  type: string;
+  payload: unknown;
+  status: JobStatus;
+  runAt: Millis;
+  attempts: number;
+  maxAttempts: number;
+  lockedBy: string | null;
+  lockedUntil: Millis | null;
+  lastError: string;
+  createdAt: Millis;
+  finishedAt: Millis | null;
+}
+
+export type EmailTokenPurpose = "verify-email" | "reset-password";
+
 export type GroupKind = "open" | "closed" | "hidden" | "system";
 
 export interface Group {

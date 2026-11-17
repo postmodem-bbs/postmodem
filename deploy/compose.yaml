@@ -19,6 +19,10 @@ x-postmodem: &postmodem
     POSTMODEM_SECRET_KEY_FILE: /run/secrets/secret_key
     POSTMODEM_TRUSTED_PROXIES: ${POSTMODEM_TRUSTED_PROXIES:-172.16.0.0/12}
     POSTMODEM_LOG_LEVEL: ${POSTMODEM_LOG_LEVEL:-info}
+    # smtp://user:pass@host:587 to deliver mail; log:// only writes it to the log.
+    POSTMODEM_MAIL_URL: ${POSTMODEM_MAIL_URL:-log://}
+    POSTMODEM_MAIL_FROM: ${POSTMODEM_MAIL_FROM:-}
+    POSTMODEM_REGISTRATIONS_PER_IP_HOUR: ${POSTMODEM_REGISTRATIONS_PER_IP_HOUR:-10}
   secrets: [db_password, secret_key]
   volumes: ["postmodem-data:/data"]
   read_only: true

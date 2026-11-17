@@ -31,7 +31,7 @@
     required
     minlength="2"
     maxlength="25"
-    value={form?.values?.username ?? ""}
+    defaultValue={form?.values?.username ?? ""}
     aria-invalid={errors.username ? "true" : undefined}
     aria-describedby={describedBy("username", "username-hint")}
   />
@@ -45,7 +45,7 @@
     type="email"
     autocomplete="email"
     required
-    value={form?.values?.email ?? ""}
+    defaultValue={form?.values?.email ?? ""}
     aria-invalid={errors.email ? "true" : undefined}
     aria-describedby={describedBy("email", "email-hint")}
   />

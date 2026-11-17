@@ -12,7 +12,10 @@ works without JavaScript, and ships as one Docker image.
 >
 > Try it with demo content: `pnpm cli seed-demo`, then `pnpm dev`
 > (or `postmodem seed-demo` inside the container). Demo members `Łukasz Żółć`,
-> `retro_fan` and `Ola` sign in with the password `postmodem-demo`.
+> `retro_fan` and `Ola` sign in with the password `postmodem-demo`. New accounts confirm
+> their e-mail address: set `POSTMODEM_MAIL_URL` (the dev stack's Mailpit at
+> http://localhost:8025 shows every message), or find the link in the log with the
+> default `log://`.
 
 ## Run it
 

@@ -31,8 +31,13 @@
           ? t("login-error-throttled", { seconds: form.seconds })
           : form.error === "inactive"
             ? t("login-error-inactive")
-            : t("login-error-invalid")}
+            : form.error === "unverified"
+              ? t("login-error-unverified")
+              : t("login-error-invalid")}
       </p>
+    {/if}
+    {#if form && "resent" in form}
+      <p class="panel notice" role="status">{t("login-resent")}</p>
     {/if}
     <input type="hidden" name="redirect" value={form?.redirectTo ?? data.redirectTo} />
     <label for="login">{t("login-name")}</label>
@@ -41,14 +46,21 @@
       name="login"
       autocomplete="username"
       required
-      value={form?.login ?? ""}
+      defaultValue={form?.login ?? ""}
       aria-describedby={form?.error ? "login-error" : undefined}
     />
     <label for="password">{t("login-password")}</label>
     <input id="password" name="password" type="password" autocomplete="current-password" required />
     <button type="submit">{t("login-submit")}</button>
+    <p><a href="/reset">{t("login-forgot")}</a></p>
     {#if data.registrationOpen}
       <p class="muted">{t("login-no-account")} <a href="/register">{t("register-link")}</a></p>
     {/if}
   </form>
+  {#if form && "error" in form && form.error === "unverified"}
+    <form method="POST" action="?/resend" class="panel narrow actions">
+      <input type="hidden" name="login" value={form.login} />
+      <button type="submit" class="secondary">{t("login-resend")}</button>
+    </form>
+  {/if}
 {/if}

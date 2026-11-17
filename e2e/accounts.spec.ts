@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Accounts (M1 slice 4) against the seeded demo: demo members sign in with "postmodem-demo".
+// Mail tests read the board's e-mails from Mailpit (PM_MAILPIT_URL), as CI provides.
 import { expect, type Page, test } from "@playwright/test";
-import { expectNoAxeViolations, guardCsp } from "./helpers.ts";
+import { expectNoAxeViolations, guardCsp, latestMail, linkIn, MAILPIT, mailCount } from "./helpers.ts";
 
 guardCsp();
 test.use({ locale: "en-US" });
@@ -17,18 +18,35 @@ async function signIn(page: Page, login: string, password: string) {
   await page.getByRole("button", { name: "Sign in" }).click();
 }
 
-test("register, see members-only forums, sign out", async ({ page }) => {
+/** Fills in and submits the registration form. */
+async function registerAccount(page: Page, name: string, password = "a long enough passphrase") {
+  await page.goto("/register");
+  await page.getByLabel("Username").fill(name);
+  await page.getByLabel("E-mail address").fill(`${name}@example.org`);
+  await page.getByLabel("Password").fill(password);
+  await page.getByLabel("I have read and accept the board rules").check();
+  await page.getByRole("button", { name: "Create account" }).click();
+  await expect(page.getByRole("status")).toContainText("We’ve sent a link to your e-mail address");
+}
+
+test("register, confirm the e-mail address, see members-only forums, sign out", async ({ page }) => {
+  test.skip(!MAILPIT, "needs Mailpit (PM_MAILPIT_URL)");
   const name = unique();
   await page.goto("/");
   await expect(page.locator("main")).not.toContainText("Strefa użytkowników");
   await page.getByRole("link", { name: "Register" }).click();
-  await page.getByLabel("Username").fill(name);
-  await page.getByLabel("E-mail address").fill(`${name}@example.org`);
-  await page.getByLabel("Password").fill("a long enough passphrase");
-  await page.getByLabel("I have read and accept the board rules").check();
-  await page.getByRole("button", { name: "Create account" }).click();
+  await registerAccount(page, name);
+  await expect(page.locator(".site-header")).toContainText("Sign in"); // not signed in yet
+  await expectNoAxeViolations(page);
 
-  await expect(page.getByRole("status")).toContainText(`Welcome aboard, ${name}!`);
+  const mail = await latestMail(`${name}@example.org`);
+  expect(mail.subject).toBe("Confirm your e-mail address for Postmodem");
+  expect(mail.text).toContain(`registered the account “${name}”`);
+  await page.goto(linkIn(mail.text, "/verify"));
+  await expect(page.getByText(`Confirm the e-mail address of the account “${name}”`)).toBeVisible();
+  await page.getByRole("button", { name: "Confirm and sign in" }).click();
+
+  await expect(page.getByRole("status")).toContainText(`Thanks, ${name}! Your e-mail address is confirmed`);
   await expect(page.locator(".site-header")).toContainText(`Signed in as ${name}`);
   await expect(page.getByRole("link", { name: "Strefa użytkowników" })).toBeVisible();
   // Registered users can read the archive guests only see listed.
@@ -41,6 +59,96 @@ test("register, see members-only forums, sign out", async ({ page }) => {
   await page.getByRole("button", { name: "Sign out" }).click();
   await expect(page.locator(".site-header")).toContainText("Sign in");
   await expect(page.locator("main")).not.toContainText("Strefa użytkowników");
+
+  // The link worked once.
+  await page.goto(linkIn(mail.text, "/verify"));
+  await expect(page.getByRole("alert")).toContainText("This link has expired or has already been used");
+});
+
+test("an unconfirmed account can't sign in, but can get a new link", async ({ page }) => {
+  test.skip(!MAILPIT, "needs Mailpit (PM_MAILPIT_URL)");
+  const name = unique();
+  await registerAccount(page, name);
+  const first = await latestMail(`${name}@example.org`);
+
+  await signIn(page, name, "a long enough passphrase");
+  await expect(page.getByRole("alert")).toContainText("Your e-mail address isn’t confirmed yet");
+  await page.getByRole("button", { name: "Send a new link" }).click();
+  await expect(page.getByRole("status")).toContainText("we’ve sent a new link");
+  const second = await latestMail(`${name}@example.org`, { after: first.id });
+
+  await page.goto(linkIn(first.text, "/verify")); // superseded by the new one
+  await expect(page.getByRole("alert")).toContainText("expired or has already been used");
+  await page.goto(linkIn(second.text, "/verify"));
+  await page.getByRole("button", { name: "Confirm and sign in" }).click();
+  await expect(page.locator(".site-header")).toContainText(`Signed in as ${name}`);
+});
+
+test("password reset by e-mail signs in with the new password and ends other sessions", async ({
+  page,
+  browser,
+  baseURL,
+}) => {
+  test.skip(!MAILPIT, "needs Mailpit (PM_MAILPIT_URL)");
+  const name = unique();
+  const email = `${name}@example.org`;
+  await registerAccount(page, name, "the original passphrase");
+  await page.goto(linkIn((await latestMail(email)).text, "/verify"));
+  await page.getByRole("button", { name: "Confirm and sign in" }).click();
+  await expect(page.locator(".site-header")).toContainText(`Signed in as ${name}`);
+
+  // A second browser asks for the reset.
+  const second = await browser.newContext({
+    baseURL,
+    locale: "en-US",
+    ignoreHTTPSErrors: process.env.PM_IGNORE_HTTPS_ERRORS === "1",
+  });
+  const other = await second.newPage();
+  await other.goto("/login.php");
+  await other.getByRole("link", { name: "Forgot your password?" }).click();
+  await expect(other).toHaveURL(/\/reset$/);
+  const before = await latestMail(email);
+  await other.getByLabel("E-mail address", { exact: true }).fill(email);
+  await other.getByRole("button", { name: "Send the link" }).click();
+  await expect(other.getByRole("status")).toHaveText(/If an account uses that address, we’ve sent it a link/);
+  const mail = await latestMail(email, { after: before.id });
+  expect(mail.subject).toBe("Reset your password on Postmodem");
+
+  await other.goto(linkIn(mail.text, "/reset"));
+  await other.getByLabel("New password").fill("short");
+  await other.getByRole("button", { name: "Save and sign in" }).click();
+  await expect(other.getByLabel("New password")).toHaveAccessibleDescription(
+    /must be at least 10 characters long/,
+  );
+  await expectNoAxeViolations(other);
+  await other.getByLabel("New password").fill("a completely new passphrase");
+  await other.getByRole("button", { name: "Save and sign in" }).click();
+  await expect(other.getByRole("status")).toContainText("Your password has been changed");
+  await expect(other.locator(".site-header")).toContainText(`Signed in as ${name}`);
+  await second.close();
+
+  // The first browser was signed out by the reset.
+  await page.reload();
+  await expect(page.locator(".site-header")).toContainText("Sign in");
+  await signIn(page, name, "the original passphrase");
+  await expect(page.getByRole("alert")).toHaveText("That username or password is not right.");
+  await page.getByLabel("Password").fill("a completely new passphrase");
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(page.locator(".site-header")).toContainText(`Signed in as ${name}`);
+});
+
+test("asking for a reset reveals nothing about which addresses have accounts", async ({ page }) => {
+  test.skip(!MAILPIT, "needs Mailpit (PM_MAILPIT_URL)");
+  const nobody = `${unique()}@example.org`;
+  await page.goto("/profile.php?mode=sendpassword"); // phpBB2's URL
+  await expect(page).toHaveURL(/\/reset$/);
+  await page.getByLabel("E-mail address").fill(nobody);
+  await page.getByRole("button", { name: "Send the link" }).click();
+  await expect(page.getByRole("status")).toHaveText(/If an account uses that address, we’ve sent it a link/);
+  await page.waitForTimeout(1500); // give the worker time to (not) send anything
+  expect(await mailCount(nobody)).toBe(0);
+  await page.goto("/reset?token=AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
+  await expect(page.getByRole("alert")).toContainText("This link has expired or has already been used");
 });
 
 test("registration explains every problem accessibly", async ({ page }) => {

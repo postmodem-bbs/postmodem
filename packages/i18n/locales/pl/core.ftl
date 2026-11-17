@@ -151,3 +151,43 @@ rules-default =
     Bez spamu, reklam i treści niezgodnych z prawem. Posty łamiące regulamin mogą zostać poprawione lub usunięte przez moderatorów.
 
     Pisz tak, by inni mogli to przeczytać: opisowy tytuł tematu pomaga wszystkim.
+
+## E-mail verification and password reset
+mail-verify-subject = Potwierdź adres e-mail na forum { $board }
+mail-verify-body =
+    Cześć { $name },
+
+    ktoś (miejmy nadzieję, że Ty) założył na forum { $board } konto „{ $name }” z tym adresem e-mail. Aby dokończyć, otwórz ten link:
+
+    { $link }
+
+    Link działa raz i przez 7 dni. Jeśli to nie Ty, zignoruj tę wiadomość, a konto nie zostanie aktywowane.
+mail-reset-subject = Reset hasła na forum { $board }
+mail-reset-body =
+    Cześć { $name },
+
+    ktoś (miejmy nadzieję, że Ty) poprosił o reset hasła do konta „{ $name }” na forum { $board }. Aby ustawić nowe hasło, otwórz ten link:
+
+    { $link }
+
+    Link działa raz i przez godzinę. Jeśli to nie Ty, zignoruj tę wiadomość: Twoje hasło się nie zmieni.
+verify-title = Potwierdź adres e-mail
+verify-sent = Prawie gotowe! Wysłaliśmy link na Twój adres e-mail. Otwórz go, aby aktywować konto. Wiadomość może dojść po chwili; zajrzyj też do spamu.
+verify-confirm-text = Potwierdź adres e-mail konta „{ $name }” i zaloguj się.
+verify-confirm-submit = Potwierdź i zaloguj
+verify-invalid = Ten link wygasł albo został już użyty. Zaloguj się, aby dostać nowy.
+verified-notice = Dziękujemy, { $name }! Adres e-mail jest potwierdzony, a Ty jesteś zalogowany(-a).
+login-error-unverified = Twój adres e-mail nie jest jeszcze potwierdzony. Otwórz wysłany link albo poproś o nowy.
+login-resend = Wyślij nowy link
+login-resent = Jeśli to konto czeka na potwierdzenie, wysłaliśmy nowy link na jego adres e-mail.
+login-forgot = Nie pamiętasz hasła?
+reset-title = Reset hasła
+reset-request-text = Podaj adres e-mail swojego konta, a wyślemy link do ustawienia nowego hasła.
+reset-request-submit = Wyślij link
+reset-requested = Jeśli jakieś konto używa tego adresu, wysłaliśmy na niego link. Działa przez godzinę.
+reset-error-throttled = Zbyt wiele prób z Twojej sieci. Spróbuj ponownie później.
+reset-new-text = Ustaw nowe hasło dla konta „{ $name }”. Zostaniesz wylogowany(-a) na pozostałych urządzeniach.
+reset-new-password = Nowe hasło
+reset-submit = Zapisz i zaloguj
+reset-invalid = Ten link wygasł albo został już użyty. Poniżej możesz poprosić o nowy.
+reset-done-notice = Hasło zostało zmienione, a Ty jesteś zalogowany(-a). Pozostałe urządzenia zostały wylogowane.

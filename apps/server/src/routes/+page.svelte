@@ -13,8 +13,14 @@
 
 <h1 class="page-title">{t("nav-index")}</h1>
 
-{#if data.welcome}
-  <p class="panel notice" role="status">{t("register-welcome", { name: data.welcome })}</p>
+{#if data.notice}
+  <p class="panel notice" role="status">
+    {data.notice.kind === "welcome"
+      ? t("register-welcome", { name: data.notice.name })
+      : data.notice.kind === "verified"
+        ? t("verified-notice", { name: data.notice.name })
+        : t("reset-done-notice")}
+  </p>
 {/if}
 
 {#if data.categories.length === 0}

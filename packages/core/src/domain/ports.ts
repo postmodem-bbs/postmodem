@@ -4,9 +4,11 @@
 import type {
   AuditEntry,
   Effect,
+  EmailTokenPurpose,
   Grant,
   Group,
   Id,
+  Job,
   MarkupFormat,
   Membership,
   Millis,
@@ -182,6 +184,48 @@ export interface SessionRepository {
   purgeExpired(now: Millis): Promise<number>;
 }
 
+export interface JobRepository {
+  enqueue(type: string, payload: unknown, opts?: { runAt?: Millis; maxAttempts?: number }): Promise<Id>;
+  /**
+   * Atomically takes the oldest due job of these types (or one whose lease ran out) for
+   * `workerId` until `now + leaseMs`. Safe with many workers on SQLite and Postgres.
+   */
+  claim(types: string[], workerId: string, now: Millis, leaseMs: number): Promise<Job | undefined>;
+  /** Marks a job done and drops its payload (payloads may hold one-time links). */
+  complete(id: Id, now: Millis): Promise<void>;
+  /** Records a failed attempt: retried at `retryAt`, or failed for good (payload dropped) when null. */
+  fail(id: Id, error: string, now: Millis, retryAt: Millis | null): Promise<void>;
+  get(id: Id): Promise<Job | undefined>;
+  /** Removes done/failed jobs finished before this time. */
+  purgeFinished(before: Millis): Promise<number>;
+}
+
+export interface EmailTokenRepository {
+  create(t: {
+    userId: Id;
+    purpose: EmailTokenPurpose;
+    tokenHash: string;
+    expiresAt: Millis;
+    createdAt: Millis;
+  }): Promise<void>;
+  /** The user a live (unused, unexpired) token belongs to, without using it. */
+  peek(tokenHash: string, purpose: EmailTokenPurpose, now: Millis): Promise<Id | undefined>;
+  /** Uses a live token exactly once; concurrent attempts get undefined. */
+  consume(tokenHash: string, purpose: EmailTokenPurpose, now: Millis): Promise<Id | undefined>;
+  /** Invalidates every live token of this purpose for the user (e.g. after a reset). */
+  revoke(userId: Id, purpose: EmailTokenPurpose, now: Millis): Promise<void>;
+  /** When the user's newest token of this purpose was issued, for resend limits. */
+  lastIssued(userId: Id, purpose: EmailTokenPurpose): Promise<Millis | undefined>;
+}
+
+/** Shared store for core/auth Throttle, so every replica sees the same counts. */
+export interface ThrottleRepository {
+  get(key: string): Promise<{ failures: number; last: Millis } | undefined>;
+  put(key: string, failures: number, last: Millis): Promise<void>;
+  remove(key: string): Promise<void>;
+  purge(before: Millis): Promise<number>;
+}
+
 export interface GroupRepository {
   create(
     input: WithOptionalId<Omit<Group, "nameKey" | "createdAt">> & { createdAt?: Millis },
@@ -248,6 +292,9 @@ export interface Repositories {
   users: UserRepository;
   credentials: CredentialRepository;
   sessions: SessionRepository;
+  emailTokens: EmailTokenRepository;
+  jobs: JobRepository;
+  throttle: ThrottleRepository;
   groups: GroupRepository;
   roles: RoleRepository;
   grants: GrantRepository;

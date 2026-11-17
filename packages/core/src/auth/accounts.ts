@@ -16,6 +16,8 @@ export interface RegistrationInput {
 export interface RegistrationPolicy {
   disallowedUsernames: readonly string[];
   rulesVersion: number;
+  /** New accounts start "pending" until their e-mail address is confirmed. */
+  verifyEmail: boolean;
 }
 export type RegistrationErrors = Partial<Record<"username" | "email" | "password" | "rules", string>>;
 
@@ -47,6 +49,7 @@ export async function register(
       const u = await r.users.create({
         username,
         email,
+        status: policy.verifyEmail ? "pending" : "active",
         createdAt: now,
         locale: input.locale ?? null,
         rulesVersion: policy.rulesVersion,
@@ -74,7 +77,11 @@ export async function register(
 // Verified against when the account doesn't exist, so timing doesn't reveal which names do.
 let decoy: Promise<{ scheme: "argon2id"; hash: string }> | undefined;
 
-export type SignInResult = { ok: true; user: User } | { ok: false; reason: "invalid" | "inactive" };
+export type SignInResult =
+  | { ok: true; user: User }
+  | { ok: false; reason: "invalid" | "inactive" }
+  /** Right password, e-mail address not confirmed yet: the caller may offer a new link. */
+  | { ok: false; reason: "unverified"; user: User };
 
 /** Sign in with username or e-mail. Legacy and weaker hashes are replaced on success. */
 export async function authenticate(
@@ -95,6 +102,7 @@ export async function authenticate(
   }
   const { ok, needsRehash } = await verifyPassword(password, credential.scheme, credential.hash);
   if (!ok) return { ok: false, reason: "invalid" };
+  if (user.status === "pending") return { ok: false, reason: "unverified", user };
   if (user.status !== "active") return { ok: false, reason: "inactive" };
   if (needsRehash) {
     const fresh = await hashPassword(password);

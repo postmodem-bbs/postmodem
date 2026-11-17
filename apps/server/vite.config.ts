@@ -37,8 +37,9 @@ export default defineConfig(({ command }) => {
         },
       }),
     ],
-    // Workspace packages ship TypeScript sources; bundle them into the server build.
-    ssr: { noExternal: [/^@postmodem\//] },
+    // The image ships build/ only, without node_modules: workspace packages (TypeScript
+    // sources) and the app's own runtime dependencies must be bundled into the server build.
+    ssr: { noExternal: [/^@postmodem\//, "nodemailer"] },
     test: { include: ["src/**/*.test.ts"] },
   };
 });

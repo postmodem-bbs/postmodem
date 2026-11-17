@@ -5,6 +5,8 @@ import { error, redirect } from "@sveltejs/kit";
 import type { RequestHandler } from "./$types";
 
 export const GET: RequestHandler = ({ url }) => {
-  if (url.searchParams.get("mode") === "register") redirect(301, "/register");
+  const mode = url.searchParams.get("mode");
+  if (mode === "register") redirect(301, "/register");
+  if (mode === "sendpassword") redirect(301, "/reset");
   error(404, "Not found");
 };

@@ -4,6 +4,7 @@
 import { authenticate, endSession, nameKey, startSession } from "@postmodem/core";
 import { fail, redirect } from "@sveltejs/kit";
 import { clearSessionCookie, sessionCookieName, setSessionCookie } from "#lib/server/auth.ts";
+import { mayMail, sendAccountMail } from "#lib/server/emails.ts";
 import { safeReturnPath } from "#lib/server/preferences.ts";
 import type { Actions, PageServerLoad } from "./$types";
 
@@ -26,17 +27,24 @@ export const actions: Actions = {
     const accountKey = nameKey(login);
     const ipKey = getClientAddress();
 
-    const wait = Math.max(ctx.throttles.login.wait(accountKey, now), ctx.throttles.loginIp.wait(ipKey, now));
+    const wait = Math.max(
+      await ctx.throttles.login.wait(accountKey, now),
+      await ctx.throttles.loginIp.wait(ipKey, now),
+    );
     if (wait > 0)
       return fail(429, { login, redirectTo, error: "throttled", seconds: Math.ceil(wait / 1000) });
 
     const result = await authenticate(ctx.db.repos, login, password);
+    if (!result.ok && result.reason === "unverified") {
+      // Right password: not a failure, but no session until the address is confirmed.
+      return fail(403, { login, redirectTo, error: "unverified", seconds: 0 });
+    }
     if (!result.ok) {
-      ctx.throttles.login.fail(accountKey, now);
-      ctx.throttles.loginIp.fail(ipKey, now);
+      await ctx.throttles.login.fail(accountKey, now);
+      await ctx.throttles.loginIp.fail(ipKey, now);
       return fail(400, { login, redirectTo, error: result.reason, seconds: 0 });
     }
-    ctx.throttles.login.reset(accountKey);
+    await ctx.throttles.login.reset(accountKey);
 
     // Session rotation: a session id that existed before sign-in never survives it.
     const previous = cookies.get(sessionCookieName(ctx.config));
@@ -48,6 +56,18 @@ export const actions: Actions = {
     setSessionCookie(cookies, ctx.config, token);
     ctx.log.info("signed in", { userId: result.user.id });
     redirect(303, redirectTo);
+  },
+
+  /** New confirmation link. Same answer whatever the account's state, so it reveals nothing. */
+  resend: async ({ request, locals, getClientAddress }) => {
+    const { ctx } = locals;
+    const login = String((await request.formData()).get("login") ?? "").slice(0, 254);
+    const user = login.includes("@")
+      ? await ctx.db.repos.users.byEmail(login)
+      : await ctx.db.repos.users.byUsername(login);
+    if (user?.status === "pending" && (await mayMail(ctx, String(user.id), getClientAddress())))
+      await sendAccountMail(ctx, user, "verify-email", locals.locale);
+    return { resent: true, login };
   },
 
   logout: async ({ cookies, locals }) => {

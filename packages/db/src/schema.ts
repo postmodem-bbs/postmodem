@@ -74,6 +74,27 @@ export interface EmailTokensTable {
   createdAt: number;
 }
 
+export interface JobsTable {
+  id: Generated<number>;
+  type: string;
+  payload: string; // JSON text, identical on both engines
+  status: string;
+  runAt: number;
+  attempts: number;
+  maxAttempts: number;
+  lockedBy: string | null;
+  lockedUntil: number | null;
+  lastError: string;
+  createdAt: number;
+  finishedAt: number | null;
+}
+
+export interface ThrottleTable {
+  key: string;
+  failures: number;
+  last: number;
+}
+
 export interface SessionsTable {
   id: string; // hash of the cookie value
   userId: number;
@@ -204,6 +225,8 @@ export interface Schema {
   users: UsersTable;
   credentials: CredentialsTable;
   emailTokens: EmailTokensTable;
+  jobs: JobsTable;
+  throttle: ThrottleTable;
   sessions: SessionsTable;
   groups: GroupsTable;
   memberships: MembershipsTable;

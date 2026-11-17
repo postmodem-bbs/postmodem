@@ -276,5 +276,33 @@ export function migrations(dialect: Dialect): Record<string, Migration> {
           .execute();
       },
     },
+    "0004_jobs_and_throttle": {
+      async up(db: Db) {
+        const s = db.schema;
+        await withId(s.createTable("jobs"), dialect)
+          .addColumn("type", "text", notNull)
+          .addColumn("payload", "text", (c) => c.notNull().defaultTo("{}"))
+          .addColumn("status", "text", (c) => c.notNull().defaultTo("queued"))
+          .addColumn("run_at", "bigint", notNull)
+          .addColumn("attempts", "integer", zero)
+          .addColumn("max_attempts", "integer", (c) => c.notNull().defaultTo(5))
+          .addColumn("locked_by", "text")
+          .addColumn("locked_until", "bigint")
+          .addColumn("last_error", "text", empty)
+          .addColumn("created_at", "bigint", notNull)
+          .addColumn("finished_at", "bigint")
+          .execute();
+        await s.createIndex("jobs_due").on("jobs").columns(["status", "run_at"]).execute();
+
+        await s
+          .createTable("throttle")
+          .addColumn("key", "text", (c) => c.primaryKey())
+          .addColumn("failures", "integer", notNull)
+          .addColumn("last", "bigint", notNull)
+          .execute();
+        await s.createIndex("throttle_last").on("throttle").column("last").execute();
+        await s.createIndex("email_tokens_user").on("email_tokens").columns(["user_id", "purpose"]).execute();
+      },
+    },
   };
 }

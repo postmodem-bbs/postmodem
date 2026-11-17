@@ -5,16 +5,22 @@ import { createHash } from "node:crypto";
 import {
   authenticate,
   boardName,
+  checkEmailToken,
   coreSettings,
   endSession,
+  issueEmailToken,
   type Repositories,
   register,
+  resetPassword,
   resolveSession,
   SESSION_ABSOLUTE_MS,
   SESSION_IDLE_MS,
   Settings,
   startSession,
+  Throttle,
+  TOKEN_TTL,
   TreeError,
+  verifyEmail,
 } from "@postmodem/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { Database } from "./database.ts";
@@ -299,7 +305,7 @@ describe.each(testEngines())("%s", (engine) => {
   });
 
   describe("accounts and sessions", () => {
-    const policy = { disallowedUsernames: ["admin*"], rulesVersion: 3 };
+    const policy = { disallowedUsernames: ["admin*"], rulesVersion: 3, verifyEmail: false };
     const input = { username: "Ola", email: "ola@example.org", password: "correct horse", acceptRules: true };
 
     it("registers, refusing lookalike names, taken e-mails and missing consent", async () => {
@@ -377,6 +383,95 @@ describe.each(testEngines())("%s", (engine) => {
       expect(await resolveSession(r, token, 1)).toBeNull();
       await startSession(r, u.id, { userAgent: "", ip: "" }, 0);
       expect(await r.sessions.purgeExpired(SESSION_IDLE_MS + 1)).toBe(1);
+    });
+  });
+
+  describe("job queue", () => {
+    it("claims due jobs once, retries failures and drops payloads when finished", async () => {
+      const id = await r.jobs.enqueue("mail.send", { to: "ola@example.org" });
+      await r.jobs.enqueue("mail.send", { later: true }, { runAt: Date.now() + 3600_000 });
+      await r.jobs.enqueue("other.type", {});
+      const now = Date.now();
+      // Two workers race for the one due mail job: exactly one wins.
+      const [a, b] = await Promise.all([
+        r.jobs.claim(["mail.send"], "w1", now, 60_000),
+        r.jobs.claim(["mail.send"], "w2", now, 60_000),
+      ]);
+      const won = [a, b].filter(Boolean);
+      expect(won).toHaveLength(1);
+      expect(won[0]).toMatchObject({
+        id,
+        status: "running",
+        attempts: 1,
+        payload: { to: "ola@example.org" },
+      });
+      expect(await r.jobs.claim(["mail.send"], "w3", now, 60_000)).toBeUndefined();
+
+      // A crashed worker's lease runs out and the job comes back.
+      const again = await r.jobs.claim(["mail.send"], "w3", now + 61_000, 60_000);
+      expect(again).toMatchObject({ id, lockedBy: "w3", attempts: 2 });
+      await r.jobs.fail(id, "smtp timeout", now, now + 1000);
+      expect(await r.jobs.get(id)).toMatchObject({ status: "queued", lastError: "smtp timeout" });
+      await r.jobs.claim(["mail.send"], "w1", now + 1000, 60_000);
+      await r.jobs.complete(id, now + 2000);
+      expect(await r.jobs.get(id)).toMatchObject({ status: "done", payload: {}, finishedAt: now + 2000 });
+      expect(await r.jobs.purgeFinished(now + 3000)).toBe(1);
+    });
+  });
+
+  describe("e-mail tokens and throttle", () => {
+    it("issues single-use tokens, revokes older ones and expires them", async () => {
+      const u = await r.users.create({ username: "Ola", email: "ola@example.org", status: "pending" });
+      const first = await issueEmailToken(r, u.id, "verify-email", 1000);
+      const second = await issueEmailToken(r, u.id, "verify-email", 2000);
+      expect(await r.emailTokens.lastIssued(u.id, "verify-email")).toBe(2000);
+      expect(await verifyEmail(r, first, 3000)).toBeUndefined(); // revoked by the newer one
+      expect((await checkEmailToken(r, second, "verify-email", 3000))?.id).toBe(u.id);
+      expect((await verifyEmail(r, second, 3000))?.status).toBe("active");
+      expect(await verifyEmail(r, second, 3000)).toBeUndefined(); // single use
+      const late = await issueEmailToken(r, u.id, "verify-email", 0);
+      expect(await verifyEmail(r, late, TOKEN_TTL["verify-email"] + 1)).toBeUndefined();
+    });
+
+    it("resets a password, ending every session, and activates a pending account", async () => {
+      const u = await r.users.create({ username: "retro_fan", email: "fan@example.org", status: "pending" });
+      await r.credentials.set(u.id, "argon2id", "x");
+      const { token: session } = await startSession(r, u.id, { userAgent: "", ip: "" });
+      const link = await issueEmailToken(r, u.id, "reset-password");
+      expect(await resetPassword(r, link, "short")).toEqual({ ok: false, error: "too-short" });
+      const done = await resetPassword(r, link, "a brand new passphrase");
+      expect(done.ok && done.user.status).toBe("active");
+      expect(await resolveSession(r, session)).toBeNull();
+      expect((await authenticate(r, "retro_fan", "a brand new passphrase")).ok).toBe(true);
+      expect(await resetPassword(r, link, "another new passphrase")).toEqual({
+        ok: false,
+        error: "invalid-link",
+      });
+    });
+
+    it("says an unverified account is unverified only to someone who knows its password", async () => {
+      const reg = await register(
+        r,
+        { disallowedUsernames: [], rulesVersion: 1, verifyEmail: true },
+        { username: "Nowy", email: "nowy@example.org", password: "correct horse", acceptRules: true },
+      );
+      expect(reg.ok && reg.user.status).toBe("pending");
+      expect(await authenticate(r, "Nowy", "wrong horse!")).toEqual({ ok: false, reason: "invalid" });
+      expect(await authenticate(r, "Nowy", "correct horse")).toMatchObject({
+        ok: false,
+        reason: "unverified",
+      });
+    });
+
+    it("shares throttle counts through the database", async () => {
+      const policy = { free: 2, baseMs: 1000, maxMs: 4000, windowMs: 60_000 };
+      const replicaA = new Throttle(policy, r.throttle, "login");
+      const replicaB = new Throttle(policy, r.throttle, "login");
+      await replicaA.fail("ola", 0);
+      await replicaB.fail("ola", 0);
+      expect(await replicaA.wait("ola", 0)).toBe(1000);
+      expect(await r.throttle.purge(1)).toBe(1);
+      expect(await replicaB.wait("ola", 0)).toBe(0);
     });
   });
 });

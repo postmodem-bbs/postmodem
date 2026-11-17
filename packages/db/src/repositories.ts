@@ -12,6 +12,8 @@ import {
   type GroupKind,
   type Id,
   idsOf,
+  type Job,
+  type JobStatus,
   type Membership,
   type Node,
   type NodeKind,
@@ -34,8 +36,16 @@ import {
   type User,
   type UserStatus,
 } from "@postmodem/core";
-import { type Kysely, type Selectable, sql } from "kysely";
-import type { NodesTable, PostsTable, Schema, SessionsTable, TopicsTable, UsersTable } from "./schema.ts";
+import { type ExpressionBuilder, type Kysely, type Selectable, sql } from "kysely";
+import type {
+  JobsTable,
+  NodesTable,
+  PostsTable,
+  Schema,
+  SessionsTable,
+  TopicsTable,
+  UsersTable,
+} from "./schema.ts";
 
 type Db = Kysely<Schema>;
 const PUBLIC = ["core:public"];
@@ -139,6 +149,21 @@ const toUser = (r: Selectable<UsersTable>): User => ({
   timezone: r.timezone,
   rulesVersion: r.rulesVersion === null ? null : n(r.rulesVersion),
   rulesAcceptedAt: r.rulesAcceptedAt === null ? null : n(r.rulesAcceptedAt),
+});
+
+const toJob = (r: Selectable<JobsTable>): Job => ({
+  id: n(r.id),
+  type: r.type,
+  payload: JSON.parse(r.payload),
+  status: r.status as JobStatus,
+  runAt: n(r.runAt),
+  attempts: n(r.attempts),
+  maxAttempts: n(r.maxAttempts),
+  lockedBy: r.lockedBy,
+  lockedUntil: r.lockedUntil === null ? null : n(r.lockedUntil),
+  lastError: r.lastError,
+  createdAt: n(r.createdAt),
+  finishedAt: r.finishedAt === null ? null : n(r.finishedAt),
 });
 
 const toSession = (r: Selectable<SessionsTable>): Session => ({
@@ -974,6 +999,171 @@ export function createRepositories(db: Db): Repositories {
     },
   };
 
+  const emailTokens: Repositories["emailTokens"] = {
+    async create(t) {
+      await db
+        .insertInto("emailTokens")
+        .values({ ...t, usedAt: null })
+        .execute();
+    },
+    async peek(tokenHash, purpose, now) {
+      const r = await db
+        .selectFrom("emailTokens")
+        .select("userId")
+        .where("tokenHash", "=", tokenHash)
+        .where("purpose", "=", purpose)
+        .where("usedAt", "is", null)
+        .where("expiresAt", ">", now)
+        .executeTakeFirst();
+      return r && n(r.userId);
+    },
+    async consume(tokenHash, purpose, now) {
+      const userId = await emailTokens.peek(tokenHash, purpose, now);
+      if (userId === undefined) return undefined;
+      // The used_at guard makes this single-use even when two requests race.
+      const r = await db
+        .updateTable("emailTokens")
+        .set({ usedAt: now })
+        .where("tokenHash", "=", tokenHash)
+        .where("purpose", "=", purpose)
+        .where("usedAt", "is", null)
+        .executeTakeFirst();
+      return Number(r.numUpdatedRows) === 1 ? userId : undefined;
+    },
+    async revoke(userId, purpose, now) {
+      await db
+        .updateTable("emailTokens")
+        .set({ usedAt: now })
+        .where("userId", "=", userId)
+        .where("purpose", "=", purpose)
+        .where("usedAt", "is", null)
+        .execute();
+    },
+    async lastIssued(userId, purpose) {
+      const r = await db
+        .selectFrom("emailTokens")
+        .select((eb) => eb.fn.max("createdAt").as("at"))
+        .where("userId", "=", userId)
+        .where("purpose", "=", purpose)
+        .executeTakeFirst();
+      return r?.at == null ? undefined : n(r.at);
+    },
+  };
+
+  const jobs: Repositories["jobs"] = {
+    async enqueue(type, payload, opts) {
+      const now = Date.now();
+      const { id } = await db
+        .insertInto("jobs")
+        .values({
+          type,
+          payload: JSON.stringify(payload ?? {}),
+          status: "queued",
+          runAt: opts?.runAt ?? now,
+          attempts: 0,
+          maxAttempts: opts?.maxAttempts ?? 5,
+          lockedBy: null,
+          lockedUntil: null,
+          lastError: "",
+          createdAt: now,
+          finishedAt: null,
+        })
+        .returning("id")
+        .executeTakeFirstOrThrow();
+      return n(id);
+    },
+    async claim(types, workerId, now, leaseMs) {
+      if (!types.length) return undefined;
+      // Optimistic claim, portable across engines: pick candidates, then take one with a
+      // conditional UPDATE. Losing a race just means trying the next candidate.
+      const due = (eb: ExpressionBuilder<Schema, "jobs">) =>
+        eb.or([
+          eb.and([eb("status", "=", "queued"), eb("runAt", "<=", now)]),
+          eb.and([eb("status", "=", "running"), eb("lockedUntil", "<", now)]),
+        ]);
+      const candidates = await db
+        .selectFrom("jobs")
+        .select("id")
+        .where("type", "in", types)
+        .where(due)
+        .orderBy("runAt")
+        .orderBy("id")
+        .limit(5)
+        .execute();
+      for (const { id } of candidates) {
+        const r = await db
+          .updateTable("jobs")
+          .set((eb) => ({
+            status: "running",
+            lockedBy: workerId,
+            lockedUntil: now + leaseMs,
+            attempts: eb("attempts", "+", 1),
+          }))
+          .where("id", "=", id)
+          .where(due)
+          .executeTakeFirst();
+        if (Number(r.numUpdatedRows) === 1) return jobs.get(n(id));
+      }
+      return undefined;
+    },
+    async complete(id, now) {
+      await db
+        .updateTable("jobs")
+        // Payloads can hold secrets (a mail job carries a one-time link); drop them when done.
+        .set({ status: "done", finishedAt: now, lockedBy: null, lockedUntil: null, payload: "{}" })
+        .where("id", "=", id)
+        .execute();
+    },
+    async fail(id, error, now, retryAt) {
+      await db
+        .updateTable("jobs")
+        .set({
+          status: retryAt === null ? "failed" : "queued",
+          runAt: retryAt ?? now,
+          finishedAt: retryAt === null ? now : null,
+          lastError: error.slice(0, 2000),
+          lockedBy: null,
+          lockedUntil: null,
+          ...(retryAt === null ? { payload: "{}" } : {}),
+        })
+        .where("id", "=", id)
+        .execute();
+    },
+    async get(id) {
+      const r = await db.selectFrom("jobs").selectAll().where("id", "=", id).executeTakeFirst();
+      return r && toJob(r);
+    },
+    async purgeFinished(before) {
+      const r = await db
+        .deleteFrom("jobs")
+        .where("status", "in", ["done", "failed"])
+        .where("finishedAt", "<", before)
+        .executeTakeFirst();
+      return Number(r.numDeletedRows);
+    },
+  };
+
+  const throttle: Repositories["throttle"] = {
+    async get(key) {
+      const r = await db.selectFrom("throttle").selectAll().where("key", "=", key).executeTakeFirst();
+      return r && { failures: n(r.failures), last: n(r.last) };
+    },
+    async put(key, failures, last) {
+      await db
+        .insertInto("throttle")
+        .values({ key, failures, last })
+        .onConflict((oc) => oc.column("key").doUpdateSet({ failures, last }))
+        .execute();
+    },
+    async remove(key) {
+      await db.deleteFrom("throttle").where("key", "=", key).execute();
+    },
+    async purge(before) {
+      const r = await db.deleteFrom("throttle").where("last", "<", before).executeTakeFirst();
+      return Number(r.numDeletedRows);
+    },
+  };
+
   return {
     nodes,
     topics,
@@ -981,6 +1171,9 @@ export function createRepositories(db: Db): Repositories {
     users,
     credentials,
     sessions,
+    emailTokens,
+    jobs,
+    throttle,
     groups,
     roles,
     grants,
