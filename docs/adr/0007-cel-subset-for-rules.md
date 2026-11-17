@@ -1,7 +1,7 @@
 # ADR 0007 — CEL subset for access and display rules
 
 - Status: **accepted** · 2026-11-17 (after spike, see
-  [spikes/cel-rules/SPIKE.md](../../spikes/cel-rules/SPIKE.md))
+  [tools/spikes/cel-rules/SPIKE.md](../../tools/spikes/cel-rules/SPIKE.md))
 
 ## Context
 Tier-1 add-ons express permissions and conditions declaratively (collection

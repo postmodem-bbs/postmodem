@@ -1,0 +1,69 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Builds the legacy-board fixture images (tools/README.md) and publishes them to GHCR
+# whenever the generator, the vendored Przemo schema or this workflow changes.
+name: Fixtures
+
+on:
+  push:
+    branches: [main]
+    paths: ["tools/fixtures/**", ".github/workflows/fixtures.yml"]
+  pull_request:
+    paths: ["tools/fixtures/**", ".github/workflows/fixtures.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fixture:
+    name: Fixture (${{ matrix.preset }})
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        preset: [small, large]
+    env:
+      REPO: ghcr.io/postmodem-bbs/fixture-przemo
+      CAN_PUSH: ${{ github.event_name != 'pull_request' && github.repository == 'postmodem-bbs/postmodem' }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with: { node-version-file: .node-version, cache: pnpm }
+      - run: pnpm install --frozen-lockfile
+      - name: Verify vendored schema is untouched
+        working-directory: tools/fixtures/przemo/schema
+        run: |
+          echo "0bac8bc2a0d5c52535735a9b4193c28b5c4da4c11c531894036d6d6d608df4d6  mysql_schema.sql" | sha256sum -c
+          echo "0d23084cfce147e7230b065f54d784df04192aa73799867bbbdf5cb4481a3593  mysql_basic.sql" | sha256sum -c
+      - name: Unit tests
+        run: pnpm vitest run --project @postmodem/fixtures
+      - name: Build and smoke-test the image
+        id: build
+        run: |
+          version=$(jq -r .version tools/fixtures/package.json)
+          tag="$REPO:$version-${{ matrix.preset }}"
+          pnpm fixtures:image --preset ${{ matrix.preset }} --tag "$tag" --smoke
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - name: Refuse to overwrite a published version with different content
+        if: env.CAN_PUSH == 'true'
+        run: |
+          echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+          new=$(docker inspect -f '{{ index .Config.Labels "org.postmodem.fixture.sha256" }}' "${{ steps.build.outputs.tag }}")
+          # Reads the published image's label without pulling it (empty if nothing is published yet).
+          old=$(docker buildx imagetools inspect "${{ steps.build.outputs.tag }}" --format '{{ json .Image }}' 2>/dev/null \
+                | jq -r '.config.Labels["org.postmodem.fixture.sha256"] // empty' || true)
+          if [ -n "$old" ] && [ "$old" != "$new" ]; then
+            echo "::error::${{ steps.build.outputs.tag }} already exists with different content. Bump version in tools/fixtures/package.json."
+            exit 1
+          fi
+      - name: Push
+        if: env.CAN_PUSH == 'true'
+        run: |
+          docker push "${{ steps.build.outputs.tag }}"
+          docker tag "${{ steps.build.outputs.tag }}" "$REPO:${{ matrix.preset }}"
+          docker push "$REPO:${{ matrix.preset }}"

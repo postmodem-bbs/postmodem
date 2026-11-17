@@ -10,10 +10,13 @@ const browsers = (process.env.PW_BROWSERS ?? "chromium").split(",");
 
 export default defineConfig({
   testDir: "e2e",
+  outputDir: "var/test-results",
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
-  reporter: process.env.CI ? [["list"], ["html", { open: "never" }]] : "list",
+  reporter: process.env.CI
+    ? [["list"], ["html", { open: "never", outputFolder: "var/playwright-report" }]]
+    : "list",
   use: {
     baseURL: process.env.PM_BASE_URL ?? "http://localhost:8080",
     // Stack mode behind Caddy uses a locally issued certificate in CI.

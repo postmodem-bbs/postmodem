@@ -2,7 +2,7 @@
   "name": "postmodem-monorepo",
   "private": true,
   "type": "module",
-  "description": "Postmodem — a modern bulletin board in the Przemo tradition",
+  "description": "Postmodem \u2014 a modern bulletin board in the Przemo tradition",
   "license": "AGPL-3.0-or-later",
   "packageManager": "pnpm@12.19.0",
   "engines": {
@@ -19,7 +19,9 @@
     "e2e": "playwright test",
     "check:spdx": "node scripts/check-spdx.mjs",
     "check:licenses": "node scripts/check-licenses.mjs",
-    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm check:spdx && pnpm check:licenses"
+    "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm check:spdx && pnpm check:licenses",
+    "fixtures:generate": "pnpm --filter @postmodem/fixtures generate",
+    "fixtures:image": "pnpm --filter @postmodem/fixtures image"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.14.0",

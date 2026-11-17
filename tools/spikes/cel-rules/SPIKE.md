@@ -3,7 +3,7 @@
 Throwaway code; the findings are what matter. Run it with:
 
 ```bash
-cd spikes/cel-rules && npm install && node src/crosscheck.ts
+cd tools/spikes/cel-rules && npm install && node src/crosscheck.ts
 ```
 
 Node 24 (built-in TypeScript stripping and `node:sqlite`), `@bufbuild/cel` 0.6.2,

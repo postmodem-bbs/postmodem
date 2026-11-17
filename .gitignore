@@ -4,14 +4,13 @@ dist/
 out/
 .svelte-kit/
 coverage/
-test-results/
-playwright-report/
 *.tsbuildinfo
 .env
 .DS_Store
 
-# Local dev data
-/data/
+# All generated output (dev data, test results, fixture dumps, report bundles): see var/README.md
+/var/*
+!/var/README.md
 deploy/secrets/
 
 # Legacy phpBB2 "modified by Przemo" reference code (GPL-2.0-or-later).

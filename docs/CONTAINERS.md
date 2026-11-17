@@ -145,7 +145,7 @@ deploy/
 deploy/dev/
   compose.dev.yaml        # dev overrides: build target=dev, watch, mailpit, debug ports
   compose.test.yaml       # CI/e2e: ephemeral volumes, playwright runner
-  legacy/                 # MariaDB 5.5-compatible container + sample Przemo dump for importer tests
+  (legacy board: `--profile legacy` runs ghcr.io/postmodem-bbs/fixture-przemo, see tools/README.md)
 ```
 
 ### 4.2 Solo

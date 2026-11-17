@@ -33,7 +33,7 @@ reader-specific data reaches the island through the bridge, filtered by the
 reader's capabilities.
 
 ## Evidence
-Spike [spikes/island-origin](../../spikes/island-origin/) in headless Chrome:
+Spike [tools/spikes/island-origin](../../tools/spikes/island-origin/) in headless Chrome:
 origin `null`; `document.cookie`, `localStorage`, parent DOM and top
 navigation all throw `SecurityError`; `fetch('/api/me')` never reached the
 server; an exfiltration image to an external host was blocked by CSP; the

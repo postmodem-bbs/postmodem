@@ -236,7 +236,7 @@ row numbers, and authors are always set by the server.
 ### 6.3 Rule language: a CEL subset
 
 Decided in [ADR 0007](adr/0007-cel-subset-for-rules.md), validated by the
-[spike](../spikes/cel-rules/SPIKE.md). Rules (collections,
+[spike](../tools/spikes/cel-rules/SPIKE.md). Rules (collections,
 entity fields, channel subscriptions, slot `when`, page `when`, markup
 `enabledFor`) are written in a **subset of CEL** (Common Expression Language,
 as used by Kubernetes, Envoy and Firebase-style policies). The syntax is

@@ -10,7 +10,7 @@
     {
       "name": "island-spike",
       "runtimeExecutable": "node",
-      "runtimeArgs": ["spikes/island-origin/server.mjs"],
+      "runtimeArgs": ["tools/spikes/island-origin/server.mjs"],
       "port": 8090
     }
   ]

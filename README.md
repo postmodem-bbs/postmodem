@@ -73,17 +73,18 @@ pnpm e2e            # Playwright + axe against a running board (PM_BASE_URL)
 
 ## Repository layout
 
-| Path            | What                                                     |
-| --------------- | -------------------------------------------------------- |
-| `apps/server`   | SvelteKit web layer and the `postmodem` CLI              |
-| `packages/core` | framework-free domain: config, typed settings, logging   |
-| `packages/db`   | SQLite (`node:sqlite`) and Postgres adapters, migrations |
-| `packages/i18n` | Fluent translations (English, Polish)                    |
-| `packages/ui`   | theme tokens → CSS, contrast checks                      |
-| `deploy/`       | Compose files (solo, stack, dev) and Caddy config        |
-| `e2e/`          | end-to-end and accessibility tests                       |
-| `docs/`         | design documents and [ADRs](docs/adr/)                   |
-| `spikes/`       | throwaway experiments behind some ADRs                   |
+| Path            | What                                                                       |
+| --------------- | -------------------------------------------------------------------------- |
+| `apps/server`   | SvelteKit web layer and the `postmodem` CLI                                |
+| `packages/core` | framework-free domain: config, typed settings, logging                     |
+| `packages/db`   | SQLite (`node:sqlite`) and Postgres adapters, migrations                   |
+| `packages/i18n` | Fluent translations (English, Polish)                                      |
+| `packages/ui`   | theme tokens → CSS, contrast checks                                        |
+| `deploy/`       | Compose files (solo, stack, dev) and Caddy config                          |
+| `e2e/`          | end-to-end and accessibility tests                                         |
+| `docs/`         | design documents and [ADRs](docs/adr/)                                     |
+| `tools/`        | fixtures generator, load tests, spikes ([tools/README](tools/README.md))   |
+| `var/`          | everything generated locally; ignored by git ([var/README](var/README.md)) |
 
 ## Licence
 

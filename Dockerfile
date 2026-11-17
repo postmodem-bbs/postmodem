@@ -17,6 +17,7 @@ COPY packages/core/package.json packages/core/
 COPY packages/db/package.json packages/db/
 COPY packages/i18n/package.json packages/i18n/
 COPY packages/ui/package.json packages/ui/
+COPY tools/fixtures/package.json tools/fixtures/
 # No BuildKit cache mount on purpose: the legacy builder must work too (Docker without buildx).
 # Layer caching still skips this step unless a manifest or the lockfile changes.
 RUN pnpm install --frozen-lockfile

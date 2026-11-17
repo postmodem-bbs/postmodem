@@ -51,6 +51,14 @@ services:
     image: axllent/mailpit:v1.27
     ports: ["8025:8025"]
 
+  # A legacy Przemo board to import from: `--profile legacy`.
+  # FIXTURE_PRESET=large gives the 200k-post board used for the performance budget.
+  # Build locally with `pnpm fixtures:image --preset small` until the images are published.
+  legacy:
+    image: ghcr.io/postmodem-bbs/fixture-przemo:${FIXTURE_VERSION:-0.1.0}-${FIXTURE_PRESET:-small}
+    profiles: ["legacy"]
+    ports: ["127.0.0.1:3306:3306"]
+
 volumes:
   dev-data: {}
   dev-pg: {}

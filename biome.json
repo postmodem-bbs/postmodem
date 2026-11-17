@@ -11,11 +11,10 @@
       "!**/*.svelte",
       "!**/app.html",
       "!old_przemo_phpBB",
-      "!spikes",
+      "!tools/spikes",
       "!docs",
       "!LICENSES",
-      "!test-results",
-      "!playwright-report"
+      "!var"
     ]
   },
   "formatter": {

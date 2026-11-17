@@ -5,9 +5,9 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 
 const ROOT = new URL("..", import.meta.url).pathname;
-const SCAN = ["apps", "packages", "scripts", "e2e"];
+const SCAN = ["apps", "packages", "scripts", "e2e", "tools"];
 const EXTENSIONS = [".ts", ".js", ".mjs", ".cjs", ".svelte", ".css", ".ftl"];
-const SKIP = new Set(["node_modules", "build", "dist", ".svelte-kit", "out", "test-results"]);
+const SKIP = new Set(["node_modules", "build", "dist", ".svelte-kit", "out", "var", "spikes"]);
 
 const expected = (path) => (path.startsWith("packages/sdk/") ? "Apache-2.0" : "AGPL-3.0-or-later");
 

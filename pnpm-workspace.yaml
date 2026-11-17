@@ -1,6 +1,7 @@
 packages:
   - apps/*
   - packages/*
+  - tools/fixtures
 
 # Only these packages may run install scripts (pnpm refuses all others).
 allowBuilds:

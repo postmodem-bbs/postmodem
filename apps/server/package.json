@@ -12,7 +12,7 @@
     "postmodem": "build/postmodem.js"
   },
   "scripts": {
-    "dev": "POSTMODEM_DATA_DIR=${POSTMODEM_DATA_DIR:-../../data} vite dev --host 0.0.0.0 --port 5173",
+    "dev": "POSTMODEM_DATA_DIR=${POSTMODEM_DATA_DIR:-../../var/data} vite dev --host 0.0.0.0 --port 5173",
     "build": "vite build && node scripts/build-cli.mjs",
     "start": "node build/postmodem.js run",
     "typecheck": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --fail-on-warnings"
