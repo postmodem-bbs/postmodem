@@ -425,7 +425,7 @@ disabled, which is how we keep feature parity with Przemo.
    Biome 2, Drizzle 0.45, Playwright + axe-core.
 2. **M1 — Readable board:** node tree, topics, posts, auth, registration,
    Classic theme, permissions engine. *Importer from Przemo* early so we can
-   test against real-shaped data.
+   test against real-shaped data. Detailed plan: [milestones/M1.md](milestones/M1.md).
 3. **M2 — Usable board:** editor, notifications, PMs, moderation, search,
    ACP (vanilla scope). **Platform services v0** (slots, settings schema,
    capabilities, entity fields, counters, preferences, collections, channels)
@@ -454,7 +454,8 @@ CEL subset for rules ([ADR 0007](adr/0007-cel-subset-for-rules.md)),
 add-on islands on the same host with an opaque origin ([ADR 0008](adr/0008-same-host-opaque-origin-islands.md)),
 federation as an optional, reversible module with a federation-ready core ([ADR 0009](adr/0009-federation-optional-module.md)),
 AGPL-3.0 core + Apache-2.0 SDK + DCO ([ADR 0010](adr/0010-agpl-core-apache-sdk.md)),
-the name **Postmodem** and its identifiers ([ADR 0011](adr/0011-name-postmodem.md)).
+the name **Postmodem** and its identifiers ([ADR 0011](adr/0011-name-postmodem.md)),
+configurable permalinks with phpBB2-classic as default ([ADR 0012](adr/0012-configurable-permalinks.md)).
 
 No architecture decisions are open. Owner actions before going public:
 register `postmodem.app`, create the `postmodem-bbs` GitHub and `@postmodem`
