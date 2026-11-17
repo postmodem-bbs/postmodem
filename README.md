@@ -5,10 +5,12 @@ batteries included, every battery removable, trivially self-hosted.
 Classic forum layout, modern internals: accessible, themeable, extensible,
 works without JavaScript, and ships as one Docker image.
 
-> **Status: M0 (skeleton).** The platform runs end to end (config, database,
-> migrations, settings, i18n, theming, health checks, container image, CI),
-> but there are no forums, topics or users yet. Those arrive in M1.
-> See [docs/DESIGN.md](docs/DESIGN.md) for the roadmap.
+> **Status: M1 in progress.** Read-only board: index, forums (with Przemo-style
+> sub-forums) and topics on phpBB2's own URLs, posts rendered from BBCode. No
+> accounts, posting or permissions yet. See [docs/milestones/M1.md](docs/milestones/M1.md).
+>
+> Try it with demo content: `pnpm cli seed-demo`, then `pnpm dev`
+> (or `postmodem seed-demo` inside the container).
 
 ## Run it
 
@@ -38,6 +40,7 @@ The image's entrypoint is the `postmodem` CLI. One image, many roles:
 | `run`                          | web + worker + scheduler in one process (default, solo mode)             |
 | `web` / `worker` / `scheduler` | single roles for stack mode                                              |
 | `migrate`                      | apply database migrations (safe to run concurrently)                     |
+| `seed-demo`                    | fill an empty board with demo content (refuses if forums exist)          |
 | `doctor`                       | check configuration, data directory, database, migrations                |
 | `healthcheck`                  | used by Docker's `HEALTHCHECK`                                           |
 | `config print`                 | effective configuration and where each value came from, secrets redacted |

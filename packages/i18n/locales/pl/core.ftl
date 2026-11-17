@@ -27,3 +27,54 @@ theme-system = Systemowy
 
 bb-you-guest = gość
 bb-hidden-content = Ta treść jest ukryta.
+
+guest = Gość
+by-author = przez { $name }
+breadcrumb-label = Jesteś tutaj
+board-empty = To forum nie ma jeszcze działów. Uruchom „postmodem seed-demo”, żeby wypełnić je przykładową treścią.
+
+index-forum = Forum
+index-topics = Tematy
+index-posts = Posty
+index-last-post = Ostatni post
+index-no-posts = Brak postów
+index-subforums = Podfora
+index-locked = (zablokowane)
+
+topics-count = { $count ->
+    [one] { $count } temat
+    [few] { $count } tematy
+    [many] { $count } tematów
+   *[other] { $count } tematu
+}
+users-count = { $count ->
+    [one] { $count } zarejestrowanego użytkownika
+   *[other] { $count } zarejestrowanych użytkowników
+}
+stats-heading = Statystyki
+stats-totals = Nasi użytkownicy napisali { $posts } w { $topics }. Mamy { $users }.
+stats-newest = Najnowszy użytkownik: { $name }
+
+forum-topic = Temat
+forum-author = Autor
+forum-replies = Odpowiedzi
+forum-views = Wyświetleń
+forum-no-topics = W tym dziale nie ma jeszcze tematów.
+forum-category-hint = Wybierz dział:
+
+topic-announcement = Ogłoszenie
+topic-sticky = Przyklejony
+topic-locked = Zablokowany
+topic-moved = Przeniesiony
+
+pagination-label = Strony
+pagination-status = Strona { $current } z { $total }
+pagination-prev = Poprzednia
+pagination-next = Następna
+pagination-goto = Strona { $n }
+
+post-permalink = Link do tego posta
+post-author-posts = Posty: { $count }
+post-author-joined = Dołączył(a)
+post-author-from = Skąd
+post-guest = gość

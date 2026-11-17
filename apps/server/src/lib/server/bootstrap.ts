@@ -14,12 +14,14 @@ import {
   Settings,
 } from "@postmodem/core";
 import { type Database, openDatabase } from "@postmodem/db";
+import { createRenderer, type Renderer } from "./content.ts";
 
 export interface AppContext {
   config: Config;
   loaded: LoadedConfig;
   db: Database;
   settings: Settings;
+  renderer: Renderer;
   log: Logger;
   startedAt: Date;
   readiness(): Promise<{ ready: boolean; reason?: string }>;
@@ -83,6 +85,7 @@ export async function createContext(opts: { migrate: boolean; loaded?: LoadedCon
     loaded,
     db,
     settings,
+    renderer: createRenderer(db.repos),
     log,
     startedAt: new Date(),
     async readiness() {

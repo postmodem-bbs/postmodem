@@ -2,6 +2,7 @@
 <script lang="ts">
   import "../app.css";
   import { SUPPORTED, translator } from "@postmodem/i18n";
+  import { page } from "$app/state";
 
   let { data, children } = $props();
   const t = $derived(translator(data.locale));
@@ -15,7 +16,7 @@
     <a class="board-name" href="/">{data.boardName}</a>
     <nav aria-label={t("nav-label")}>
       <ul>
-        <li><a href="/" aria-current="page">{t("nav-index")}</a></li>
+        <li><a href="/" aria-current={page.url.pathname === "/" ? "page" : undefined}>{t("nav-index")}</a></li>
       </ul>
     </nav>
   </div>

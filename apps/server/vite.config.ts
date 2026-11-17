@@ -18,8 +18,12 @@ export default defineConfig(({ command }) => {
           directives: {
             "default-src": ["self"],
             "script-src": ["self"],
-            // Vite injects styles at runtime in dev only.
-            "style-src": dev ? ["self", "unsafe-inline"] : ["self"],
+            // Vite injects styles at runtime in dev only. In production the only inline style is
+            // SvelteKit's route announcer (screen-reader live region), allowed by its exact hash.
+            // e2e fails on any CSP violation, so a SvelteKit change to that string is caught.
+            "style-src": dev
+              ? ["self", "unsafe-inline"]
+              : ["self", "unsafe-hashes", "sha256-S8qMpvofolR8Mpjy4kQvEm7m1q8clzU4dfDH0AmvZjo="],
             // [img] in posts points at external hosts (loaded with no-referrer). An image proxy
             // for reader privacy is a later option.
             "img-src": ["self", "data:", "https:"],

@@ -8,6 +8,15 @@
       "port": 5173
     },
     {
+      "name": "postmodem-prod",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "POSTMODEM_DATA_DIR=var/data POSTMODEM_PORT=8097 POSTMODEM_PUBLIC_URL=http://localhost:8097 node apps/server/build/postmodem.js run"
+      ],
+      "port": 8097
+    },
+    {
       "name": "island-spike",
       "runtimeExecutable": "node",
       "runtimeArgs": ["tools/spikes/island-origin/server.mjs"],

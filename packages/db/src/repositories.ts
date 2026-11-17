@@ -339,6 +339,15 @@ export function createRepositories(db: Db): Repositories {
       const r = await db.selectFrom("topics").selectAll().where("id", "=", id).executeTakeFirst();
       return r && toTopic(r);
     },
+    async getMany(ids) {
+      if (!ids.length) return new Map();
+      const rows = await db
+        .selectFrom("topics")
+        .selectAll()
+        .where("id", "in", [...new Set(ids)])
+        .execute();
+      return new Map(rows.map((r) => [r.id, toTopic(r)]));
+    },
     async bySlug(slug) {
       const r = await db.selectFrom("topics").selectAll().where("slug", "=", slug).executeTakeFirst();
       return r && toTopic(r);
@@ -419,6 +428,15 @@ export function createRepositories(db: Db): Repositories {
     async get(id) {
       const r = await db.selectFrom("posts").selectAll().where("id", "=", id).executeTakeFirst();
       return r && toPost(r);
+    },
+    async getMany(ids) {
+      if (!ids.length) return new Map();
+      const rows = await db
+        .selectFrom("posts")
+        .selectAll()
+        .where("id", "in", [...new Set(ids)])
+        .execute();
+      return new Map(rows.map((r) => [r.id, toPost(r)]));
     },
     async listByTopic(topicId, page, opts) {
       const base = db

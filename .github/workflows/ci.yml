@@ -148,7 +148,10 @@ jobs:
         if: matrix.mode == 'solo'
         working-directory: deploy
         env: { POSTMODEM_IMAGE: "postmodem:ci", POSTMODEM_HTTP_PORT: "8080" }
-        run: docker compose -f compose.solo.yaml up -d --wait
+        run: |
+          docker compose -f compose.solo.yaml up -d --wait
+          # The e2e suite browses the demo board (index, forums, topics).
+          docker compose -f compose.solo.yaml exec -T postmodem /nodejs/bin/node /app/postmodem.js seed-demo
       - name: Start (stack)
         if: matrix.mode == 'stack'
         working-directory: deploy
@@ -165,6 +168,7 @@ jobs:
           docker compose up -d --wait web
           docker compose up -d proxy
           for _ in $(seq 1 30); do curl -skf https://localhost/readyz && break; sleep 2; done
+          docker compose exec -T web /nodejs/bin/node /app/postmodem.js seed-demo
       - name: Run Playwright
         env:
           PM_BASE_URL: ${{ matrix.mode == 'solo' && 'http://localhost:8080' || 'https://localhost' }}

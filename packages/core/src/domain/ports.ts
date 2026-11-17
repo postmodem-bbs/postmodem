@@ -90,6 +90,7 @@ export interface NewTopic {
 export interface TopicRepository {
   create(input: NewTopic): Promise<Topic>;
   get(id: Id): Promise<Topic | undefined>;
+  getMany(ids: Id[]): Promise<Map<Id, Topic>>;
   bySlug(slug: string): Promise<Topic | undefined>;
   /** Announcements, then stickies, then the rest; each by most recent activity. */
   listByNode(nodeId: Id, page: PageRequest, opts?: { visibility?: VisibilityState[] }): Promise<Page<Topic>>;
@@ -114,6 +115,7 @@ export interface NewPost {
 export interface PostRepository {
   create(input: NewPost): Promise<Post>;
   get(id: Id): Promise<Post | undefined>;
+  getMany(ids: Id[]): Promise<Map<Id, Post>>;
   /** Oldest first, as a classic board reads. */
   listByTopic(topicId: Id, page: PageRequest, opts?: { visibility?: VisibilityState[] }): Promise<Page<Post>>;
   /** 0-based position of a post within its topic (for `?p=` permalinks to the right page). */

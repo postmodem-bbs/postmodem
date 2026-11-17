@@ -64,6 +64,10 @@ describe("rendering", () => {
       '<span class="bb-color bb-color-red">r</span><span class="bb-size-xl">big</span>',
     );
     expect(renderHtml("line1\nline2")).toBe("line1<br>line2");
+    // Typed line breaks next to blocks don't stack on top of the block's margins.
+    expect(renderHtml("before\n\n[quote]q[/quote]\n\nafter\n\n\nend")).toBe(
+      'before<blockquote class="bb-quote"><div class="bb-quote-body">q</div></blockquote>after<br><br><br>end',
+    );
   });
 
   it("renders Przemo's extra tags as classes, never inline styles", () => {

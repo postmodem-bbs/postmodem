@@ -7,6 +7,7 @@ import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import { ConfigError, describeConfig } from "@postmodem/core";
 import { type AppContext, createContext, readConfig } from "../lib/server/bootstrap.ts";
+import { seedDemo } from "../lib/server/demo.ts";
 
 const HELP = `postmodem — a modern bulletin board
 
@@ -18,6 +19,7 @@ Usage: postmodem <command>
   scheduler     periodic job scheduler (run exactly one)
   migrate       apply database migrations and exit
   doctor        check configuration, data directory and database
+  seed-demo     fill an empty board with demo content (refuses if forums exist)
   healthcheck   exit 0 if the local web server answers /healthz
   config print  show the effective configuration (secrets redacted)
   version       print version information
@@ -167,6 +169,14 @@ async function main(argv: string[]): Promise<number> {
       ctx.log.info(ran.length ? "migrations applied" : "database is up to date", { migrations: ran });
       await ctx.db.close();
       return 0;
+    }
+    case "seed-demo": {
+      const ctx = await createContext({ migrate: true });
+      const result = await seedDemo(ctx.db.repos);
+      if (result.created) ctx.log.info("demo board created", { ...result });
+      else ctx.log.warn("the board already has forums; demo content was not added");
+      await ctx.db.close();
+      return result.created ? 0 : 1;
     }
     case "doctor":
       return doctor();

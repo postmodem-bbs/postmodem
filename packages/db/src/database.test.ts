@@ -172,6 +172,9 @@ describe.each(testEngines())("%s", (engine) => {
         rendered: "<p>first</p>",
         renderVersion: 3,
       });
+      expect((await r.posts.getMany([posts.items[0]!.id, posts.items[1]!.id])).size).toBe(2);
+      expect((await r.topics.getMany([recent.id, recent.id])).get(recent.id)?.title).toBe("Recent");
+      expect((await r.posts.getMany([])).size).toBe(0);
       await r.topics.addViews(recent.id, 5);
       expect((await r.topics.get(recent.id))?.viewCount).toBe(5);
     });

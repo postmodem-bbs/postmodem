@@ -7,7 +7,7 @@ import { type Node, parse } from "./bbcode.ts";
 import { escapeHtml } from "./entities.ts";
 
 /** Bump whenever output changes, so cached posts.rendered is refreshed. */
-export const RENDER_VERSION = 1;
+export const RENDER_VERSION = 2;
 
 export interface Smiley {
   code: string;
@@ -101,6 +101,9 @@ function smileyRegex(smilies: Smiley[]): RegExp | null {
   return new RegExp(`(?<![\\p{L}\\p{N}])(${codes.join("|")})(?![\\p{L}\\p{N}])`, "gu");
 }
 
+const BLOCKS = new Set(["quote", "code", "list", "center", "scroll", "hide"]);
+const isBlock = (n: Node | undefined) => n?.type === "tag" && BLOCKS.has(n.name);
+
 /** Drop whitespace-only line breaks at the start and end of a run of nodes (list items). */
 function trimEdges(nodes: Node[]): Node[] {
   const out = [...nodes];
@@ -158,8 +161,18 @@ export function renderHtml(source: string, opts: RenderOptions = {}): string {
   const plain = (nodes: Node[]): string =>
     nodes.map((n) => (n.type === "text" ? n.value : plain(n.children))).join("");
 
+  // Line breaks typed next to a block (quote, code, list…) would add <br>s on top of the
+  // block's own margins; up to two are absorbed on each side.
   const render = (nodes: Node[], ctx: { links: boolean; smileys: boolean }): string =>
-    nodes.map((n) => (n.type === "text" ? textHtml(n.value, ctx) : tag(n, ctx))).join("");
+    nodes
+      .map((n, i) => {
+        if (n.type !== "text") return tag(n, ctx);
+        let value = n.value;
+        if (isBlock(nodes[i - 1])) value = value.replace(/^\n{1,2}/, "");
+        if (isBlock(nodes[i + 1])) value = value.replace(/\n{1,2}$/, "");
+        return textHtml(value, ctx);
+      })
+      .join("");
 
   const tag = (n: Extract<Node, { type: "tag" }>, ctx: { links: boolean; smileys: boolean }): string => {
     const inner = () => render(n.children, ctx);
