@@ -215,7 +215,7 @@ pm.policy.contribute('post.edit', async (viewer, post, ctx) => {
 }, { critical: true });
 ```
 
-- Resolution: core grants (roles × scopes, DESIGN §5.3) first; then any
+- Resolution: core grants (roles × scopes, DESIGN §5.3, ADR 0015) first; then any
   contributor `deny` wins; `allow` from a contributor can only *widen* where the
   core said "unset", never override a core `never`.
 - Every decision carries a **reason chain**, which the ACP permission simulator

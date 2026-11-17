@@ -15,8 +15,9 @@ export const load: PageServerLoad = async ({ url, locals }) => {
   const { repos } = locals.ctx.db;
   const postId = positiveInt(url.searchParams.get("p"));
   if (postId !== null) {
-    const where = await locatePost(repos, postId);
+    const where = await locatePost(repos, locals.perms, postId);
     if (!where) error(404, "Not found");
+    if ("denied" in where) error(where.denied, where.denied === 403 ? "Forbidden" : "Not found");
     redirect(302, `${urls.topic(where.topicId, where.start)}#p${postId}`);
   }
   const id = positiveInt(url.searchParams.get("t"));
@@ -24,11 +25,13 @@ export const load: PageServerLoad = async ({ url, locals }) => {
 
   const data = await loadTopic(
     repos,
+    locals.perms,
     (posts) => locals.ctx.renderer.render(posts),
     id,
     url.searchParams.get("start"),
   );
   if (!data) error(404, "Not found");
+  if ("denied" in data) error(data.denied, data.denied === 403 ? "Forbidden" : "Not found");
   if ("movedTo" in data && data.movedTo) redirect(301, urls.topic(data.movedTo));
   if (!("posts" in data) || !data.posts) error(404, "Not found");
 

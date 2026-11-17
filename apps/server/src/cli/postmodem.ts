@@ -20,12 +20,56 @@ Usage: postmodem <command>
   migrate       apply database migrations and exit
   doctor        check configuration, data directory and database
   seed-demo     fill an empty board with demo content (refuses if forums exist)
+  perms explain --user <name|guest> --capability <key> [--node <id>]
+                show whether a user may do something, and which grants decided it
   healthcheck   exit 0 if the local web server answers /healthz
   config print  show the effective configuration (secrets redacted)
   version       print version information
 `;
 
 const SHUTDOWN_GRACE_MS = 25_000;
+
+function flag(args: string[], name: string): string | undefined {
+  const i = args.indexOf(`--${name}`);
+  return i >= 0 ? args[i + 1] : undefined;
+}
+
+async function permsExplain(args: string[]): Promise<number> {
+  const userArg = flag(args, "user") ?? "guest";
+  const capability = flag(args, "capability");
+  const nodeArg = flag(args, "node");
+  const ctx = await createContext({ migrate: false });
+  try {
+    if (!capability || !ctx.capabilities.get(capability)) {
+      console.error(
+        `unknown or missing --capability; known: ${ctx.capabilities
+          .all()
+          .map((c) => c.key)
+          .join(", ")}`,
+      );
+      return 2;
+    }
+    const user = userArg === "guest" ? null : await ctx.db.repos.users.byUsername(userArg);
+    if (user === undefined) {
+      console.error(`no user named '${userArg}'`);
+      return 2;
+    }
+    const node = nodeArg ? await ctx.db.repos.nodes.get(Number(nodeArg)) : null;
+    if (node === undefined) {
+      console.error(`no forum or category with id ${nodeArg}`);
+      return 2;
+    }
+    const perms = await ctx.permissions(user?.id ?? null);
+    console.log(
+      `viewer: ${user ? `${user.username} (user ${user.id}, groups: ${perms.viewer.groupIds.join(", ") || "none"})` : "guest"}`,
+    );
+    if (node) console.log(`node:   ${node.title} (${node.path})`);
+    console.log(perms.explain(capability, node));
+    return perms.can(capability, node) ? 0 : 1;
+  } finally {
+    await ctx.db.close();
+  }
+}
 
 async function startWeb(ctx: AppContext): Promise<Server> {
   const { config } = ctx;
@@ -178,6 +222,9 @@ async function main(argv: string[]): Promise<number> {
       await ctx.db.close();
       return result.created ? 0 : 1;
     }
+    case "perms":
+      if (sub !== "explain") break;
+      return permsExplain(argv.slice(2));
     case "doctor":
       return doctor();
     case "healthcheck":

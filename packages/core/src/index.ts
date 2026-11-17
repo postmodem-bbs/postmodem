@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 export * from "./config.ts";
 export * from "./core-settings.ts";
+export * from "./domain/core-permissions.ts";
 export * from "./domain/names.ts";
+export * from "./domain/permissions.ts";
 export * from "./domain/ports.ts";
 export * from "./domain/tree.ts";
 export * from "./domain/types.ts";

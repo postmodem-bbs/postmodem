@@ -165,6 +165,44 @@ test.describe("browsing", () => {
   });
 });
 
+test.describe("permissions (guest)", () => {
+  test.use({ locale: "en-US" });
+  const secrets = ["Strefa użytkowników", "Moderatornia", "Tajny zlot", "Zgłoszenia do przejrzenia"];
+
+  test("hidden forums are not listed, and the hidden sub-forum is not offered", async ({ page }) => {
+    await page.goto("/");
+    for (const s of secrets) await expect(page.locator("main")).not.toContainText(s);
+    await expect(page.getByRole("link", { name: "Archiwum" })).toBeVisible(); // listed, not readable
+    await expect(page.locator(".subforums")).toHaveText(/Gry retro$/);
+  });
+
+  test("no forum or topic id leaks hidden content; hidden ones are plain 404s", async ({ request }) => {
+    let notFound = 0;
+    for (let f = 1; f <= 12; f++) {
+      const res = await request.get(`/viewforum.php?f=${f}`);
+      const body = await res.text();
+      for (const s of secrets) expect(body, `f=${f}`).not.toContain(s);
+      if (res.status() === 404) notFound++;
+    }
+    expect(notFound).toBeGreaterThanOrEqual(2);
+    for (let t = 1; t <= 45; t++) {
+      const body = await (await request.get(`/viewtopic.php?t=${t}`)).text();
+      for (const s of secrets) expect(body, `t=${t}`).not.toContain(s);
+    }
+  });
+
+  test("a listed but unreadable forum explains itself with a 403", async ({ page }) => {
+    await page.goto("/");
+    await expect(page.getByRole("row", { name: /Archiwum/ })).toContainText("Restricted");
+    const href = await page.getByRole("link", { name: "Archiwum" }).getAttribute("href");
+    const res = await page.goto(href!);
+    expect(res?.status()).toBe(403);
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Access denied");
+    await expect(page.locator("main")).not.toContainText("Stare ogłoszenia");
+    await expectNoAxeViolations(page);
+  });
+});
+
 test.describe("without JavaScript", () => {
   test.use({ javaScriptEnabled: false, locale: "en-US" });
 

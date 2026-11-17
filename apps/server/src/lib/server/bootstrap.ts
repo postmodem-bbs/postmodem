@@ -5,13 +5,21 @@ import { randomBytes } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import {
+  type CapabilityRegistry,
   type Config,
+  coreRegistry,
   coreSettings,
   createLogger,
+  type Id,
+  installCorePermissions,
   type LoadedConfig,
   type Logger,
   loadConfig,
+  loadSnapshot,
+  type Permissions,
+  permissionsFor,
   Settings,
+  viewerFor,
 } from "@postmodem/core";
 import { type Database, openDatabase } from "@postmodem/db";
 import { createRenderer, type Renderer } from "./content.ts";
@@ -22,6 +30,9 @@ export interface AppContext {
   db: Database;
   settings: Settings;
   renderer: Renderer;
+  capabilities: CapabilityRegistry;
+  /** Permission view for one request (null = guest). Loads a fresh snapshot each call. */
+  permissions(userId: Id | null): Promise<Permissions>;
   log: Logger;
   startedAt: Date;
   readiness(): Promise<{ ready: boolean; reason?: string }>;
@@ -76,9 +87,13 @@ export async function createContext(opts: { migrate: boolean; loaded?: LoadedCon
   const tryLoadSettings = async () => {
     if (settingsLoaded || (await db.pendingMigrations()).length) return;
     for (const p of await settings.init()) log.warn(p);
+    const { defaultGrants } = await installCorePermissions(db.repos);
+    if (defaultGrants)
+      log.info("granted phpBB2's default permissions: everyone reads, registered users post");
     settingsLoaded = true;
   };
   await tryLoadSettings();
+  const capabilities = coreRegistry();
 
   return {
     config,
@@ -86,6 +101,11 @@ export async function createContext(opts: { migrate: boolean; loaded?: LoadedCon
     db,
     settings,
     renderer: createRenderer(db.repos),
+    capabilities,
+    async permissions(userId) {
+      const [snapshot, viewer] = await Promise.all([loadSnapshot(db.repos), viewerFor(db.repos, userId)]);
+      return permissionsFor(capabilities, snapshot, viewer);
+    },
     log,
     startedAt: new Date(),
     async readiness() {

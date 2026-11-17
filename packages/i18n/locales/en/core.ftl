@@ -36,6 +36,7 @@ index-topics = Topics
 index-posts = Posts
 index-last-post = Last post
 index-no-posts = No posts
+index-restricted = Restricted: you cannot read this forum
 index-subforums = Sub-forums
 index-locked = (locked)
 
@@ -74,3 +75,12 @@ post-author-posts = Posts: { $count }
 post-author-joined = Joined
 post-author-from = From
 post-guest = guest
+
+## Error pages
+error-404-title = Page not found
+error-404-body = This forum, topic or post does not exist, or you are not allowed to see it.
+error-403-title = Access denied
+error-403-body = You can see this forum exists, but you are not allowed to read it. Signing in may help.
+error-other-title = Something went wrong
+error-other-body = The board could not show this page. Please try again in a moment.
+error-back = Back to the board index

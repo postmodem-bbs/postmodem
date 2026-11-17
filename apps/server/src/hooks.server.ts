@@ -49,6 +49,8 @@ export const handle: Handle = async ({ event, resolve }) => {
     boardDefault: ctx.settings.get(defaultLocale),
   });
   event.locals.theme = parseTheme(event.cookies.get(THEME_COOKIE));
+  // Accounts arrive in slice 4; until then everyone is a guest.
+  event.locals.perms = await ctx.permissions(null);
 
   const response = await resolve(event, {
     transformPageChunk: ({ html }) =>

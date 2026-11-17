@@ -38,6 +38,7 @@ index-topics = Tematy
 index-posts = Posty
 index-last-post = Ostatni post
 index-no-posts = Brak postów
+index-restricted = Ograniczony dostęp: nie możesz czytać tego forum
 index-subforums = Podfora
 index-locked = (zablokowane)
 
@@ -78,3 +79,12 @@ post-author-posts = Posty: { $count }
 post-author-joined = Dołączył(a)
 post-author-from = Skąd
 post-guest = gość
+
+## Error pages
+error-404-title = Nie znaleziono strony
+error-404-body = To forum, temat lub post nie istnieje albo nie masz uprawnień, by je zobaczyć.
+error-403-title = Brak dostępu
+error-403-body = To forum istnieje, ale nie masz uprawnień do czytania go. Zalogowanie się może pomóc.
+error-other-title = Coś poszło nie tak
+error-other-body = Nie udało się wyświetlić tej strony. Spróbuj ponownie za chwilę.
+error-back = Wróć do strony głównej forum

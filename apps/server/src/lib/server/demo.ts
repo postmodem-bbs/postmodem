@@ -2,7 +2,7 @@
 // `postmodem seed-demo`: fills an EMPTY board with content that shows what's implemented —
 // nested forums, announcements and stickies, long paginated topics, guest posts, and posts
 // exercising every BBCode feature. Refuses to touch a board that already has forums.
-import type { Id, Repositories } from "@postmodem/core";
+import { type Id, installCorePermissions, type Repositories } from "@postmodem/core";
 
 const DAY = 86_400_000;
 
@@ -92,6 +92,13 @@ export async function seedDemo(repos: Repositories, now = Date.now()): Promise<S
     });
     const ola = await r.users.create({ username: "Ola", email: null, createdAt: tick() });
     const people = [admin, lukasz, fan, ola];
+    const moderators = await r.groups.create({
+      name: "Moderatorzy",
+      description: "Pilnują porządku.",
+      kind: "closed",
+      createdAt: t,
+    });
+    await r.groups.addMember({ groupId: moderators.id, userId: ola.id, role: "member", pending: false });
 
     const general = await r.nodes.create({ parentId: null, kind: "category", title: "Ogólne", position: 1 });
     const hardware = await r.nodes.create({
@@ -134,6 +141,29 @@ export async function seedDemo(repos: Repositories, now = Date.now()): Promise<S
       title: "Oprogramowanie",
       description: "",
       position: 2,
+    });
+
+    // Permission showcase (ADR 0015).
+    const members = await r.nodes.create({
+      parentId: general.id,
+      kind: "forum",
+      title: "Strefa użytkowników",
+      description: "Tylko dla zarejestrowanych: goście jej nie widzą.",
+      position: 3,
+    });
+    const modroom = await r.nodes.create({
+      parentId: park.id,
+      kind: "forum",
+      title: "Moderatornia",
+      description: "Ukryte pod-forum dla grupy Moderatorzy.",
+      position: 2,
+    });
+    const archive = await r.nodes.create({
+      parentId: hardware.id,
+      kind: "forum",
+      title: "Archiwum",
+      description: "Widoczne dla wszystkich, czytać mogą zarejestrowani; nikt już tu nie pisze.",
+      position: 3,
     });
 
     let topicCount = 0;
@@ -207,8 +237,31 @@ export async function seedDemo(repos: Repositories, now = Date.now()): Promise<S
       [admin.id, "Check www.example.org for [u]refurbished[/u] units."],
     ]);
     await topic(software.id, "Ulubiony edytor tekstu", "normal", [[lukasz.id, "[code]:wq[/code]"]]);
+    await topic(members.id, "Tajny zlot użytkowników", "normal", [[lukasz.id, "Spotykamy się w sobotę!"]]);
+    await topic(modroom.id, "Zgłoszenia do przejrzenia", "normal", [[ola.id, "Nic nowego, cisza i spokój."]]);
+    await topic(archive.id, "Stare ogłoszenia z 2004 roku", "normal", [
+      [admin.id, "Forum przeniesione na nowy serwer."],
+    ]);
 
-    for (const node of [news, park, retro, computers, software]) await r.nodes.recount(node.id);
+    const roles = await installCorePermissions(r).then(async () => ({
+      hidden: (await r.roles.byKey("core:hidden"))!.id,
+      noRead: (await r.roles.byKey("core:no-read"))!.id,
+      reader: (await r.roles.byKey("core:reader"))!.id,
+      readOnly: (await r.roles.byKey("core:read-only"))!.id,
+      participant: (await r.roles.byKey("core:participant"))!.id,
+      moderator: (await r.roles.byKey("core:moderator"))!.id,
+      admin: (await r.roles.byKey("core:admin"))!.id,
+    }));
+    await r.grants.create(roles.hidden, { type: "everyone" }, members.id);
+    await r.grants.create(roles.participant, { type: "registered" }, members.id);
+    await r.grants.create(roles.hidden, { type: "everyone" }, modroom.id);
+    await r.grants.create(roles.moderator, { type: "group", id: moderators.id }, modroom.id);
+    await r.grants.create(roles.noRead, { type: "everyone" }, archive.id);
+    await r.grants.create(roles.readOnly, { type: "registered" }, archive.id);
+    await r.grants.create(roles.admin, { type: "user", id: admin.id }, null);
+
+    for (const node of [news, park, retro, computers, software, members, modroom, archive])
+      await r.nodes.recount(node.id);
     for (const person of people) await r.users.update(person.id, { postCount: authored.get(person.id) ?? 0 });
     await r.audit.append({
       actorId: null,
@@ -217,6 +270,6 @@ export async function seedDemo(repos: Repositories, now = Date.now()): Promise<S
       targetId: "demo",
       details: { topics: topicCount, posts: postCount },
     });
-    return { created: true, forums: 5, topics: topicCount, posts: postCount };
+    return { created: true, forums: 8, topics: topicCount, posts: postCount };
   });
 }

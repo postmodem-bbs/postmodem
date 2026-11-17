@@ -2,4 +2,4 @@
 import { loadIndex } from "#lib/server/board.ts";
 import type { PageServerLoad } from "./$types";
 
-export const load: PageServerLoad = async ({ locals }) => loadIndex(locals.ctx.db.repos);
+export const load: PageServerLoad = async ({ locals }) => loadIndex(locals.ctx.db.repos, locals.perms);

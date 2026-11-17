@@ -35,7 +35,9 @@
         <td class="num">{f.topicCount}</td>
         <td class="num">{f.postCount}</td>
         <td class="last-post">
-          {#if f.lastPost}
+          {#if f.restricted}
+            <span class="muted">{t("index-restricted")}</span>
+          {:else if f.lastPost}
             <a href={urls.post(f.lastPost.postId)}>{f.lastPost.topicTitle}</a><br />
             <span class="muted">
               {t("by-author", { name: f.lastPost.author || t("guest") })},

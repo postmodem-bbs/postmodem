@@ -217,7 +217,10 @@ Role-based with **capabilities registered by modules**:
   `attachments.upload`, `shoutbox.post`. Modules declare their own.
 - A *role* is a named set of capability grants (`Allow` / `Deny` / `Never`).
 - Roles are assigned to **(group | user) × (scope: global | node subtree)**.
-- Resolution: `Never` beats `Allow` beats unset; nearest scope wins otherwise.
+- Resolution ([ADR 0015](adr/0015-permission-resolution.md)): `Never` anywhere is
+  absolute; otherwise the nearest scope that mentions the capability decides, the most
+  specific subject (user > group > registered/guests > everyone) wins there, deny beats
+  allow at equal specificity, and unset means no.
 - "Junior Admin" = a role with a subset of `admin.*` capabilities. No special
   table.
 - A permissions **simulator** in the ACP ("what can user X do in forum Y, and
@@ -457,7 +460,8 @@ AGPL-3.0 core + Apache-2.0 SDK + DCO ([ADR 0010](adr/0010-agpl-core-apache-sdk.m
 the name **Postmodem** and its identifiers ([ADR 0011](adr/0011-name-postmodem.md)),
 configurable permalinks with phpBB2-classic as default ([ADR 0012](adr/0012-configurable-permalinks.md)),
 Kysely for portable SQL ([ADR 0013](adr/0013-kysely-for-portable-sql.md)),
-post markup dialect, class-based output and reader holes ([ADR 0014](adr/0014-post-markup.md)).
+post markup dialect, class-based output and reader holes ([ADR 0014](adr/0014-post-markup.md)),
+permission resolution: never, nearest scope, most specific subject ([ADR 0015](adr/0015-permission-resolution.md)).
 
 No architecture decisions are open. Owner actions before going public:
 register `postmodem.app`, create the `postmodem-bbs` GitHub and `@postmodem`
