@@ -108,6 +108,9 @@ jobs:
     name: E2E + accessibility (${{ matrix.mode }})
     needs: image
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read # pull the sha-tagged image built by the previous job
     strategy:
       fail-fast: false
       matrix:
