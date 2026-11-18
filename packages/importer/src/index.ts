@@ -6,7 +6,10 @@ export {
   type ImportOptions,
   type ImportReport,
   importPrzemo,
+  legacyAvatar,
   SOURCE,
+  safeRelativePath,
   summarise,
 } from "./przemo.ts";
 export { type LegacySource, openMysqlSource } from "./source.ts";
+export { classifyUnread, type UnreadByOrigin } from "./unread.ts";

@@ -3,8 +3,9 @@
 // time under 150 ms on 1 vCPU, for the pages M1 slice 7 names: the index, a big forum's first
 // and last page, a long topic's first and last page. Point FORUM and TOPIC at a large forum and
 // a long topic (classic URLs; ids from the board you test). Defaults fit the demo board.
+// For a deep topic, add one first: postmodem seed-demo --long-topic 10000 (prints its id).
 //   docker run --rm --network host -v "$PWD/tools/loadtest:/scripts:ro" -e BASE_URL=http://localhost:8080 \
-//     -e FORUM=1008 -e FORUM_TOPICS=1002 -e TOPIC=1051 -e TOPIC_POSTS=20 \
+//     -e FORUM=1008 -e FORUM_TOPICS=1002 -e TOPIC=21001 -e TOPIC_POSTS=10000 \
 //     grafana/k6:1.3.0 run /scripts/smoke.js
 import { check, sleep } from "k6";
 import http from "k6/http";
@@ -14,6 +15,8 @@ const FORUM = __ENV.FORUM || "4";
 const FORUM_TOPICS = Number(__ENV.FORUM_TOPICS || 30);
 const TOPIC = __ENV.TOPIC || "3";
 const TOPIC_POSTS = Number(__ENV.TOPIC_POSTS || 31);
+/** p95 limit in ms: the budget (150) locally on 1 vCPU; CI uses the alarm level (400). */
+const P95 = Number(__ENV.P95_MS || 150);
 /** phpBB2's `start=` offset of the last page (TOPICS_PER_PAGE 25, POSTS_PER_PAGE 15). */
 const lastStart = (items, perPage) => Math.floor((Math.max(items, 1) - 1) / perPage) * perPage;
 
@@ -38,7 +41,7 @@ export const options = {
     },
   },
   thresholds: {
-    ...Object.fromEntries(Object.keys(PAGES).map((p) => [`http_req_duration{page:${p}}`, ["p(95)<150"]])),
+    ...Object.fromEntries(Object.keys(PAGES).map((p) => [`http_req_duration{page:${p}}`, [`p(95)<${P95}`]])),
     http_req_failed: ["rate<0.01"],
   },
 };

@@ -3,7 +3,8 @@
 // Permission-aware (ADR 0015): forums without node.view are invisible (and 404), forums with
 // node.view but not node.read are listed but closed (403), and nothing from an unreadable
 // forum (last-post titles, counts) leaks through a readable one.
-import type { Id, Node, Permissions, Post, Repositories, Topic } from "@postmodem/core";
+import type { Id, Node, Permissions, Poll, Post, Repositories, Topic } from "@postmodem/core";
+import { excerpt } from "@postmodem/markup";
 import { normaliseStart, POSTS_PER_PAGE, TOPICS_PER_PAGE } from "../pagination.ts";
 import type { NodeRef, TopicRef, UserRef } from "../urls.ts";
 
@@ -175,6 +176,15 @@ export async function loadIndex(
   );
   const readable = all.filter((n) => perms.can("node.read", n));
   const newest = await repos.users.newest();
+  const now = Date.now();
+  const onlineIds = await repos.sessions.activeUserIds(now - ONLINE_WINDOW_MS, now);
+  const onlineUsers = await repos.users.getMany(onlineIds.slice(0, ONLINE_LIST_MAX));
+  const online = onlineIds.flatMap((id) => {
+    const u = onlineUsers.get(id);
+    return u && u.status === "active"
+      ? [{ ref: { id: u.id, slug: u.slug } as UserRef, name: u.username }]
+      : [];
+  });
   return {
     category: root
       ? { ...nodeRef(root, opts.classic), title: root.title, description: root.description }
@@ -186,6 +196,12 @@ export async function loadIndex(
       topics: readable.reduce((s, n) => s + n.topicCount, 0),
       users: await repos.users.count(),
       newest: newest ? { ref: { id: newest.id, slug: newest.slug } as UserRef, name: newest.username } : null,
+      /** Signed-in users seen in the last ONLINE_WINDOW_MS (sessions record activity every 5 min). */
+      online: {
+        count: online.length + Math.max(0, onlineIds.length - ONLINE_LIST_MAX),
+        users: online,
+        minutes: ONLINE_WINDOW_MS / 60_000,
+      },
     },
   };
 }
@@ -281,8 +297,52 @@ export interface PostView {
   authorPosts: number | null;
   authorJoined: number | null;
   authorLocation: string;
+  /** Image URL: one of ours (/avatars/…) or an https URL from an imported remote avatar. */
+  authorAvatar: string | null;
+  subject: string;
   html: string;
 }
+
+export interface PollView {
+  question: string;
+  endsAt: number | null;
+  ended: boolean;
+  /** false while the board hides results until the end. */
+  showResults: boolean;
+  totalVotes: number;
+  options: { text: string; votes: number; percent: number }[];
+}
+
+function pollView(poll: Poll | undefined, now = Date.now()): PollView | null {
+  if (!poll) return null;
+  const ended = poll.endsAt !== null && poll.endsAt <= now;
+  const showResults = !poll.hideResults || ended;
+  const totalVotes = poll.options.reduce((s, o) => s + o.votes, 0);
+  return {
+    question: poll.question,
+    endsAt: poll.endsAt,
+    ended,
+    showResults,
+    totalVotes: showResults ? totalVotes : 0,
+    options: poll.options.map((o) => ({
+      text: o.text,
+      votes: showResults ? o.votes : 0,
+      percent: showResults && totalVotes ? Math.round((o.votes / totalVotes) * 100) : 0,
+    })),
+  };
+}
+
+/** Where a stored avatar (`upload/…`, `gallery/…`, or an https URL) is served from. */
+export function avatarUrl(avatar: string | null): string | null {
+  if (!avatar) return null;
+  if (avatar.startsWith("https://")) return avatar;
+  return /^(upload|gallery)\//.test(avatar)
+    ? `/avatars/${avatar.split("/").map(encodeURIComponent).join("/")}`
+    : null;
+}
+
+export const ONLINE_WINDOW_MS = 10 * 60_000;
+const ONLINE_LIST_MAX = 100;
 
 /** Where a post lives, for `viewtopic.php?p=` links. */
 export async function locatePost(repos: Repositories, perms: Permissions, postId: Id) {
@@ -302,6 +362,7 @@ export async function loadTopic(
   repos: Repositories,
   perms: Permissions,
   render: (posts: Post[]) => Promise<Map<Id, string>>,
+  views: { add(id: Id): void; pending(id: Id): number },
   topic: Topic,
   startParam: unknown,
   classic?: ClassicIds,
@@ -323,7 +384,7 @@ export async function loadTopic(
   });
   const html = await render(page.items);
   const users = await repos.users.getMany(page.items.flatMap((p) => (p.authorId ? [p.authorId] : [])));
-  await repos.topics.addViews(topic.id, 1);
+  views.add(topic.id);
   const posts: PostView[] = page.items.map((p) => {
     const u = p.authorId ? users.get(p.authorId) : undefined;
     return {
@@ -335,16 +396,28 @@ export async function loadTopic(
       authorPosts: u ? u.postCount : null,
       authorJoined: u ? u.createdAt : null,
       authorLocation: u?.location ?? "",
+      authorAvatar: avatarUrl(u?.avatar ?? null),
+      subject: p.subject,
       html: html.get(p.id) ?? "",
     };
   });
+  // First page: a plain-text summary of the opening post for search engines (no quotes or
+  // hidden content, see @postmodem/markup text.ts).
+  const first = start === 0 ? page.items[0] : undefined;
   return {
+    poll: pollView(await repos.polls.forTopic(topic.id)),
+    summary: first
+      ? { text: excerpt(first.source, 1000), description: excerpt(first.source), author: posts[0]! }
+      : null,
     topic: {
       ...topicRef(topic),
       title: topic.title,
       type: topic.type,
       locked: topic.locked,
-      viewCount: topic.viewCount + 1,
+      createdAt: topic.createdAt,
+      lastPostAt: topic.lastPostAt,
+      replies: topic.replyCount,
+      viewCount: topic.viewCount + views.pending(topic.id),
     },
     breadcrumbs: await crumbs(repos, node, classic),
     posts,

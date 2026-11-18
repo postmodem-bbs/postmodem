@@ -55,6 +55,7 @@ users-count = { $count ->
 stats-heading = Statystyki
 stats-totals = Nasi użytkownicy napisali { $posts } w { $topics }. Mamy { $users }.
 stats-newest-label = Najnowszy użytkownik:
+stats-online = Zalogowani w ciągu ostatnich { $minutes } minut: { $count }
 
 forum-topic = Temat
 forum-author = Autor
@@ -196,3 +197,19 @@ reset-done-notice = Hasło zostało zmienione, a Ty jesteś zalogowany(-a). Pozo
 profile-title = Profil użytkownika { $name }
 profile-last-seen = Ostatnia wizyta
 profile-website = Strona WWW
+profile-recent-topics = Ostatnie tematy
+profile-no-topics = Brak tematów do pokazania.
+
+## Polls
+poll-results = Wyniki ankiety
+poll-percent = { $percent }%
+poll-votes = { $count ->
+    [one] { $count } głos
+    [few] { $count } głosy
+    [many] { $count } głosów
+   *[other] { $count } głosu
+}
+poll-total = Wszystkich głosów: { $count }
+poll-hidden = Wyniki będą widoczne po zakończeniu ankiety.
+poll-ends = Koniec
+poll-ended = Zakończona

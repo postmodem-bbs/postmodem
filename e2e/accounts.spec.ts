@@ -232,6 +232,17 @@ test("phpBB2's registration URL still works", async ({ page }) => {
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Register");
 });
 
+test("signed-in members show up as online, and see their members-only topics on profiles", async ({
+  page,
+}) => {
+  await signIn(page, "Łukasz Żółć", DEMO_PASSWORD);
+  await page.goto("/");
+  await expect(page.locator(".stats .online").getByRole("link", { name: "Łukasz Żółć" })).toBeVisible();
+  await page.goto("/profile.php?mode=viewprofile&u=2");
+  const recent = page.getByRole("region", { name: "Recent topics" });
+  await expect(recent.getByRole("link", { name: "Tajny zlot użytkowników" })).toBeVisible();
+});
+
 test.describe("without JavaScript", () => {
   test.use({ javaScriptEnabled: false });
 

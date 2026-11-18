@@ -30,6 +30,7 @@ import {
 } from "@postmodem/core";
 import { type Database, openDatabase } from "@postmodem/db";
 import { createRenderer, type Renderer } from "./content.ts";
+import { ViewCounter } from "./counters.ts";
 import { Worker } from "./jobs.ts";
 import { createMailer, defaultSender, type Mailer, type MailMessage } from "./mail.ts";
 
@@ -53,6 +54,8 @@ export interface AppContext {
   sendMail(message: MailMessage): Promise<void>;
   /** This process's job worker; started only by roles that run one (run, worker, dev). */
   worker: Worker;
+  /** Topic views, written in batches (started by roles that serve pages, flushed at shutdown). */
+  views: ViewCounter;
   /** Permission view for one request (null = guest). Loads a fresh snapshot each call. */
   permissions(userId: Id | null): Promise<Permissions>;
   /**
@@ -149,6 +152,10 @@ export async function createContext(opts: { migrate: boolean; loaded?: LoadedCon
     },
     mailer,
     worker,
+    views: new ViewCounter(
+      (id, by) => db.repos.topics.addViews(id, by),
+      (e) => log.warn("could not save topic views", { error: (e as Error).message }),
+    ),
     async sendMail(message) {
       await db.repos.jobs.enqueue("mail.send", message);
       worker.nudge();
@@ -198,6 +205,7 @@ export function getContext(): Promise<AppContext> {
   globalThis.__postmodem ??= createContext({ migrate: true }).then((ctx) => {
     ctx.worker.start();
     ctx.watchSettings();
+    ctx.views.start();
     return ctx;
   });
   return globalThis.__postmodem;

@@ -237,10 +237,22 @@ export async function seedDemo(repos: Repositories, now = Date.now()): Promise<S
         [people[i % people.length]!.id, `Treść wątku ${i}. Strony listy tematów mają po 25 wątków.`],
       ]);
     }
-    await topic(retro.id, "Najlepsza gra na Amigę?", "normal", [
+    const amiga = await topic(retro.id, "Najlepsza gra na Amigę?", "normal", [
       [fan.id, "Moim zdaniem [b]Sensible Soccer[/b]."],
       [lukasz.id, '[quote="retro_fan"]Sensible Soccer[/quote]Nie, [i]Settlers[/i]! :-D'],
     ]);
+    await r.polls.create({
+      topicId: amiga.id,
+      question: "Na czym graliście najwięcej?",
+      startsAt: t,
+      endsAt: null,
+      hideResults: false,
+      options: [
+        { position: 1, text: "Amiga 500", votes: 7 },
+        { position: 2, text: "Atari ST", votes: 2 },
+        { position: 3, text: "Commodore 64", votes: 3 },
+      ],
+    });
     await topic(computers.id, "Which PSU for an old Pentium build?", "normal", [
       [ola.id, "Looking for an AT power supply. Any tips?"],
       [admin.id, "Check www.example.org for [u]refurbished[/u] units."],
@@ -280,5 +292,41 @@ export async function seedDemo(repos: Repositories, now = Date.now()): Promise<S
       details: { topics: topicCount, posts: postCount },
     });
     return { created: true, forums: 8, topics: topicCount, posts: postCount };
+  });
+}
+
+/**
+ * Adds one topic with `posts` posts, in a forum of its own, to any board (demo or imported):
+ * the deep pages a performance test needs (DESIGN §5.1), which the fixtures don't have.
+ */
+export async function seedLongTopic(repos: Repositories, posts: number, now = Date.now()) {
+  return repos.transaction(async (r) => {
+    const forum = await r.nodes.create({
+      parentId: null,
+      kind: "forum",
+      title: "Testy wydajności",
+      description: `Jeden temat z ${posts} postami (postmodem seed-demo --long-topic).`,
+    });
+    const authors = (await r.users.getMany([1, 2, 3, 4, 5])).values().toArray();
+    const topic = await r.topics.create({
+      nodeId: forum.id,
+      title: `Bardzo długi temat (${posts} postów)`,
+      authorId: authors[0]?.id ?? null,
+      createdAt: now - posts * 60_000,
+    });
+    for (let j = 0; j < posts; j++) {
+      const author = authors.length ? authors[j % authors.length]! : null;
+      await r.posts.create({
+        topicId: topic.id,
+        authorId: author?.id ?? null,
+        authorName: author ? "" : "Gość",
+        source: `Post numer [b]${j + 1}[/b]. ${MEMORIES[j % MEMORIES.length]}`,
+        format: "bbcode-phpbb2",
+        createdAt: now - (posts - j) * 60_000,
+      });
+    }
+    await r.topics.recount(topic.id);
+    await r.nodes.recount(forum.id);
+    return { forumId: forum.id, topicId: topic.id, posts };
   });
 }

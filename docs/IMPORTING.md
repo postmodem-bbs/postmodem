@@ -36,17 +36,41 @@ again: it continues where it stopped. A board of 200,000 posts takes a few minut
 - **Issues** are the oddities the importer found and handled: posts whose topic was
   deleted, posts by deleted users, text stored in the wrong charset, counters phpBB2 got
   wrong. Each lists example ids, never content.
-- **Not imported** lists every table, column and setting the core didn't read. Most belong
-  to packages (polls, private messages, attachments, Przemo's extras) that will import their
-  own data. If something is missing that you need, open an issue.
+- **Not imported** lists every table, column and setting the core didn't read, sorted by
+  origin: Przemo features (private messages, attachments, Przemo's extras) that their
+  packages will import, stock data nothing needs (search index, sessions, themes), and
+  **data from other mods**, which nothing will import. Check that last line before you
+  switch boards. If something is missing that you need, open an issue.
 - Attach the file from `--report-bundle <file>` to bug reports: it holds no names or text.
 
 ## What carries over
 
-Users (with their passwords: old MD5 and phpass hashes are upgraded at first sign-in),
-groups and memberships, ranks, smilies (copy their images over), categories and forums
-including Przemo sub-forums, forum permissions, topics and posts with their original
-numbers, and the board name, description and default language.
+Users (with their passwords: old MD5 and phpass hashes are upgraded at first sign-in, and
+their avatars), groups and memberships, ranks, smilies, categories and forums including
+Przemo sub-forums, forum permissions, topics, posts (with their subjects) and polls with
+their original numbers, and the board name, description and default language.
+
+Smiley and avatar images live in the old board's files, not its database. Point the import
+at a copy of the old board's directory and it copies them too:
+
+```bash
+postmodem import przemo --source mysql://… --files /path/to/old/forum
+```
+
+Without `--files` the report says how many images are waiting. Remote avatars are kept only
+if they are `https:` links.
+
+phpBB2 stored passwords as unsalted MD5. They are replaced the first time each user signs in,
+but accounts nobody uses keep theirs. Some months after the move, delete the leftovers; those
+users can still get in through "forgot password":
+
+```bash
+postmodem user expire-legacy-passwords --inactive-months 6 --dry-run
+postmodem user expire-legacy-passwords --inactive-months 6
+```
+
+`postmodem forum list` shows the imported tree with ids, and `postmodem forum recount`
+fixes counters if you ever edit the database by hand.
 
 ## Your old links
 

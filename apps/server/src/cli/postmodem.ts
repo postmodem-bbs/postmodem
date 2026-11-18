@@ -21,7 +21,16 @@ import {
 } from "@postmodem/core";
 import { anonymise, importPrzemo, type LegacySource, openMysqlSource, summarise } from "@postmodem/importer";
 import { type AppContext, createContext, readConfig } from "../lib/server/bootstrap.ts";
-import { DEMO_PASSWORD, seedDemo } from "../lib/server/demo.ts";
+import { DEMO_PASSWORD, seedDemo, seedLongTopic } from "../lib/server/demo.ts";
+import { copyLegacyFiles, uploadsDir } from "../lib/server/uploads.ts";
+import {
+  expireLegacyPasswords,
+  FORUM_HELP,
+  forumCommand,
+  GROUP_HELP,
+  groupCommand,
+  USER_EXPIRE_HELP,
+} from "./admin.ts";
 
 const HELP = `postmodem — a modern bulletin board
 
@@ -35,15 +44,22 @@ Usage: postmodem <command>
   doctor        check configuration, data directory and database
   init          create the first administrator from POSTMODEM_ADMIN_* (idempotent)
   seed-demo     fill an empty board with demo content (refuses if forums exist)
+  seed-demo --long-topic <posts>
+                add one topic with that many posts, in its own forum, to any board
+                (for performance tests of deep topic pages)
   import przemo --source mysql://user:pass@host/db [--prefix phpbb_] [--charset latin2|cp1250|utf8]
-                [--dry-run] [--report <file>] [--report-bundle <file>]
+                [--files <old board directory>] [--dry-run] [--report <file>] [--report-bundle <file>]
                 import a phpBB2 / Przemo board into a fresh board (resumable); the
-                source URL can also come from POSTMODEM_IMPORT_SOURCE(_FILE)
+                source URL can also come from POSTMODEM_IMPORT_SOURCE(_FILE); --files copies
+                smiley and avatar images from the old board's directory
   perms explain --user <name|guest> --capability <key> [--node <id>]
                 show whether a user may do something, and which grants decided it
   user set-password <name> [--password-file <path>]
                 set a password (prompted, read from stdin, or from a file); signs the
                 user out everywhere and activates a pending account
+${USER_EXPIRE_HELP}
+${GROUP_HELP}
+${FORUM_HELP}
   settings list | get <key> | set <key> <value>
                 show or change board settings (values are JSON, or plain text for
                 strings), e.g. settings set core.urls.style numbered; running servers
@@ -270,6 +286,22 @@ async function importBoard(args: string[]): Promise<number> {
     const bundle = flag(args, "report-bundle");
     if (bundle) writeFileSync(bundle, `${JSON.stringify(anonymise(report), null, 2)}\n`);
     console.log(summarise(report));
+    const filesDir = flag(args, "files");
+    if (filesDir && !dryRun) {
+      const r = await copyLegacyFiles(filesDir, uploadsDir(ctx.config.dataDir), report.files);
+      console.log(`\nFiles: ${r.copied} of ${report.files.length} images copied from ${filesDir}`);
+      if (r.missing.length)
+        console.log(
+          `  missing (${r.missing.length}): ${r.missing.slice(0, 10).join(", ")}${r.missing.length > 10 ? ", …" : ""}`,
+        );
+      if (r.refused.length)
+        console.log(
+          `  refused, not plain image paths (${r.refused.length}): ${r.refused.slice(0, 10).join(", ")}`,
+        );
+    } else if (report.files.length)
+      console.log(
+        `\nFiles: ${report.files.length} smiley/avatar images are on the old server; run again with --files <old board directory> to copy them`,
+      );
     console.log(
       `\nFull report: ${reportFile}${bundle ? `\nAnonymised bundle for bug reports: ${bundle}` : ""}`,
     );
@@ -295,6 +327,7 @@ async function startWeb(ctx: AppContext): Promise<Server> {
   }
   globalThis.__postmodem = Promise.resolve(ctx);
   ctx.watchSettings();
+  ctx.views.start();
   const handlerUrl = pathToFileURL(join(import.meta.dirname, "handler.js")).href;
   const { handler } = (await import(handlerUrl)) as { handler: (req: unknown, res: unknown) => void };
   const server = createServer(handler as never);
@@ -394,6 +427,7 @@ function onShutdown(ctx: AppContext, servers: Server[]) {
     }, SHUTDOWN_GRACE_MS);
     force.unref();
     await Promise.all([...servers.map((s) => new Promise((r) => s.close(r))), ctx.worker.stop()]);
+    await ctx.views.flush();
     await ctx.db.close();
     ctx.log.info("bye");
     process.exit(0);
@@ -511,6 +545,19 @@ async function main(argv: string[]): Promise<number> {
     }
     case "seed-demo": {
       const ctx = await createContext({ migrate: true });
+      const longTopic = flag(argv.slice(1), "long-topic");
+      if (longTopic !== undefined) {
+        const posts = Number(longTopic);
+        if (!Number.isInteger(posts) || posts < 1 || posts > 100_000) {
+          console.error("seed-demo: --long-topic takes a number of posts (1–100000)");
+          await ctx.db.close();
+          return 2;
+        }
+        const added = await seedLongTopic(ctx.db.repos, posts);
+        console.log(`added topic ${added.topicId} with ${posts} posts in forum ${added.forumId}`);
+        await ctx.db.close();
+        return 0;
+      }
       const result = await seedDemo(ctx.db.repos);
       if (result.created)
         ctx.log.info("demo board created", {
@@ -527,8 +574,13 @@ async function main(argv: string[]): Promise<number> {
       if (sub !== "przemo") break;
       return importBoard(argv.slice(2));
     case "user":
-      if (sub !== "set-password") break;
-      return setPassword(argv.slice(2));
+      if (sub === "set-password") return setPassword(argv.slice(2));
+      if (sub === "expire-legacy-passwords") return expireLegacyPasswords(argv.slice(2));
+      break;
+    case "group":
+      return groupCommand(sub, argv.slice(2));
+    case "forum":
+      return forumCommand(sub, argv.slice(2));
     case "settings":
       if (sub !== "list" && sub !== "get" && sub !== "set") break;
       return settingsCommand(sub, argv.slice(2));

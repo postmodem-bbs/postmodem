@@ -14,6 +14,7 @@ import type {
   Millis,
   Node,
   NodeKind,
+  Poll,
   Post,
   Rank,
   Role,
@@ -99,6 +100,8 @@ export interface TopicRepository {
   rename(id: Id, title: string): Promise<Topic>;
   /** Announcements, then stickies, then the rest; each by most recent activity. */
   listByNode(nodeId: Id, page: PageRequest, opts?: { visibility?: VisibilityState[] }): Promise<Page<Topic>>;
+  /** Public topics a user started in the given nodes, newest first (profiles). */
+  recentByAuthor(authorId: Id, nodeIds: Id[], limit: number): Promise<Topic[]>;
   /** Recomputes reply count, first/last post and last activity from posts. */
   recount(id: Id): Promise<Topic>;
   /**
@@ -114,6 +117,7 @@ export interface NewPost {
   topicId: Id;
   authorId: Id | null;
   authorName?: string;
+  subject?: string;
   source: string;
   format: MarkupFormat;
   visibility?: VisibilityState;
@@ -180,6 +184,13 @@ export interface Credential {
 export interface CredentialRepository {
   get(userId: Id): Promise<Credential | undefined>;
   set(userId: Id, scheme: PasswordScheme, hash: string): Promise<void>;
+  /** Deletes the password; the user can only get in again through a password reset. */
+  remove(userId: Id): Promise<void>;
+  /**
+   * Users still on a legacy hash (phpBB2 MD5, phpass) who haven't signed in since `before`
+   * (imported accounts that never signed in count as never seen).
+   */
+  legacyUnusedSince(before: Millis): Promise<{ userId: Id; scheme: PasswordScheme }[]>;
 }
 
 export interface SessionRepository {
@@ -191,6 +202,8 @@ export interface SessionRepository {
   /** Signs a user out everywhere (optionally keeping one session). Returns how many ended. */
   removeForUser(userId: Id, keep?: string): Promise<number>;
   listForUser(userId: Id): Promise<Session[]>;
+  /** Users with an unexpired session used since `since` (who's online), most recent first. */
+  activeUserIds(since: Millis, now: Millis): Promise<Id[]>;
   purgeExpired(now: Millis): Promise<number>;
 }
 
@@ -242,6 +255,8 @@ export interface GroupRepository {
   ): Promise<Group>;
   get(id: Id): Promise<Group | undefined>;
   byName(name: string): Promise<Group | undefined>;
+  /** Every group, by name. */
+  all(): Promise<Group[]>;
   addMember(m: Membership): Promise<void>;
   removeMember(groupId: Id, userId: Id): Promise<void>;
   members(groupId: Id): Promise<Membership[]>;
@@ -297,6 +312,14 @@ export interface SmileyRepository {
   all(): Promise<Smiley[]>;
 }
 
+export interface PollRepository {
+  /** One poll per topic; `id` may keep the legacy vote_id. */
+  create(poll: Omit<Poll, "id" | "voterCount"> & { id?: Id }): Promise<Poll>;
+  forTopic(topicId: Id): Promise<Poll | undefined>;
+  /** Who voted (so nobody votes twice once voting exists); ignores repeats. */
+  addVoters(pollId: Id, userIds: Id[]): Promise<void>;
+}
+
 export interface Repositories {
   nodes: NodeRepository;
   topics: TopicRepository;
@@ -315,6 +338,7 @@ export interface Repositories {
   audit: AuditLog;
   ranks: RankRepository;
   smilies: SmileyRepository;
+  polls: PollRepository;
   /** Runs fn atomically; the repositories passed in are bound to the transaction. */
   transaction<T>(fn: (repos: Repositories) => Promise<T>): Promise<T>;
 }

@@ -155,6 +155,39 @@ describe.each(testEngines())("%s", (engine) => {
       return { forum, alice, old, recent, sticky, ann, t0 };
     }
 
+    it("lists a user's recent topics in the given forums only", async () => {
+      const { forum, alice, old, recent, sticky, ann } = await seed();
+      const other = await r.nodes.create({ parentId: null, kind: "forum", title: "Other" });
+      await r.topics.create({ nodeId: other.id, title: "Elsewhere", authorId: alice.id, createdAt: 1 });
+      const ids = (await r.topics.recentByAuthor(alice.id, [forum.id], 3)).map((t) => t.id);
+      expect(ids).toEqual([ann.id, sticky.id, recent.id]);
+      expect(old.id).toBeLessThan(recent.id);
+      expect(await r.topics.recentByAuthor(alice.id, [], 3)).toEqual([]);
+      expect(await r.topics.recentByAuthor(alice.id, [other.id], 3)).toHaveLength(1);
+    });
+
+    it("stores a topic's poll with its options and voters", async () => {
+      const { alice, recent } = await seed();
+      const poll = await r.polls.create({
+        id: 77,
+        topicId: recent.id,
+        question: "Amiga czy Atari?",
+        startsAt: 1_700_000_000_000,
+        endsAt: null,
+        hideResults: true,
+        options: [
+          { position: 2, text: "Atari", votes: 3 },
+          { position: 1, text: "Amiga", votes: 5 },
+        ],
+      });
+      expect(poll).toMatchObject({ id: 77, hideResults: true, voterCount: 0 });
+      expect(poll.options.map((o) => o.text)).toEqual(["Amiga", "Atari"]);
+      await r.polls.addVoters(poll.id, [alice.id, alice.id]);
+      await r.polls.addVoters(poll.id, [alice.id]);
+      expect((await r.polls.forTopic(recent.id))?.voterCount).toBe(1);
+      expect(await r.polls.forTopic(999)).toBeUndefined();
+    });
+
     it("lists announcements, stickies, then by latest activity, with pagination", async () => {
       const { forum, old, recent, sticky, ann } = await seed();
       const page1 = await r.topics.listByNode(forum.id, { page: 1, perPage: 3 });
@@ -262,6 +295,49 @@ describe.each(testEngines())("%s", (engine) => {
       ]);
       await r.grants.remove(scoped.id);
       expect(await r.grants.all()).toHaveLength(2);
+      expect((await r.groups.all()).map((g) => g.name)).toEqual(["Klub Retro", "Ukryta ekipa"]);
+    });
+
+    it("lists users with recently used, unexpired sessions", async () => {
+      const now = Date.now();
+      const [a, b, c] = await Promise.all(
+        ["a1", "b1", "c1"].map((u) => r.users.create({ username: u, email: null })),
+      );
+      const s = (id: string, userId: number, lastSeenAt: number, expiresAt = now + 60_000) =>
+        r.sessions.create({
+          id,
+          userId,
+          createdAt: lastSeenAt,
+          lastSeenAt,
+          expiresAt,
+          userAgent: "",
+          ip: "",
+        });
+      await s("s1", a!.id, now - 60_000);
+      await s("s2", a!.id, now - 1_000);
+      await s("s3", b!.id, now - 30_000);
+      await s("s4", c!.id, now - 3_600_000);
+      await s("s5", c!.id, now - 1_000, now - 1);
+      expect(await r.sessions.activeUserIds(now - 600_000, now)).toEqual([a!.id, b!.id]);
+    });
+
+    it("finds legacy hashes unused since a date, and removes credentials", async () => {
+      const day = 86_400_000;
+      const now = Date.now();
+      const never = await r.users.create({ username: "never", email: null });
+      const old = await r.users.create({ username: "old", email: null, lastSeenAt: now - 400 * day });
+      const recent = await r.users.create({ username: "recent", email: null, lastSeenAt: now - day });
+      const upgraded = await r.users.create({ username: "upgraded", email: null });
+      await r.credentials.set(never.id, "phpbb2-md5", "21232f297a57a5a743894a0e4a801fc3");
+      await r.credentials.set(old.id, "phpass", "$H$9abcdefghijklmnopqrstuvwxyz0123");
+      await r.credentials.set(recent.id, "phpbb2-md5", "21232f297a57a5a743894a0e4a801fc3");
+      await r.credentials.set(upgraded.id, "argon2id", "$argon2id$v=19$…");
+      expect(await r.credentials.legacyUnusedSince(now - 180 * day)).toEqual([
+        { userId: never.id, scheme: "phpbb2-md5" },
+        { userId: old.id, scheme: "phpass" },
+      ]);
+      await r.credentials.remove(old.id);
+      expect(await r.credentials.get(old.id)).toBeUndefined();
     });
   });
 

@@ -147,6 +147,7 @@ const toPost = (r: Selectable<PostsTable>): Post => ({
   nodeId: r.nodeId,
   authorId: r.authorId,
   authorName: r.authorName,
+  subject: r.subject,
   source: r.source,
   format: r.format,
   rendered: r.rendered,
@@ -484,6 +485,21 @@ export function createRepositories(db: Db): Repositories {
         .execute();
       return paginate(rows.map(toTopic), n(total.c), page);
     },
+    async recentByAuthor(authorId, nodeIds, limit) {
+      if (!nodeIds.length) return [];
+      const rows = await db
+        .selectFrom("topics")
+        .selectAll()
+        .where("authorId", "=", authorId)
+        .where("visibility", "in", PUBLIC)
+        .where("movedToTopicId", "is", null)
+        .where("nodeId", "in", nodeIds)
+        .orderBy("createdAt", "desc")
+        .orderBy("id", "desc")
+        .limit(limit)
+        .execute();
+      return rows.map(toTopic);
+    },
     async recount(id) {
       const visible = db.selectFrom("posts").where("topicId", "=", id).where("visibility", "in", PUBLIC);
       const count = await visible.select((eb) => eb.fn.countAll().as("c")).executeTakeFirstOrThrow();
@@ -527,6 +543,7 @@ export function createRepositories(db: Db): Repositories {
           nodeId: topic.nodeId,
           authorId: input.authorId,
           authorName: input.authorName ?? "",
+          subject: input.subject ?? "",
           source: input.source,
           format: input.format,
           rendered: null,
@@ -555,6 +572,7 @@ export function createRepositories(db: Db): Repositories {
             nodeId: p.nodeId,
             authorId: p.authorId,
             authorName: p.authorName ?? "",
+            subject: p.subject ?? "",
             source: p.source,
             format: p.format,
             rendered: null,
@@ -757,6 +775,20 @@ export function createRepositories(db: Db): Repositories {
         .onConflict((oc) => oc.column("userId").doUpdateSet({ scheme, hash, updatedAt }))
         .execute();
     },
+    async remove(userId) {
+      await db.deleteFrom("credentials").where("userId", "=", userId).execute();
+    },
+    async legacyUnusedSince(before) {
+      const rows = await db
+        .selectFrom("credentials")
+        .innerJoin("users", "users.id", "credentials.userId")
+        .select(["credentials.userId", "credentials.scheme"])
+        .where("credentials.scheme", "!=", "argon2id")
+        .where((eb) => eb.or([eb("users.lastSeenAt", "is", null), eb("users.lastSeenAt", "<", before)]))
+        .orderBy("credentials.userId")
+        .execute();
+      return rows.map((r) => ({ userId: r.userId, scheme: r.scheme as PasswordScheme }));
+    },
   };
 
   const toGroup = (r: Selectable<Schema["groups"]>): Group => ({
@@ -787,6 +819,10 @@ export function createRepositories(db: Db): Repositories {
     async get(id) {
       const r = await db.selectFrom("groups").selectAll().where("id", "=", id).executeTakeFirst();
       return r && toGroup(r);
+    },
+    async all() {
+      const rows = await db.selectFrom("groups").selectAll().orderBy("nameKey").execute();
+      return rows.map(toGroup);
     },
     async byName(name) {
       const r = await db
@@ -1056,6 +1092,64 @@ export function createRepositories(db: Db): Repositories {
     },
   };
 
+  const polls: Repositories["polls"] = {
+    async create(p) {
+      const { id } = await db
+        .insertInto("polls")
+        .values({
+          ...(p.id !== undefined ? { id: p.id } : {}),
+          topicId: p.topicId,
+          question: p.question,
+          startsAt: p.startsAt,
+          endsAt: p.endsAt,
+          hideResults: p.hideResults ? 1 : 0,
+          createdAt: Date.now(),
+        })
+        .returning("id")
+        .executeTakeFirstOrThrow();
+      if (p.options.length)
+        await db
+          .insertInto("pollOptions")
+          .values(p.options.map((o) => ({ pollId: id, position: o.position, text: o.text, votes: o.votes })))
+          .execute();
+      return (await polls.forTopic(p.topicId))!;
+    },
+    async forTopic(topicId) {
+      const p = await db.selectFrom("polls").selectAll().where("topicId", "=", topicId).executeTakeFirst();
+      if (!p) return undefined;
+      const options = await db
+        .selectFrom("pollOptions")
+        .select(["position", "text", "votes"])
+        .where("pollId", "=", p.id)
+        .orderBy("position")
+        .execute();
+      const voters = await db
+        .selectFrom("pollVoters")
+        .select((eb) => eb.fn.countAll().as("c"))
+        .where("pollId", "=", p.id)
+        .executeTakeFirstOrThrow();
+      return {
+        id: p.id,
+        topicId: p.topicId,
+        question: p.question,
+        startsAt: n(p.startsAt),
+        endsAt: p.endsAt === null ? null : n(p.endsAt),
+        hideResults: !!p.hideResults,
+        options: options.map((o) => ({ position: o.position, text: o.text, votes: o.votes })),
+        voterCount: n(voters.c),
+      };
+    },
+    async addVoters(pollId, userIds) {
+      const ids = [...new Set(userIds)];
+      if (!ids.length) return;
+      await db
+        .insertInto("pollVoters")
+        .values(ids.map((userId) => ({ pollId, userId })))
+        .onConflict((oc) => oc.columns(["pollId", "userId"]).doNothing())
+        .execute();
+    },
+  };
+
   const smilies: Repositories["smilies"] = {
     async create(s) {
       const { id } = await db
@@ -1107,6 +1201,18 @@ export function createRepositories(db: Db): Repositories {
         .orderBy("lastSeenAt", "desc")
         .execute();
       return rows.map(toSession);
+    },
+    async activeUserIds(since, now) {
+      const rows = await db
+        .selectFrom("sessions")
+        .select("userId")
+        .select((eb) => eb.fn.max("lastSeenAt").as("seen"))
+        .where("lastSeenAt", ">=", since)
+        .where("expiresAt", ">", now)
+        .groupBy("userId")
+        .orderBy("seen", "desc")
+        .execute();
+      return rows.map((r) => r.userId);
     },
     async purgeExpired(now) {
       const r = await db.deleteFrom("sessions").where("expiresAt", "<=", now).executeTakeFirst();
@@ -1297,6 +1403,7 @@ export function createRepositories(db: Db): Repositories {
     audit,
     ranks,
     smilies,
+    polls,
     transaction: (fn) =>
       db.isTransaction
         ? fn(createRepositories(db))

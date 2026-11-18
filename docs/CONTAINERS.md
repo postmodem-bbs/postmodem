@@ -73,6 +73,8 @@ postmodem ext list|add|remove|enable|disable
 postmodem config print   # effective config with secrets redacted, and where each value came from
 postmodem settings list|get|set  # board settings (e.g. core.urls.style); running replicas
                                  # re-read them within 5 s, no restart needed
+postmodem forum|group …  # forum tree and groups until the web admin panel (M2)
+postmodem user set-password|expire-legacy-passwords
 ```
 
 ### 2.3 Dockerfile

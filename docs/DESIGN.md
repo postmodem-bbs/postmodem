@@ -416,7 +416,7 @@ disabled, which is how we keep feature parity with Przemo.
 
 ## 10. Delivery plan
 
-1. **M0 — Skeleton** *(done 2026-11-17, not yet run in GitHub Actions):* repo,
+1. **M0 — Skeleton** *(done 2026-11-17, green in GitHub Actions since):* repo,
    Dockerfile (dev + runtime targets), dev Compose stack with watch, Dev
    Container, CI that builds the image once and tests it (lint, typecheck,
    unit, e2e, axe), SQLite+Postgres migrations, typed settings, i18n plumbing,

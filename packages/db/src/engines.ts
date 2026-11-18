@@ -60,13 +60,18 @@ function nodeSqliteAdapter(db: DatabaseSync) {
   };
 }
 
-export function sqliteEngine(path: string): Engine {
+/** `onQuery` sees every statement's SQL (tests use it to catch N+1 queries). */
+export function sqliteEngine(path: string, opts: { onQuery?: (sql: string) => void } = {}): Engine {
   if (path !== ":memory:") mkdirSync(dirname(path), { recursive: true });
   const raw = new DatabaseSync(path);
   raw.exec("PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;");
   return {
     dialect: "sqlite",
-    db: new Kysely<Schema>({ dialect: new SqliteDialect({ database: nodeSqliteAdapter(raw) }), plugins }),
+    db: new Kysely<Schema>({
+      dialect: new SqliteDialect({ database: nodeSqliteAdapter(raw) }),
+      plugins,
+      ...(opts.onQuery ? { log: (e) => opts.onQuery!(e.query.sql) } : {}),
+    }),
   };
 }
 

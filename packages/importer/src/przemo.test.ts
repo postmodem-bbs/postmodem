@@ -93,6 +93,24 @@ describe.skipIf(!URL || !MANIFEST).each(testEngines())("Przemo fixture import (%
     for (const f of manifest.forums) expect((await r.nodes.get(f.id))?.kind, `forum ${f.id}`).toBe("forum");
   });
 
+  it("imports polls with their options and lists the image files to copy", async () => {
+    // Przemo's install data ships one poll, on topic 5.
+    const poll = await r.polls.forTopic(5);
+    expect(poll).toMatchObject({
+      id: 1,
+      question: "Czy podoba Ci się to Forum?",
+      endsAt: null,
+      hideResults: false,
+    });
+    expect(poll?.options.map((o) => o.text)).toEqual(["Tak", "Nie"]);
+    expect(report.counts.polls).toEqual({ read: 1, imported: 1, skipped: 0 });
+    expect(report.files).toContainEqual({
+      from: "images/smiles/icon_smile.gif",
+      to: "smilies/icon_smile.gif",
+    });
+    expect(report.notImported.byOrigin?.unknown).toEqual({ tables: [], columns: {} });
+  });
+
   it("signs legacy users in with their old passwords and upgrades the hash", async () => {
     for (const a of manifest.accounts.slice(0, 3)) {
       const result = await authenticate(r, a.username, a.password);

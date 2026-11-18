@@ -67,6 +67,8 @@ export interface Post {
   nodeId: Id;
   authorId: Id | null;
   authorName: string;
+  /** phpBB2's optional per-post subject (plain text); empty when the post has none. */
+  subject: string;
   source: string;
   format: MarkupFormat;
   /** Cached HTML; null until rendered. Valid while renderVersion matches the renderer's. */
@@ -198,6 +200,20 @@ export interface Smiley {
   image: string;
   emotion: string;
   position: number;
+}
+
+/** phpBB2's topic poll (vote_desc / vote_results / vote_voters). Voting itself arrives in M2. */
+export interface Poll {
+  id: Id;
+  topicId: Id;
+  question: string;
+  startsAt: Millis;
+  /** null: runs forever (phpBB2 vote_length 0). */
+  endsAt: Millis | null;
+  /** Counts stay hidden until the poll ends (Przemo's vote_hide; read so imports don't leak them). */
+  hideResults: boolean;
+  options: { position: number; text: string; votes: number }[];
+  voterCount: number;
 }
 
 export interface AuditEntry {

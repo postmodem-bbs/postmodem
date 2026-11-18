@@ -4,6 +4,7 @@
 import { translator } from "@postmodem/i18n";
 import { error, redirect } from "@sveltejs/kit";
 import { loadTopic, POSTS_PER_PAGE } from "#lib/server/board.ts";
+import { jsonLdTag } from "#lib/server/jsonld.ts";
 import { absoluteUrl, classicCategoryIds, ensureCanonical, resolveTopic } from "#lib/server/links.ts";
 import { requestedStart } from "#lib/urls.ts";
 import type { PageServerLoad } from "./$types";
@@ -17,6 +18,7 @@ export const load: PageServerLoad = async ({ url, params, locals }) => {
     repos,
     locals.perms,
     (posts) => locals.ctx.renderer.render(posts),
+    locals.ctx.views,
     topic,
     requestedStart(url.searchParams, POSTS_PER_PAGE),
     urls.style === "classic" ? await classicCategoryIds(repos, await repos.nodes.tree()) : undefined,
@@ -29,9 +31,49 @@ export const load: PageServerLoad = async ({ url, params, locals }) => {
   // Reader-dependent parts of the cached HTML ([you], [hide]).
   const t = translator(locals.locale);
   const messages = { guest: t("post-guest"), hiddenContent: t("bb-hidden-content") };
+  const site = locals.ctx.config.publicUrl;
   return {
     ...data,
-    canonical: absoluteUrl(locals.ctx.config.publicUrl, urls.topic(data.topic, data.start)),
+    canonical: absoluteUrl(site, urls.topic(data.topic, data.start)),
+    description: data.summary?.description ?? "",
+    jsonLd: data.summary ? jsonLdTag(discussionPosting(data, site, urls)) : "",
     posts: data.posts.map((p) => ({ ...p, html: locals.ctx.renderer.forReader(p.html, null, messages) })),
   };
 };
+
+/** schema.org DiscussionForumPosting for a topic's first page (DESIGN, M1 slice 3). */
+function discussionPosting(
+  data: NonNullable<Awaited<ReturnType<typeof loadTopic>>> & { posts: unknown[] },
+  site: string,
+  urls: App.Locals["urls"],
+) {
+  if (!("topic" in data) || !data.summary) return null;
+  const { topic, summary } = data;
+  const iso = (ms: number) => new Date(ms).toISOString();
+  return {
+    "@context": "https://schema.org",
+    "@type": "DiscussionForumPosting",
+    headline: topic.title,
+    url: absoluteUrl(site, urls.topic(topic)),
+    text: summary.text,
+    datePublished: iso(topic.createdAt),
+    ...(topic.lastPostAt ? { dateModified: iso(topic.lastPostAt) } : {}),
+    author: {
+      "@type": "Person",
+      name: summary.author.author,
+      ...(summary.author.authorRef ? { url: absoluteUrl(site, urls.user(summary.author.authorRef)) } : {}),
+    },
+    interactionStatistic: [
+      {
+        "@type": "InteractionCounter",
+        interactionType: "https://schema.org/CommentAction",
+        userInteractionCount: topic.replies,
+      },
+      {
+        "@type": "InteractionCounter",
+        interactionType: "https://schema.org/ViewAction",
+        userInteractionCount: topic.viewCount,
+      },
+    ],
+  };
+}

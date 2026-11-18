@@ -23,11 +23,14 @@ export function testEngines(): TestEngine[] {
   return ["sqlite", "pglite", ...(process.env.PM_TEST_PG_URL ? (["postgres"] as const) : [])];
 }
 
-export async function openTestDatabase(engine: TestEngine): Promise<Database> {
+export async function openTestDatabase(
+  engine: TestEngine,
+  opts: { onQuery?: (sql: string) => void } = {},
+): Promise<Database> {
   switch (engine) {
     case "sqlite": {
       const dir = mkdtempSync(join(tmpdir(), "pm-test-"));
-      return createDatabase(sqliteEngine(join(dir, "test.sqlite")));
+      return createDatabase(sqliteEngine(join(dir, "test.sqlite"), opts));
     }
     case "pglite": {
       const client = new PGlite({ parsers: { 20: (v: string) => Number(v) } });

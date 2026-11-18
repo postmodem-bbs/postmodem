@@ -14,6 +14,8 @@
 <svelte:head>
   <title>{data.topic.title} · {data.boardName}</title>
   <link rel="canonical" href={data.canonical} />
+  {#if data.description}<meta name="description" content={data.description} />{/if}
+  {#if data.jsonLd}{@html data.jsonLd}{/if}
 </svelte:head>
 
 <Breadcrumbs crumbs={data.breadcrumbs} current={data.topic.title} {t} />
@@ -26,6 +28,37 @@
 
 <Pagination total={data.total} perPage={data.perPage} start={data.start} href={(s) => urls.topic(data.topic, s)} {t} />
 
+{#if data.poll}
+  {@const poll = data.poll}
+  <section class="panel poll" aria-labelledby="poll-question">
+    <h2 id="poll-question">{poll.question}</h2>
+    {#if poll.showResults}
+      <table class="poll-results">
+        <caption class="visually-hidden">{t("poll-results")}</caption>
+        <tbody>
+          {#each poll.options as option, i (i)}
+            <tr>
+              <th scope="row">{option.text}</th>
+              <td><meter min="0" max="100" value={option.percent} aria-label={t("poll-percent", { percent: option.percent })}></meter></td>
+              <td class="num">{option.percent}%</td>
+              <td class="num">{t("poll-votes", { count: option.votes })}</td>
+            </tr>
+          {/each}
+        </tbody>
+      </table>
+      <p class="muted">{t("poll-total", { count: poll.totalVotes })}</p>
+    {:else}
+      <ul>{#each poll.options as option, i (i)}<li>{option.text}</li>{/each}</ul>
+      <p class="muted">{t("poll-hidden")}</p>
+    {/if}
+    {#if poll.endsAt}
+      <p class="muted">
+        {poll.ended ? t("poll-ended") : t("poll-ends")} <time datetime={isoDate(poll.endsAt)}>{formatDateTime(poll.endsAt, data.locale)}</time>
+      </p>
+    {/if}
+  </section>
+{/if}
+
 <div class="posts">
   {#each data.posts as post (post.id)}
     <article class="post" id={`p${post.id}`} aria-labelledby={`p${post.id}-author`}>
@@ -33,6 +66,9 @@
         <strong id={`p${post.id}-author`} class="author-name">
           {#if post.authorRef}<a href={urls.user(post.authorRef)}>{post.author}</a>{:else}{post.author || t("guest")}{/if}
         </strong>
+        {#if post.authorAvatar}
+          <img class="avatar" src={post.authorAvatar} alt="" width="80" height="80" loading="lazy" referrerpolicy="no-referrer" />
+        {/if}
         {#if post.authorRef !== null}
           <dl class="author-facts">
             {#if post.authorPosts !== null}<div><dt class="visually-hidden">{t("index-posts")}</dt><dd>{t("post-author-posts", { count: post.authorPosts })}</dd></div>{/if}
@@ -47,6 +83,7 @@
         <p class="post-meta">
           <a href={urls.postOnPage(data.topic, data.start, post.id)} aria-label={t("post-permalink")}>#</a>
           <time datetime={isoDate(post.at)}>{formatDateTime(post.at, data.locale)}</time>
+          {#if post.subject}<span class="post-subject">{post.subject}</span>{/if}
         </p>
         <!-- Rendered by @postmodem/markup: allow-listed, sanitised HTML (ADR 0014). -->
         <div class="post-body">{@html post.html}</div>

@@ -3,10 +3,12 @@
   import { translator } from "@postmodem/i18n";
   import Breadcrumbs from "#lib/components/Breadcrumbs.svelte";
   import { formatDate, isoDate } from "#lib/format.ts";
+  import { links } from "#lib/links.ts";
 
   let { data } = $props();
   const t = $derived(translator(data.locale));
   const p = $derived(data.profile);
+  const urls = $derived(links());
 </script>
 
 <svelte:head>
@@ -30,3 +32,19 @@
     {/if}
   </dl>
 </div>
+
+<section class="panel" aria-labelledby="recent-topics">
+  <h2 id="recent-topics">{t("profile-recent-topics")}</h2>
+  {#if data.recentTopics.length}
+    <ul class="recent-topics">
+      {#each data.recentTopics as topic (topic.ref.id)}
+        <li>
+          <a href={urls.topic(topic.ref)}>{topic.title}</a>
+          <span class="muted">· {topic.forum} · <time datetime={isoDate(topic.at)}>{formatDate(topic.at, data.locale)}</time></span>
+        </li>
+      {/each}
+    </ul>
+  {:else}
+    <p class="muted">{t("profile-no-topics")}</p>
+  {/if}
+</section>

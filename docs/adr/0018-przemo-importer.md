@@ -41,8 +41,12 @@ its manifest of planted quirks is the reference.
   settings, for bug reports.
 
 ## Consequences
-- Post subjects (per-post titles), polls, private messages, attachments, avatars and all
-  Przemo extras are not imported by the core; the report lists them for their packages.
-- Smiley images and avatars must be copied from the old board's files (a later step).
+- Post subjects, polls and avatars are core (vanilla phpBB2). Private messages, attachments
+  and all Przemo extras are not imported by the core; the report lists them, sorted by origin
+  against Przemo's own uninstaller (`przemo-additions.ts`), for their packages. One Przemo
+  column is read anyway: `vote_hide`, because ignoring it would reveal hidden poll results.
+- The importer reads only the database; `--files <old board dir>` makes the CLI copy the
+  smiley and avatar images the report lists (raster images only, paths kept inside
+  `<dataDir>/uploads`).
 - Users with no usable hash, or whose e-mail was emptied, must use password reset.
 - The import must run before `postmodem init` (the imported admins are the admins).

@@ -51,6 +51,7 @@ users-count = { $count ->
 stats-heading = Statistics
 stats-totals = Our users have written { $posts } in { $topics }. We have { $users }.
 stats-newest-label = Newest member:
+stats-online = Signed in during the last { $minutes } minutes: { $count }
 
 forum-topic = Topic
 forum-author = Author
@@ -189,3 +190,17 @@ reset-done-notice = Your password has been changed and you are signed in. Other 
 profile-title = Profile of { $name }
 profile-last-seen = Last visit
 profile-website = Website
+profile-recent-topics = Recent topics
+profile-no-topics = No topics to show.
+
+## Polls
+poll-results = Poll results
+poll-percent = { $percent }%
+poll-votes = { $count ->
+    [one] { $count } vote
+   *[other] { $count } votes
+}
+poll-total = Total votes: { $count }
+poll-hidden = Results are shown when the poll ends.
+poll-ends = Ends
+poll-ended = Ended

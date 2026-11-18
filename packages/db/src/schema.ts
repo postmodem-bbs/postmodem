@@ -170,6 +170,7 @@ export interface PostsTable {
   nodeId: number;
   authorId: number | null;
   authorName: string;
+  subject: string;
   source: string;
   format: string;
   rendered: string | null;
@@ -194,6 +195,28 @@ export interface SmiliesTable {
   image: string;
   emotion: string;
   position: number;
+}
+
+export interface PollsTable {
+  id: Generated<number>;
+  topicId: number;
+  question: string;
+  startsAt: number;
+  endsAt: number | null;
+  hideResults: Bool;
+  createdAt: number;
+}
+
+export interface PollOptionsTable {
+  pollId: number;
+  position: number;
+  text: string;
+  votes: number;
+}
+
+export interface PollVotersTable {
+  pollId: number;
+  userId: number;
 }
 
 export interface AuditLogTable {
@@ -238,6 +261,9 @@ export interface Schema {
   posts: PostsTable;
   ranks: RanksTable;
   smilies: SmiliesTable;
+  polls: PollsTable;
+  pollOptions: PollOptionsTable;
+  pollVoters: PollVotersTable;
   auditLog: AuditLogTable;
   legacyIds: LegacyIdsTable;
   slugHistory: SlugHistoryTable;
@@ -256,4 +282,5 @@ export const ID_TABLES = [
   "ranks",
   "smilies",
   "audit_log",
+  "polls",
 ] as const;

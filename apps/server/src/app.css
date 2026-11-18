@@ -519,6 +519,40 @@ main:focus {
 .profile-facts dt {
   font-weight: 600;
 }
+.post-author .avatar {
+  display: block;
+  max-width: 80px;
+  height: auto;
+  margin-block: var(--pm-space-2);
+}
+.poll-results {
+  border-collapse: collapse;
+  width: 100%;
+}
+.poll-results th,
+.poll-results td {
+  padding: var(--pm-space-1) var(--pm-space-2);
+  text-align: start;
+}
+.poll-results meter {
+  width: 100%;
+  min-width: 4rem;
+}
+.poll-results .num {
+  text-align: end;
+  white-space: nowrap;
+}
+.post-subject {
+  font-weight: 600;
+  margin-inline-start: var(--pm-space-2);
+}
+.recent-topics {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--pm-space-2);
+}
 .profile-facts dd {
   margin: 0;
   overflow-wrap: anywhere;

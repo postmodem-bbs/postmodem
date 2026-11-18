@@ -53,7 +53,8 @@ The URL style is a **board setting** (`core.urls.style`) with three presets:
 - The style is read per request; servers re-read settings every 5 s, so
   `postmodem settings set core.urls.style slug` applies to a running board, all replicas
   included.
-- Not implemented: the lint rule against hand-written internal paths.
+- `scripts/check-links.mjs` (part of `pnpm lint`) fails on a hand-written content path in the web
+  app; only `urls.ts`, the `reroute` hook and tests may spell them out.
 
 ## Consequences
 - Imported boards keep their URLs with the default setting, so the "legacy

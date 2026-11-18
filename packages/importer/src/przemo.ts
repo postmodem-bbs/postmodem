@@ -20,6 +20,7 @@ import {
   roleSignature,
 } from "./permissions.ts";
 import type { LegacySource, Row } from "./source.ts";
+import { classifyUnread, type UnreadByOrigin } from "./unread.ts";
 
 export const SOURCE = "przemo";
 
@@ -46,7 +47,9 @@ export type IssueKind =
   | "duplicate-smiley"
   | "bbcode-disabled"
   | "flattened-category"
-  | "missing-parent";
+  | "missing-parent"
+  | "remote-avatar-dropped"
+  | "orphan-poll";
 
 export interface ImportReport {
   source: { kind: "przemo"; prefix: string; tables: number };
@@ -65,9 +68,17 @@ export interface ImportReport {
     columns: Record<string, string[]>;
     config: string[];
     authColumns: Record<string, string>;
+    /** The same, by origin: Przemo additions, stock leftovers, other mods' data (unread.ts). */
+    byOrigin?: UnreadByOrigin;
   };
   /** Board settings to apply (the caller owns the settings service). */
   settings: { boardName?: string; boardDescription?: string; defaultLocale?: "en" | "pl" };
+  /**
+   * Image files the board needs from the old installation, as paths relative to its root,
+   * each with where it goes under the new board's uploads directory. The importer reads only
+   * the database; the caller copies the files (postmodem import … --files <dir>).
+   */
+  files: { from: string; to: string }[];
   durationMs: number;
 }
 
@@ -90,6 +101,8 @@ const USED: Record<string, string[]> = {
     "user_sig",
     "user_sig_bbcode_uid",
     "user_lang",
+    "user_avatar",
+    "user_avatar_type",
   ],
   groups: [
     "group_id",
@@ -137,8 +150,11 @@ const USED: Record<string, string[]> = {
     "post_edit_time",
     "post_edit_count",
   ],
-  posts_text: ["post_id", "bbcode_uid", "post_text"],
+  posts_text: ["post_id", "bbcode_uid", "post_subject", "post_text"],
   config: ["config_name", "config_value"],
+  vote_desc: ["vote_id", "topic_id", "vote_text", "vote_start", "vote_length", "vote_hide"],
+  vote_results: ["vote_id", "vote_option_id", "vote_option_text", "vote_result"],
+  vote_voters: ["vote_id", "vote_user_id"],
   banlist: ["ban_userid"],
 };
 const CONFIG_USED = ["sitename", "site_desc", "default_lang"];
@@ -158,6 +174,40 @@ const DONE = Number.MAX_SAFE_INTEGER;
 
 class Rollback extends Error {}
 
+/**
+ * phpBB2's avatar (user_avatar_type 1 upload, 2 remote URL, 3 gallery) as Postmodem stores it:
+ * `upload/<file>` or `gallery/<path>` under the uploads' avatars directory, or an https URL.
+ * Paths that could leave that directory, and plain-http URLs, give no avatar.
+ */
+export function legacyAvatar(type: number, value: string): string | null {
+  if (!value) return null;
+  if (type === 2) return /^https:\/\/[^\s"'<>]+$/i.test(value) ? value : null;
+  const kind = type === 1 ? "upload" : type === 3 ? "gallery" : null;
+  if (!kind || !safeRelativePath(value)) return null;
+  return `${kind}/${value}`;
+}
+
+/** A relative path with no "..", no absolute start, no backslashes or control characters. */
+export function safeRelativePath(path: string): boolean {
+  return (
+    path.length > 0 &&
+    path.length < 256 &&
+    ![...path].some((ch) => ch === "\\" || ch.charCodeAt(0) < 32) &&
+    !path.startsWith("/") &&
+    path.split("/").every((seg) => seg !== "" && seg !== "." && seg !== "..")
+  );
+}
+
+/** A post's own subject, or "" when it only repeats the topic title ("Re: …" included). */
+export function postSubject(subject: string, topicTitle: string): string {
+  const key = (v: string) =>
+    v
+      .replace(/^(re:\s*)+/i, "")
+      .trim()
+      .toLowerCase();
+  return !subject || key(subject) === key(topicTitle) ? "" : subject;
+}
+
 export async function importPrzemo(
   repos: Repositories,
   source: LegacySource,
@@ -175,6 +225,7 @@ export async function importPrzemo(
     issues: {},
     notImported: { tables: [], columns: {}, config: [], authColumns: { ...PACKAGE_AUTH_FIELDS } },
     settings: {},
+    files: [],
     durationMs: 0,
   };
   const count = (entity: string, field: "read" | "imported" | "skipped", n = 1) => {
@@ -321,7 +372,10 @@ export async function importPrzemo(
             website: plain(row.user_website),
             signatureSource: fromPhpbb2Storage(text(row.user_sig), plain(row.user_sig_bbcode_uid)),
             locale: LOCALES[plain(row.user_lang)] ?? null,
+            avatar: legacyAvatar(num(row.user_avatar_type), plain(row.user_avatar)),
           });
+          if (num(row.user_avatar_type) === 2 && !legacyAvatar(2, plain(row.user_avatar)))
+            issue("remote-avatar-dropped", "users", id, "remote avatar without https; not shown");
           const stored = plain(row.user_password);
           const scheme = legacyScheme(stored);
           if (scheme) await tx.credentials.set(id, scheme, stored);
@@ -592,6 +646,7 @@ export async function importPrzemo(
             nodeId: topic.nodeId,
             authorId,
             authorName: authorId === null ? plain(p.post_username) : "",
+            subject: postSubject(plain(t?.post_subject, "posts_text", id), topic.title),
             source: fromPhpbb2Storage(text(t?.post_text, "posts_text", id), plain(t?.bbcode_uid)),
             format: "bbcode-phpbb2",
             createdAt: ms(p.post_time) ?? Date.now(),
@@ -605,6 +660,45 @@ export async function importPrzemo(
         await setCheckpoint(tx, "posts", after);
       });
       log("posts", { imported: report.counts.posts?.imported ?? 0 });
+    }
+
+    // ── polls (vanilla phpBB2; small, so one transaction) ────────────────────
+    if ((await checkpoint("polls")) !== DONE && has("vote_desc")) {
+      const results = has("vote_results") ? await source.all("vote_results") : [];
+      const voters = has("vote_voters") ? await source.all("vote_voters") : [];
+      await r.transaction(async (tx) => {
+        for (const v of await source.all("vote_desc")) {
+          count("polls", "read");
+          const id = num(v.vote_id);
+          const topicId = num(v.topic_id);
+          if (!(await tx.topics.get(topicId)) || (await tx.polls.forTopic(topicId))) {
+            count("polls", "skipped");
+            issue("orphan-poll", "vote_desc", id, `no topic ${topicId}, or it already has a poll`);
+            continue;
+          }
+          const startsAt = ms(v.vote_start) ?? Date.now();
+          await tx.polls.create({
+            id,
+            topicId,
+            question: plain(v.vote_text, "vote_desc", id),
+            startsAt,
+            endsAt: num(v.vote_length) > 0 ? startsAt + num(v.vote_length) * 1000 : null,
+            hideResults: num(v.vote_hide) === 1,
+            options: results
+              .filter((o) => num(o.vote_id) === id)
+              .map((o) => ({
+                position: num(o.vote_option_id),
+                text: plain(o.vote_option_text, "vote_results", id),
+                votes: num(o.vote_result),
+              })),
+          });
+          const people = voters.filter((x) => num(x.vote_id) === id).map((x) => num(x.vote_user_id));
+          const known = await tx.users.getMany(people.filter((u) => u > 0));
+          await tx.polls.addVoters(id, [...known.keys()]);
+          count("polls", "imported");
+        }
+        await setCheckpoint(tx, "polls", DONE);
+      });
     }
 
     // ── counters: recomputed, and stale legacy ones reported ─────────────────
@@ -646,6 +740,28 @@ export async function importPrzemo(
       if (unused.length) report.notImported.columns[t] = unused;
     }
     report.notImported.tables.sort();
+    report.notImported.byOrigin = classifyUnread(report.notImported, source.prefix);
+
+    // ── files the new board needs (copied by the caller) ─────────────────────
+    const dir = (key: string, fallback: string) => (plain(config.get(key)) || fallback).replace(/\/+$/, "");
+    const smileDir = dir("smilies_path", "images/smiles");
+    for (const s of await source.query("SELECT DISTINCT smile_url FROM {p}smilies"))
+      if (safeRelativePath(plain(s.smile_url)))
+        report.files.push({ from: `${smileDir}/${plain(s.smile_url)}`, to: `smilies/${plain(s.smile_url)}` });
+    const avatarDirs: Record<number, string> = {
+      1: dir("avatar_path", "images/avatars"),
+      3: dir("avatar_gallery_path", "images/avatars/gallery"),
+    };
+    for (const u of await source.query(
+      "SELECT DISTINCT user_avatar, user_avatar_type FROM {p}users WHERE user_avatar_type IN (1, 3) AND user_avatar <> ''",
+    )) {
+      const stored = legacyAvatar(num(u.user_avatar_type), plain(u.user_avatar));
+      if (stored)
+        report.files.push({
+          from: `${avatarDirs[num(u.user_avatar_type)]}/${plain(u.user_avatar)}`,
+          to: `avatars/${stored}`,
+        });
+    }
   };
 
   try {
@@ -667,7 +783,8 @@ export async function importPrzemo(
 
 /** The report without anything that could identify the board or its people. */
 export function anonymise(report: ImportReport): ImportReport {
-  return { ...report, settings: {} };
+  // File names can be personal (avatars named after people); only their number stays.
+  return { ...report, settings: {}, files: report.files.map(() => ({ from: "", to: "" })) };
 }
 
 /** A short human summary for the CLI. */
@@ -691,6 +808,25 @@ export function summarise(report: ImportReport): string {
       : ["  none"]),
     "",
     `Not imported: ${report.notImported.tables.length} tables, ${Object.values(report.notImported.columns).flat().length} columns, ${report.notImported.config.length} config keys (details in the JSON report)`,
+    ...originLines(report.notImported.byOrigin),
   ];
   return lines.join("\n");
+}
+
+function originLines(o: UnreadByOrigin | undefined): string[] {
+  if (!o) return [];
+  const cols = (c: Record<string, string[]>) => Object.values(c).flat().length;
+  const lines = [
+    `  Przemo features (imported with their packages later): ${o.przemo.tables.length} tables, ${cols(o.przemo.columns)} columns, ${o.przemo.config.length} config keys`,
+    `  stock phpBB2/Przemo data nothing needs: ${o.stock.tables.length} tables, ${cols(o.stock.columns)} columns`,
+  ];
+  if (o.unknown.tables.length || cols(o.unknown.columns))
+    lines.push(
+      `  NOT from Przemo (another mod's; nothing will import it): ${[
+        ...o.unknown.tables,
+        ...Object.entries(o.unknown.columns).flatMap(([t, cs]) => cs.map((c) => `${t}.${c}`)),
+      ].join(", ")}`,
+    );
+  else lines.push("  nothing from other mods");
+  return lines;
 }

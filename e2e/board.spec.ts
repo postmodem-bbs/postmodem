@@ -151,6 +151,55 @@ test.describe("browsing", () => {
     }
   });
 
+  test("a topic's first page describes itself for search engines", async ({ page }) => {
+    await page.goto("/viewtopic.php?t=3");
+    const data = JSON.parse((await page.locator('script[type="application/ld+json"]').textContent()) ?? "");
+    expect(data).toMatchObject({
+      "@type": "DiscussionForumPosting",
+      headline: "Wasze pierwsze komputery",
+      author: { "@type": "Person", name: expect.any(String) },
+      datePublished: expect.stringMatching(/^\d{4}-/),
+    });
+    expect(data.url).toMatch(/\/viewtopic\.php\?t=3$/);
+    await expect(page.locator('meta[name="description"]')).toHaveAttribute("content", /Commodore 64/);
+    await page.goto("/viewtopic.php?t=3&start=15");
+    await expect(page.locator('script[type="application/ld+json"]')).toHaveCount(0);
+  });
+
+  test("profiles list recent topics, only from forums the reader can see", async ({ page }) => {
+    await page.goto("/profile.php?mode=viewprofile&u=2");
+    const recent = page.getByRole("region", { name: "Recent topics" });
+    await expect(recent.getByRole("link", { name: "Ulubiony edytor tekstu" })).toBeVisible();
+    // The members-only forum is hidden from guests, and so are its topics.
+    await expect(recent).not.toContainText("Tajny zlot");
+    await expectNoAxeViolations(page);
+  });
+
+  test("a topic shows its poll's results", async ({ page }) => {
+    await page.goto("/");
+    await page.getByRole("link", { name: "Gry retro" }).first().click();
+    await page.getByRole("link", { name: "Najlepsza gra na Amigę?" }).click();
+    const poll = page.getByRole("region", { name: "Na czym graliście najwięcej?" });
+    await expect(poll.getByRole("row", { name: /Amiga 500/ })).toContainText("58%");
+    await expect(poll).toContainText("Total votes: 12");
+    await expectNoAxeViolations(page);
+  });
+
+  test("uploaded images are served only from the uploads directory", async ({ request }) => {
+    expect((await request.get("/smilies/smile.svg")).status()).toBe(200);
+    for (const path of [
+      "/smilies/nope.gif",
+      "/avatars/upload/nope.png",
+      "/avatars/..%2f..%2fsecrets%2fsecret_key",
+    ])
+      expect((await request.get(path)).status(), path).toBe(404);
+  });
+
+  test("the index says who is signed in right now", async ({ page }) => {
+    await page.goto("/");
+    await expect(page.locator(".stats .online")).toContainText(/Signed in during the last 10 minutes: \d+/);
+  });
+
   test("unknown forums and topics are 404s", async ({ request }) => {
     expect((await request.get("/viewforum.php?f=999999")).status()).toBe(404);
     expect((await request.get("/viewtopic.php?t=abc")).status()).toBe(404);

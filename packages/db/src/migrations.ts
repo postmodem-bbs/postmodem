@@ -338,5 +338,49 @@ export function migrations(dialect: Dialect): Record<string, Migration> {
           .execute();
       },
     },
+    "0007_topics_by_author": {
+      async up(db: Db) {
+        // A profile's recent topics. (Who's online uses sessions_last_seen from 0003.)
+        await db.schema
+          .createIndex("topics_author")
+          .on("topics")
+          .columns(["author_id", "created_at"])
+          .execute();
+      },
+    },
+    "0008_post_subjects": {
+      async up(db: Db) {
+        // phpBB2's optional per-post subject (posts_text.post_subject), shown above the post.
+        await db.schema.alterTable("posts").addColumn("subject", "text", empty).execute();
+      },
+    },
+    "0009_polls": {
+      async up(db: Db) {
+        // phpBB2 polls (vote_desc, vote_results, vote_voters); one per topic.
+        const s = db.schema;
+        await withId(s.createTable("polls"), dialect)
+          .addColumn("topic_id", "bigint", (c) => c.notNull().unique())
+          .addColumn("question", "text", notNull)
+          .addColumn("starts_at", "bigint", notNull)
+          .addColumn("ends_at", "bigint")
+          .addColumn("hide_results", "integer", zero)
+          .addColumn("created_at", "bigint", notNull)
+          .execute();
+        await s
+          .createTable("poll_options")
+          .addColumn("poll_id", "bigint", (c) => c.notNull().references("polls.id").onDelete("cascade"))
+          .addColumn("position", "integer", notNull)
+          .addColumn("text", "text", notNull)
+          .addColumn("votes", "integer", zero)
+          .addPrimaryKeyConstraint("poll_options_pk", ["poll_id", "position"])
+          .execute();
+        await s
+          .createTable("poll_voters")
+          .addColumn("poll_id", "bigint", (c) => c.notNull().references("polls.id").onDelete("cascade"))
+          .addColumn("user_id", "bigint", notNull)
+          .addPrimaryKeyConstraint("poll_voters_pk", ["poll_id", "user_id"])
+          .execute();
+      },
+    },
   };
 }

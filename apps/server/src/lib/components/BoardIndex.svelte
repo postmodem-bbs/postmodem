@@ -11,7 +11,13 @@
     boardName: string;
     locale: string;
     categories: { id: number; ref: NodeRef | null; title: string; forums: ForumRow[] }[];
-    stats: { posts: number; topics: number; users: number; newest: { ref: UserRef; name: string } | null };
+    stats: {
+      posts: number;
+      topics: number;
+      users: number;
+      newest: { ref: UserRef; name: string } | null;
+      online: { count: number; users: { ref: UserRef; name: string }[]; minutes: number };
+    };
   }
   let { data, t }: { data: IndexData; t: Translate } = $props();
   const urls = $derived(links());
@@ -45,4 +51,9 @@
       <a href={urls.user(data.stats.newest.ref)}>{data.stats.newest.name}</a>
     </p>
   {/if}
+  <p class="online">
+    {t("stats-online", { count: data.stats.online.count, minutes: data.stats.online.minutes })}{#if data.stats.online.users.length}&nbsp;—
+      {#each data.stats.online.users as u, i (u.ref.id)}{#if i > 0}, {/if}<a href={urls.user(u.ref)}>{u.name}</a>{/each}
+    {/if}
+  </p>
 </section>
