@@ -19,6 +19,8 @@ async function topicWithReplies(page: Page, title: string, replies: string[]) {
   await page.getByRole("button", { name: "Post" }).click();
   for (const text of replies) {
     await page.getByRole("link", { name: "Reply" }).first().click();
+    // Wait for posting.php: the topic page has a "Message" box too (quick reply).
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Reply");
     await page.getByLabel("Message").fill(text);
     await page.getByRole("button", { name: "Post" }).click();
   }

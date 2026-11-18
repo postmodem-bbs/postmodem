@@ -1,5 +1,6 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
+  import Slot from "#lib/components/Slot.svelte";
   import "../app.css";
   import { SUPPORTED, translator } from "@postmodem/i18n";
   import { page } from "$app/state";
@@ -22,6 +23,7 @@
     <div class="account">
       {#if data.user}
         <span>{t("signed-in-as", { name: data.user.username })}</span>
+        <Slot items={data.headerBadges} {t} />
         <form method="POST" action="/login.php?/logout">
           <button type="submit" class="link-button">{t("logout")}</button>
         </form>

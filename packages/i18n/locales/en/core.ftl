@@ -283,3 +283,27 @@ modcp-error-title-missing = Give the new topic a title.
 modcp-error-title-long = The title is too long (at most 100 characters).
 modcp-error-nothing-selected = Choose some of the posts, but not all of them.
 modcp-error-invalid = That didn't work: check the form.
+
+## Package: quick-reply
+quick-reply-heading = Quick reply
+
+## Package: reports
+reports-report = Report
+reports-queue = Reports
+reports-title = Report a post
+reports-reason = What's wrong with this post?
+reports-submit = Send to the moderators
+reports-sent = Thanks: the moderators have your report.
+reports-already = You've already reported this post; the moderators will look at it.
+reports-error-reason = Say briefly what's wrong (up to 1000 characters).
+reports-queue-title = Open reports
+reports-queue-empty = No open reports. All quiet.
+reports-by = Reported by { $name }
+reports-outcome = Outcome
+reports-close = Close report
+reports-view-post = View post
+
+## Package: unread-tracking
+unread-new = new
+unread-mark-forum = Mark forum read
+unread-mark-all = Mark all forums read

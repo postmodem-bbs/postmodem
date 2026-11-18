@@ -4,6 +4,7 @@
   import Breadcrumbs from "#lib/components/Breadcrumbs.svelte";
   import ForumTable from "#lib/components/ForumTable.svelte";
   import Pagination from "#lib/components/Pagination.svelte";
+  import Slot from "#lib/components/Slot.svelte";
   import { formatDateTime, isoDate } from "#lib/format.ts";
   import { links } from "#lib/links.ts";
 
@@ -32,6 +33,7 @@
 {/if}
 
 {#if data.forum.kind !== "category"}
+  {#if data.tools.length}<div class="topic-actions tools"><Slot items={data.tools} {t} inline /></div>{/if}
   {#if data.canCreateTopic}<div class="topic-actions"><a class="button-link" href={urls.posting.newTopic(data.forum.id)}>{t("posting-new-topic")}</a></div>{/if}
   <Pagination total={data.total} perPage={data.perPage} start={data.start} href={(s) => urls.forum(data.forum, s)} {t} />
 
@@ -49,7 +51,7 @@
       </thead>
       <tbody>
         {#each data.topics as topic (topic.id)}
-          <tr class:highlight={topic.type === "announcement" || topic.type === "sticky"}>
+          <tr class={topic.extras.classes.join(" ")} class:highlight={topic.type === "announcement" || topic.type === "sticky"}>
             <th scope="row">
               {#if badge(topic.type)}<span class="badge">{badge(topic.type)}</span>{/if}
               {#if topic.locked}<span class="badge muted-badge">{t("topic-locked")}</span>{/if}
@@ -58,6 +60,7 @@
                 <a href={urls.topic(topic.movedTo)}>{topic.title}</a>
               {:else}
                 <a class="topic-title" href={urls.topic(topic.ref)}>{topic.title}</a>
+                {#each topic.extras.badges as b (b.key)}<span class={`badge pkg-badge pkg-${b.key}`}>{t(b.label)}</span>{/each}
               {/if}
             </th>
             <td>{topic.author || t("guest")}</td>

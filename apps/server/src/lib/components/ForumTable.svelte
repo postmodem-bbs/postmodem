@@ -21,9 +21,10 @@
   </thead>
   <tbody>
     {#each rows as f (f.id)}
-      <tr>
+      <tr class={f.extras.classes.join(" ")}>
         <th scope="row">
           <a class="forum-title" href={urls.node(f.ref)}>{f.title}</a>
+          {#each f.extras.badges as b (b.key)}<span class={`badge pkg-badge pkg-${b.key}`}>{t(b.label)}</span>{/each}
           {#if f.locked}<span class="muted">{t("index-locked")}</span>{/if}
           {#if f.description}<p class="forum-desc">{f.description}</p>{/if}
           {#if f.subforums.length}

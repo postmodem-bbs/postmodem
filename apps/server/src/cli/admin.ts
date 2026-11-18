@@ -4,6 +4,7 @@
 import {
   banProblem,
   banUser,
+  enabledPackagesSetting,
   type GroupKind,
   type Id,
   type Node,
@@ -318,4 +319,47 @@ export function banCommand(sub: string | undefined, args: string[]): Promise<num
     }
     throw new Usage(`usage:\n${BAN_HELP}`);
   });
+}
+
+export const PACKAGES_HELP = `  packages list | enable <key> | disable <key>
+                installed packages and which are on (profile POSTMODEM_PROFILE until the
+                first change); running servers apply a change within a few seconds`;
+
+export async function packagesCommand(sub: string | undefined, args: string[]): Promise<number> {
+  const ctx = await createContext({ migrate: true });
+  try {
+    const { packages, settings } = ctx;
+    const on = new Set(packages.enabled());
+    if (sub === "list") {
+      for (const p of packages.installed)
+        console.log(`${on.has(p.key) ? "on " : "off"}  ${p.key.padEnd(18)} T${p.tier}  ${p.description}`);
+      console.log(
+        `\nprofile: ${ctx.config.profile}${settings.get(enabledPackagesSetting) === null ? " (the enabled set follows it)" : ""}`,
+      );
+      return 0;
+    }
+    const key = args[0];
+    if ((sub === "enable" || sub === "disable") && key) {
+      if (!packages.installed.some((p) => p.key === key)) {
+        console.error(`no package '${key}' (see: postmodem packages list)`);
+        return 2;
+      }
+      if (sub === "enable") on.add(key);
+      else on.delete(key);
+      await settings.set(enabledPackagesSetting, [...on].sort());
+      await ctx.db.repos.audit.append({
+        actorId: null,
+        action: `package.${sub}d`,
+        targetType: "package",
+        targetId: key,
+        details: {},
+      });
+      console.log(`${key} ${sub}d`);
+      return 0;
+    }
+    console.error(`usage:\n${PACKAGES_HELP}`);
+    return 2;
+  } finally {
+    await ctx.db.close();
+  }
 }

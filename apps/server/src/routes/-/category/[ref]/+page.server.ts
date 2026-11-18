@@ -4,6 +4,7 @@
 import { error, redirect } from "@sveltejs/kit";
 import { loadIndex } from "#lib/server/board.ts";
 import { absoluteUrl, classicCategoryIds, ensureCanonical, resolveNode } from "#lib/server/links.ts";
+import { forRequest } from "#lib/server/packages.ts";
 import type { PageServerLoad } from "./$types";
 
 export const load: PageServerLoad = async ({ url, params, locals }) => {
@@ -15,7 +16,11 @@ export const load: PageServerLoad = async ({ url, params, locals }) => {
   if (node.kind !== "category") redirect(301, urls.forum(node));
   const classic =
     urls.style === "classic" ? await classicCategoryIds(repos, await repos.nodes.tree()) : undefined;
-  const data = await loadIndex(repos, locals.perms, { categoryId: node.id, classic });
+  const data = await loadIndex(repos, locals.perms, {
+    categoryId: node.id,
+    classic,
+    decorate: forRequest(locals).decorate,
+  });
   if (!data?.category) error(404, "Not found");
   ensureCanonical(url, urls.category(data.category));
   return {

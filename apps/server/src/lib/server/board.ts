@@ -4,6 +4,7 @@
 // node.view but not node.read are listed but closed (403), and nothing from an unreadable
 // forum (last-post titles, counts) leaks through a readable one.
 import {
+  type Decoration,
   type Id,
   may,
   moderates,
@@ -38,10 +39,28 @@ export interface LastPost {
   at: number;
   author: string; // "" = guest without a name
 }
+/** What packages add to list rows (extension point #2), from the package host. */
+export interface Decorate {
+  topics?(topics: Topic[]): Promise<Map<Id, Decoration[]>>;
+  forums?(nodes: Node[]): Promise<Map<Id, Decoration[]>>;
+}
+
+/** Badges and classes from every decoration of a row, flattened for the templates. */
+function flatten(d: Decoration[] | undefined): {
+  badges: { key: string; label: string }[];
+  classes: string[];
+} {
+  return {
+    badges: (d ?? []).flatMap((x) => x.badges ?? []),
+    classes: (d ?? []).flatMap((x) => x.classes ?? []),
+  };
+}
+
 export interface ForumRow {
   id: Id;
   ref: NodeRef;
   title: string;
+  extras: ReturnType<typeof flatten>;
   description: string;
   locked: boolean;
   /** Listed (node.view) but not readable (node.read): counts shown, last post withheld. */
@@ -110,7 +129,10 @@ async function forumRows(
   perms: Permissions,
   forums: Node[],
   all: Node[],
+  decorate?: Decorate,
 ): Promise<ForumRow[]> {
+  const decorations =
+    (await decorate?.forums?.(forums.filter((f) => perms.can("node.read", f)))) ?? new Map();
   const byId = new Map(all.map((n) => [n.id, n]));
   const readable = (id: Id) => {
     const n = byId.get(id);
@@ -125,6 +147,7 @@ async function forumRows(
     id: f.id,
     ref: nodeRef(f),
     title: f.title,
+    extras: flatten(decorations.get(f.id)),
     description: f.description,
     locked: f.locked,
     restricted: !readable(f.id),
@@ -144,7 +167,7 @@ async function forumRows(
 export async function loadIndex(
   repos: Repositories,
   perms: Permissions,
-  opts: { categoryId?: Id; classic?: ClassicIds } = {},
+  opts: { categoryId?: Id; classic?: ClassicIds; decorate?: Decorate } = {},
 ) {
   const tree = await repos.nodes.tree();
   const all = visibleTree(perms, tree);
@@ -181,7 +204,7 @@ export async function loadIndex(
         id: g.id,
         ref: g.ref,
         title: g.title,
-        forums: await forumRows(repos, perms, g.nodes, all),
+        forums: await forumRows(repos, perms, g.nodes, all, opts.decorate),
       })),
   );
   const readable = all.filter((n) => perms.can("node.read", n));
@@ -228,6 +251,7 @@ export interface TopicRow {
   id: Id;
   ref: TopicRef;
   title: string;
+  extras: ReturnType<typeof flatten>;
   type: Topic["type"];
   locked: boolean;
   /** A shadow left behind by a move: links to where the topic went. */
@@ -244,13 +268,14 @@ export async function loadForum(
   node: Node,
   startParam: unknown,
   classic?: ClassicIds,
+  decorate?: Decorate,
 ) {
   if (node.kind === "link") return deny(404);
   const all = visibleTree(perms, await repos.nodes.tree());
   const allowed = all.some((n) => n.id === node.id) ? access(perms, node) : 404;
   if (allowed !== "ok") return deny(allowed);
   const children = all.filter((n) => n.parentId === node.id && n.kind !== "category");
-  const subforums = await forumRows(repos, perms, children, all);
+  const subforums = await forumRows(repos, perms, children, all, decorate);
   // One query for the requested page; a second only when the request was past the end.
   const fetch = (start: number) =>
     repos.topics.listByNode(node.id, { page: start / TOPICS_PER_PAGE + 1, perPage: TOPICS_PER_PAGE });
@@ -267,10 +292,12 @@ export async function loadForum(
   const moved = await repos.topics.getMany(
     page.items.flatMap((t) => (t.movedToTopicId ? [t.movedToTopicId] : [])),
   );
+  const decorations = (await decorate?.topics?.(page.items)) ?? new Map();
   const topics: TopicRow[] = page.items.map((t) => ({
     id: t.id,
     ref: topicRef(t),
     title: t.title,
+    extras: flatten(decorations.get(t.id)),
     type: t.type,
     locked: t.locked,
     movedTo: t.movedToTopicId

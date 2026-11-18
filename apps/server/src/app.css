@@ -605,6 +605,42 @@ main:focus {
   padding-block: var(--pm-space-1);
   border-block-end: 1px solid var(--pm-color-border);
 }
+.pkg-unread {
+  background: var(--pm-color-header-bg);
+  color: var(--pm-color-header-text);
+}
+tr.pm-unread .topic-title,
+tr.pm-unread .forum-title {
+  font-weight: 700;
+}
+.slot-form.inline {
+  display: inline;
+}
+.slot-form.inline .actions,
+.slot-form.inline button {
+  margin: 0;
+}
+.slot-link .count {
+  display: inline-block;
+  min-inline-size: 1.5em;
+  padding: 0 var(--pm-space-1);
+  border-radius: 1em;
+  background: var(--pm-color-danger);
+  color: #fff;
+  text-align: center;
+  font-weight: 700;
+}
+.report-queue {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: var(--pm-space-3);
+}
+.report-reason {
+  margin: 0;
+  padding-inline-start: var(--pm-space-3);
+  border-inline-start: 4px solid var(--pm-color-danger);
+}
 .post-subject {
   font-weight: 600;
   margin-inline-start: var(--pm-space-2);

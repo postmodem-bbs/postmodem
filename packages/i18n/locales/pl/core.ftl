@@ -294,3 +294,27 @@ modcp-error-title-missing = Nadaj nowemu tematowi tytuł.
 modcp-error-title-long = Tytuł jest za długi (najwyżej 100 znaków).
 modcp-error-nothing-selected = Wybierz część postów, ale nie wszystkie.
 modcp-error-invalid = Nie udało się: sprawdź formularz.
+
+## Package: quick-reply
+quick-reply-heading = Szybka odpowiedź
+
+## Package: reports
+reports-report = Zgłoś
+reports-queue = Zgłoszenia
+reports-title = Zgłoś post
+reports-reason = Co jest nie tak z tym postem?
+reports-submit = Wyślij do moderatorów
+reports-sent = Dziękujemy: moderatorzy dostali zgłoszenie.
+reports-already = Ten post już zgłosiłeś; moderatorzy się nim zajmą.
+reports-error-reason = Napisz krótko, co jest nie tak (do 1000 znaków).
+reports-queue-title = Otwarte zgłoszenia
+reports-queue-empty = Brak otwartych zgłoszeń. Cisza i spokój.
+reports-by = Zgłosił(a) { $name }
+reports-outcome = Rozstrzygnięcie
+reports-close = Zamknij zgłoszenie
+reports-view-post = Zobacz post
+
+## Package: unread-tracking
+unread-new = nowe
+unread-mark-forum = Oznacz forum jako przeczytane
+unread-mark-all = Oznacz wszystkie fora jako przeczytane

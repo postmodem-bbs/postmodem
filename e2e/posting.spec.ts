@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Posting (M2 slice 1): new topics, replies, quotes, edits and deletes on phpBB2's
 // posting.php, with and without JavaScript. Posts go to "Komputery" (forum 6), which no
-// other spec counts. The board runs with core.posting.floodSeconds = 0 (CI sets it after
-// seed-demo): the flood rule is covered by the core's tests, and two browsers posting as the
-// same demo user at once would trip it here.
+// other spec counts. The board runs with core.posting.floodSeconds = 0 and
+// core.posting.perHour = 0 (CI sets both after seed-demo): those limits are covered by the
+// core's tests, and every browser posting as the same demo users would trip them here.
 import { expect, type Page, test } from "@playwright/test";
 import { expectNoAxeViolations, guardCsp, signIn } from "./helpers.ts";
 
@@ -38,6 +38,8 @@ test("a member starts a topic, previews and posts a reply, quotes, edits and del
 
   // An empty reply explains itself; a preview renders without saving.
   await page.getByRole("link", { name: "Reply" }).first().click();
+  // Wait for posting.php: the topic page has a "Message" box and "Post" button too (quick reply).
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Reply");
   await page.getByRole("button", { name: "Post" }).click();
   await expect(page.getByRole("alert")).toHaveText("Write a message.");
   await page.getByLabel("Message").fill("Mam jeden [i]na strychu[/i].");
@@ -49,10 +51,12 @@ test("a member starts a topic, previews and posts a reply, quotes, edits and del
 
   // Quoting fills in the quote; the last post is ours, so it can be edited and deleted.
   await page.locator("article.post").first().getByRole("link", { name: "Quote" }).click();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Reply");
   await expect(page.getByLabel("Message")).toHaveValue(/^\[quote="retro_fan"\]Szukam/);
   await page.goBack();
   const last = page.locator("article.post").last();
   await last.getByRole("link", { name: "Edit" }).click();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Edit post");
   await page.getByLabel("Message").fill("Mam dwa na strychu.");
   await page.getByRole("button", { name: "Save" }).click();
   await expect(page.locator("article.post").last()).toContainText("Mam dwa na strychu.");

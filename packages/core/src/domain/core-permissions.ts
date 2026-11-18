@@ -82,11 +82,13 @@ export const CORE_CAPABILITIES = [
 
 export type CoreCapability = (typeof CORE_CAPABILITIES)[number]["key"];
 
-export function coreRegistry(): CapabilityRegistry {
+/** Core capabilities plus those of installed packages (registry, extension point #7). */
+export function coreRegistry(extra: CapabilityDef[] = []): CapabilityRegistry {
   return new CapabilityRegistry().define(
     ...CORE_CAPABILITIES.map(
       (c): CapabilityDef => ({ ...c, requires: "requires" in c ? [...c.requires] : undefined }),
     ),
+    ...extra.map(({ key, scope, description, requires }) => ({ key, scope, description, requires })),
   );
 }
 
@@ -140,13 +142,22 @@ export const BUILTIN_ROLES: { key: string; name: string; capabilities: Record<st
  * Installs the built-in roles and, on a board with no grants at all, phpBB2's defaults:
  * everyone may read, registered users may post. Idempotent.
  */
-export async function installCorePermissions(repos: Repositories): Promise<{ defaultGrants: boolean }> {
-  const registry = coreRegistry();
+export async function installCorePermissions(
+  repos: Repositories,
+  packages: { capabilities: CapabilityDef[]; roleGrants: Record<string, Record<string, Effect>> } = {
+    capabilities: [],
+    roleGrants: {},
+  },
+): Promise<{ defaultGrants: boolean }> {
+  const registry = coreRegistry(packages.capabilities);
   const roles = new Map<string, Id>();
   for (const r of BUILTIN_ROLES) {
-    const unknown = registry.validateRole(r.capabilities);
+    // Packages extend the built-in roles (e.g. members may report posts); the core's own
+    // entries win, so a package can't widen what a role means for core capabilities.
+    const capabilities = { ...packages.roleGrants[r.key], ...r.capabilities };
+    const unknown = registry.validateRole(capabilities);
     if (unknown.length) throw new Error(`role ${r.key} uses unknown capabilities: ${unknown.join(", ")}`);
-    roles.set(r.key, (await repos.roles.upsert({ ...r, builtin: true })).id);
+    roles.set(r.key, (await repos.roles.upsert({ ...r, capabilities, builtin: true })).id);
   }
   if ((await repos.grants.all()).length) return { defaultGrants: false };
   await repos.grants.create(roles.get("core:reader")!, { type: "everyone" }, null);

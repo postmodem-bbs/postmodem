@@ -2,6 +2,7 @@
 import { redirect } from "@sveltejs/kit";
 import { loadIndex } from "#lib/server/board.ts";
 import { classicCategoryIds } from "#lib/server/links.ts";
+import { forRequest } from "#lib/server/packages.ts";
 import type { PageServerLoad } from "./$types";
 
 const NOTICES = ["welcome", "verified", "reset"];
@@ -12,8 +13,10 @@ export const load: PageServerLoad = async ({ locals, url }) => {
   const { repos } = locals.ctx.db;
   const classic =
     locals.urls.style === "classic" ? await classicCategoryIds(repos, await repos.nodes.tree()) : undefined;
+  const pkg = forRequest(locals);
   return {
-    ...(await loadIndex(repos, locals.perms, { classic }))!,
+    ...(await loadIndex(repos, locals.perms, { classic, decorate: pkg.decorate }))!,
+    tools: await pkg.slot("forum.tools"),
     // One-off confirmations after a redirect (?notice=…), only for the signed-in user they concern.
     notice:
       locals.user && NOTICES.includes(url.searchParams.get("notice") ?? "")

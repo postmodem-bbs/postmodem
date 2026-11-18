@@ -16,4 +16,5 @@ export * from "./domain/posting.ts";
 export * from "./domain/tree.ts";
 export * from "./domain/types.ts";
 export * from "./log.ts";
+export * from "./packages.ts";
 export * from "./settings.ts";

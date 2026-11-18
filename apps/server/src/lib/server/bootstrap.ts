@@ -25,6 +25,7 @@ import {
   type Permissions,
   POSTING_POLICY,
   permissionsFor,
+  postsPerHour,
   REGISTER_POLICY,
   Settings,
   Throttle,
@@ -35,6 +36,13 @@ import { createRenderer, type Renderer } from "./content.ts";
 import { ViewCounter } from "./counters.ts";
 import { Worker } from "./jobs.ts";
 import { createMailer, defaultSender, type Mailer, type MailMessage } from "./mail.ts";
+import {
+  createPackageHost,
+  INSTALLED_PACKAGES,
+  type PackageHost,
+  packageMigrations,
+  packagePermissions,
+} from "./packages.ts";
 
 export interface AppContext {
   config: Config;
@@ -50,7 +58,7 @@ export interface AppContext {
     register: Throttle;
     mail: Throttle;
     mailIp: Throttle;
-    posting: Throttle;
+    posting: Pick<Throttle, "wait" | "fail" | "reset">;
   };
   mailer: Mailer;
   /** Queues an e-mail; the worker sends it (with retries), never the web request. */
@@ -61,6 +69,8 @@ export interface AppContext {
   activeBans(): Promise<Ban[]>;
   /** Drop the cache after this process changed the bans. */
   invalidateBans(): void;
+  /** Installed packages and which are enabled (M2 slice 3). */
+  packages: PackageHost;
   /** Topic views, written in batches (started by roles that serve pages, flushed at shutdown). */
   views: ViewCounter;
   /** Permission view for one request (null = guest). Loads a fresh snapshot each call. */
@@ -120,20 +130,33 @@ export async function createContext(opts: { migrate: boolean; loaded?: LoadedCon
   if (opts.migrate) {
     const ran = await db.migrate();
     if (ran.length) log.info("applied migrations", { migrations: ran });
+    const pkg = await db.migratePackages(packageMigrations(INSTALLED_PACKAGES, db.dialect));
+    if (pkg.length) log.info("applied package migrations", { migrations: pkg });
   }
-  const settings = new Settings(coreSettings(), db.settingsStore());
+  const registry = coreSettings();
+  for (const p of INSTALLED_PACKAGES) registry.register(...(p.settings ?? []));
+  const settings = new Settings(registry, db.settingsStore());
+  const pkgPerms = packagePermissions(INSTALLED_PACKAGES);
   // Settings can only load once the schema exists; in stack mode `migrate` may still be running.
   let settingsLoaded = false;
   const tryLoadSettings = async () => {
     if (settingsLoaded || (await db.pendingMigrations()).length) return;
     for (const p of await settings.init()) log.warn(p);
-    const { defaultGrants } = await installCorePermissions(db.repos);
+    const { defaultGrants } = await installCorePermissions(db.repos, pkgPerms);
     if (defaultGrants)
       log.info("granted phpBB2's default permissions: everyone reads, registered users post");
     settingsLoaded = true;
   };
   await tryLoadSettings();
-  const capabilities = coreRegistry();
+  const capabilities = coreRegistry(pkgPerms.capabilities);
+  const packages = await createPackageHost({
+    installed: INSTALLED_PACKAGES,
+    repos: db.repos,
+    db: db.kysely.withoutPlugins(),
+    settings,
+    profile: config.profile,
+    log,
+  });
   const mailer = createMailer(config, log, () => defaultSender(config, settings.get(boardName)));
   if (mailer.kind === "log")
     log.warn("e-mail goes to the log (POSTMODEM_MAIL_URL=log://); set an smtp:// URL to deliver it");
@@ -155,12 +178,19 @@ export async function createContext(opts: { migrate: boolean; loaded?: LoadedCon
         "register-ip",
       ),
       mail: new Throttle(MAIL_POLICY, db.repos.throttle, "mail"),
-      posting: new Throttle(POSTING_POLICY, db.repos.throttle, "posting"),
+      // The posting limit is a board setting (core.posting.perHour, 0 = off), read per call.
+      get posting() {
+        const free = settings.get(postsPerHour);
+        return free === 0
+          ? { wait: async () => 0, fail: async () => {}, reset: async () => {} }
+          : new Throttle({ ...POSTING_POLICY, free }, db.repos.throttle, "posting");
+      },
       mailIp: new Throttle(MAIL_IP_POLICY, db.repos.throttle, "mail-ip"),
     },
     mailer,
     worker,
     ...banCache(db),
+    packages,
     views: new ViewCounter(
       (id, by) => db.repos.topics.addViews(id, by),
       (e) => log.warn("could not save topic views", { error: (e as Error).message }),

@@ -4,6 +4,7 @@
 import { error, redirect } from "@sveltejs/kit";
 import { loadForum, TOPICS_PER_PAGE } from "#lib/server/board.ts";
 import { absoluteUrl, classicCategoryIds, ensureCanonical, resolveNode } from "#lib/server/links.ts";
+import { forRequest } from "#lib/server/packages.ts";
 import { requestedStart } from "#lib/urls.ts";
 import type { PageServerLoad } from "./$types";
 
@@ -27,8 +28,13 @@ export const load: PageServerLoad = async ({ url, params, locals }) => {
     node,
     requestedStart(url.searchParams, TOPICS_PER_PAGE),
     classic,
+    forRequest(locals).decorate,
   );
   if ("denied" in data) error(data.denied, data.denied === 403 ? "Forbidden" : "Not found");
   ensureCanonical(url, urls.forum(data.forum, data.start));
-  return { ...data, canonical: absoluteUrl(locals.ctx.config.publicUrl, urls.forum(data.forum, data.start)) };
+  return {
+    ...data,
+    tools: await forRequest(locals).slot("forum.tools", { node }),
+    canonical: absoluteUrl(locals.ctx.config.publicUrl, urls.forum(data.forum, data.start)),
+  };
 };

@@ -3,6 +3,7 @@
   import { translator } from "@postmodem/i18n";
   import Breadcrumbs from "#lib/components/Breadcrumbs.svelte";
   import Pagination from "#lib/components/Pagination.svelte";
+  import Slot from "#lib/components/Slot.svelte";
   import { formatDate, formatDateTime, isoDate } from "#lib/format.ts";
   import { links } from "#lib/links.ts";
 
@@ -95,11 +96,12 @@
         {#if post.editedAt && post.editCount > 0}
           <p class="muted post-edited">{t("post-edited", { count: post.editCount })} <time datetime={isoDate(post.editedAt)}>{formatDateTime(post.editedAt, data.locale)}</time></p>
         {/if}
-        {#if data.topic.canReply || post.canEdit || post.canDelete}
+        {#if data.topic.canReply || post.canEdit || post.canDelete || post.slots.length}
           <p class="post-actions">
             {#if data.topic.canReply}<a href={urls.posting.quote(post.id)}>{t("posting-quote")}</a>{/if}
             {#if post.canEdit}<a href={urls.posting.edit(post.id)}>{t("posting-edit-link")}</a>{/if}
             {#if post.canDelete}<a href={urls.posting.delete(post.id)}>{t("posting-delete-link")}</a>{/if}
+            <Slot items={post.slots} {t} />
           </p>
         {/if}
       </div>
@@ -108,6 +110,7 @@
 </div>
 
 <Pagination total={data.total} perPage={data.perPage} start={data.start} href={(s) => urls.topic(data.topic, s)} {t} />
+{#if data.afterPosts.length}<Slot items={data.afterPosts} {t} />{/if}
 <div class="topic-actions">
   {#if data.topic.canReply}<a class="button-link" href={urls.posting.reply(data.topic.id)}>{t("posting-reply")}</a>{:else if data.topic.locked}<p class="muted">{t("topic-locked-hint")}</p>{/if}
   {#if data.topic.canModerate}<a href={urls.modcp(data.topic.id)}>{t("modcp-link")}</a>{/if}

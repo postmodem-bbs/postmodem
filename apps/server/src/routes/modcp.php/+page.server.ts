@@ -101,6 +101,12 @@ async function run(
       action: String(form.get("action") ?? ""),
     });
   event.locals.ctx.log.info("moderation", { topicId: topic.id, by: event.locals.user!.id });
+  await event.locals.ctx.packages.emit("moderation.action", {
+    action: event.url.search.split("&/").pop() ?? "",
+    topicId: topic.id,
+    actor: event.locals.user!,
+    reason,
+  });
   redirect(
     303,
     toForum ? event.locals.urls.forum(nodeRef(node)) : event.locals.urls.topic(topicRef(result.topic)),

@@ -3,6 +3,7 @@
 // nested forums, announcements and stickies, long paginated topics, guest posts, and posts
 // exercising every BBCode feature. Refuses to touch a board that already has forums.
 import { hashPassword, type Id, installCorePermissions, type Repositories } from "@postmodem/core";
+import { INSTALLED_PACKAGES, packagePermissions } from "./packages.ts";
 
 /**
  * Demo members (not Admin) can sign in with this password, to try what registered users and
@@ -264,7 +265,7 @@ export async function seedDemo(repos: Repositories, now = Date.now()): Promise<S
       [admin.id, "Forum przeniesione na nowy serwer."],
     ]);
 
-    const roles = await installCorePermissions(r).then(async () => ({
+    const roles = await installCorePermissions(r, packagePermissions(INSTALLED_PACKAGES)).then(async () => ({
       hidden: (await r.roles.byKey("core:hidden"))!.id,
       noRead: (await r.roles.byKey("core:no-read"))!.id,
       reader: (await r.roles.byKey("core:reader"))!.id,
@@ -277,6 +278,8 @@ export async function seedDemo(repos: Repositories, now = Date.now()): Promise<S
     await r.grants.create(roles.participant, { type: "registered" }, members.id);
     await r.grants.create(roles.hidden, { type: "everyone" }, modroom.id);
     await r.grants.create(roles.moderator, { type: "group", id: moderators.id }, modroom.id);
+    // The moderators look after "Gry retro" too: a public forum with a moderator (reports e2e).
+    await r.grants.create(roles.moderator, { type: "group", id: moderators.id }, retro.id);
     await r.grants.create(roles.noRead, { type: "everyone" }, archive.id);
     await r.grants.create(roles.readOnly, { type: "registered" }, archive.id);
     await r.grants.create(roles.admin, { type: "user", id: admin.id }, null);

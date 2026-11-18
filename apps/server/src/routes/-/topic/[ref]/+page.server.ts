@@ -6,6 +6,7 @@ import { error, redirect } from "@sveltejs/kit";
 import { loadTopic, POSTS_PER_PAGE } from "#lib/server/board.ts";
 import { jsonLdTag } from "#lib/server/jsonld.ts";
 import { absoluteUrl, classicCategoryIds, ensureCanonical, resolveTopic } from "#lib/server/links.ts";
+import { forRequest } from "#lib/server/packages.ts";
 import { requestedStart } from "#lib/urls.ts";
 import type { PageServerLoad } from "./$types";
 
@@ -28,6 +29,24 @@ export const load: PageServerLoad = async ({ url, params, locals }) => {
   if ("movedTo" in data && data.movedTo) redirect(301, urls.topic(data.movedTo));
   ensureCanonical(url, urls.topic(data.topic, data.start));
 
+  // Packages: the "viewed" event (read marks) and their slots on this page.
+  const pkg = forRequest(locals);
+  await locals.ctx.packages.emit("topic.viewed", {
+    topic,
+    viewer: locals.perms.viewer,
+    lastPostAt: topic.lastPostAt,
+  });
+  const node = await repos.nodes.get(topic.nodeId);
+  const raw = await repos.posts.getMany(data.posts.map((p) => p.id));
+  const postSlots = Object.fromEntries(
+    await Promise.all(
+      data.posts.map(
+        async (p) => [p.id, await pkg.slot("post.actions", { topic, node, post: raw.get(p.id) })] as const,
+      ),
+    ),
+  );
+  const afterPosts = await pkg.slot("topic.afterPosts", { topic, node });
+
   // Reader-dependent parts of the cached HTML ([you], [hide]).
   const t = translator(locals.locale);
   const messages = { guest: t("post-guest"), hiddenContent: t("bb-hidden-content") };
@@ -37,7 +56,12 @@ export const load: PageServerLoad = async ({ url, params, locals }) => {
     canonical: absoluteUrl(site, urls.topic(data.topic, data.start)),
     description: data.summary?.description ?? "",
     jsonLd: data.summary ? jsonLdTag(discussionPosting(data, site, urls)) : "",
-    posts: data.posts.map((p) => ({ ...p, html: locals.ctx.renderer.forReader(p.html, null, messages) })),
+    posts: data.posts.map((p) => ({
+      ...p,
+      slots: postSlots[p.id] ?? [],
+      html: locals.ctx.renderer.forReader(p.html, null, messages),
+    })),
+    afterPosts,
   };
 };
 

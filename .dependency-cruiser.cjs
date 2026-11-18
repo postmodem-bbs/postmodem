@@ -23,6 +23,16 @@ module.exports = {
       },
     },
     {
+      name: "modules-use-the-package-api",
+      comment:
+        "First-party packages use core's package API and their own tables (Kysely), never the database layer's internals or the app (PACKAGES.md, M2 slice 3).",
+      severity: "error",
+      from: { path: "^packages/modules/", pathNot: "\\.test\\.ts$" },
+      to: {
+        path: "(svelte|@sveltejs|^packages/(db|ui|importer)/|@postmodem/(db|ui|importer|server)|^apps/)",
+      },
+    },
+    {
       name: "importer-talks-to-ports-only",
       comment:
         "The importer writes through core's repository interfaces, never the database layer or the app.",

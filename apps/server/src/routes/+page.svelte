@@ -2,6 +2,7 @@
 <script lang="ts">
   import { translator } from "@postmodem/i18n";
   import BoardIndex from "#lib/components/BoardIndex.svelte";
+  import Slot from "#lib/components/Slot.svelte";
 
   let { data } = $props();
   const t = $derived(translator(data.locale));
@@ -23,4 +24,5 @@
   </p>
 {/if}
 
+{#if data.tools.length}<div class="topic-actions tools"><Slot items={data.tools} {t} inline /></div>{/if}
 <BoardIndex {data} {t} />

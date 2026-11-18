@@ -18,6 +18,11 @@ export interface Database {
   /** Apply pending migrations; safe to run concurrently from several containers. */
   migrate(): Promise<string[]>;
   /**
+   * Apply packages' migrations (names `<package>/<name>`), kept apart from the core's. Installing
+   * a package later adds names that sort before applied ones, so order is per package only.
+   */
+  migratePackages(migrations: Record<string, Migration>): Promise<string[]>;
+  /**
    * After inserting rows with explicit (legacy) ids, move Postgres identity sequences past them.
    * No-op on SQLite, where AUTOINCREMENT already follows the highest id.
    */
@@ -97,6 +102,25 @@ export function createDatabase(engine: Engine): Database {
     },
     async migrate() {
       const { error, results } = await (await getMigrator()).migrateToLatest();
+      if (error) throw error instanceof Error ? error : new Error(String(error));
+      return (results ?? []).filter((r) => r.status === "Success").map((r) => r.migrationName);
+    },
+    async migratePackages(packageMigrations) {
+      if (!Object.keys(packageMigrations).length) return [];
+      const raw = db.withoutPlugins() as unknown as Kysely<unknown>;
+      const schema =
+        dialect === "pg"
+          ? (await sql<{ s: string }>`select current_schema() as s`.execute(raw)).rows[0]?.s
+          : undefined;
+      const migrator = new Migrator({
+        db: raw,
+        provider: { getMigrations: async () => packageMigrations },
+        migrationTableName: "pm_package_migrations",
+        migrationLockTableName: "pm_package_migrations_lock",
+        allowUnorderedMigrations: true,
+        ...(schema ? { migrationTableSchema: schema } : {}),
+      });
+      const { error, results } = await migrator.migrateToLatest();
       if (error) throw error instanceof Error ? error : new Error(String(error));
       return (results ?? []).filter((r) => r.status === "Success").map((r) => r.migrationName);
     },

@@ -88,11 +88,31 @@ export const floodSeconds = defineSetting({
   default: 15,
 });
 
+/**
+ * Posts (and reports) a member may send per hour before each further one waits longer
+ * (POSTING_POLICY's growing delays); 0 turns the limit off. Moderators aren't exempt.
+ */
+export const postsPerHour = defineSetting({
+  key: "core.posting.perHour",
+  schema: z.number().int().min(0).max(10_000),
+  default: 30,
+});
+
 /** Longest post, in characters (phpBB2 had no limit but MySQL's TEXT: 64 KB). */
 export const maxPostLength = defineSetting({
   key: "core.posting.maxLength",
   schema: z.number().int().min(100).max(200_000),
   default: 60_000,
+});
+
+/** Enabled packages (PACKAGES.md §5); null means "the profile's list" (POSTMODEM_PROFILE). */
+export const enabledPackagesSetting = defineSetting<string[] | null>({
+  key: "core.packages.enabled",
+  schema: z
+    .array(z.string().regex(/^[a-z][a-z0-9-]*$/))
+    .max(200)
+    .nullable(),
+  default: null,
 });
 
 export function coreSettings(): SettingsRegistry {
@@ -107,6 +127,8 @@ export function coreSettings(): SettingsRegistry {
     disallowedUsernames,
     urlStyle,
     floodSeconds,
+    postsPerHour,
     maxPostLength,
+    enabledPackagesSetting,
   );
 }

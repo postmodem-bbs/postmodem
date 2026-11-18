@@ -23,6 +23,7 @@
     "@postmodem/i18n": "workspace:*",
     "@postmodem/importer": "workspace:*",
     "@postmodem/markup": "workspace:*",
+    "@postmodem/modules": "workspace:*",
     "@postmodem/ui": "workspace:*",
     "nodemailer": "10.6.0"
   },

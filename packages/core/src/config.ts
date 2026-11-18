@@ -65,7 +65,7 @@ const ConfigSchema = z.object({
   mailFrom: z.string().optional(),
   /** Registrations one IP address can make per hour before delays start; 0 = unlimited. */
   registrationsPerIpHour: z.coerce.number().int().min(0),
-  profile: z.enum(["vanilla", "przemo", "modern"]),
+  profile: z.enum(["vanilla", "essentials", "przemo"]),
   version: z.string(),
   revision: z.string(),
 });
@@ -100,7 +100,7 @@ export function loadConfig(io: ConfigIo): LoadedConfig {
     logLevel: "info",
     mailUrl: "log://",
     registrationsPerIpHour: 10,
-    profile: "przemo",
+    profile: "essentials",
     version: env[`${ENV_PREFIX}VERSION`] ?? "0.0.0-dev",
     revision: env[`${ENV_PREFIX}REVISION`] ?? "unknown",
   };

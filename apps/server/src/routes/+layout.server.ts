@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { boardName, registrationOpen, urlStyle } from "@postmodem/core";
+import { forRequest } from "#lib/server/packages.ts";
 import type { LayoutServerLoad } from "./$types";
 
-export const load: LayoutServerLoad = ({ locals, url }) => {
+export const load: LayoutServerLoad = async ({ locals, url }) => {
   const { config, settings } = locals.ctx;
   return {
     locale: locals.locale,
@@ -17,5 +18,7 @@ export const load: LayoutServerLoad = ({ locals, url }) => {
     user: locals.user ? { id: locals.user.id, username: locals.user.username } : null,
     registrationOpen: settings.get(registrationOpen),
     urlStyle: settings.get(urlStyle),
+    // Packages' header links (e.g. the reports queue with its count).
+    headerBadges: locals.user ? await forRequest(locals).slot("header.badges") : [],
   };
 };

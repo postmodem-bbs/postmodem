@@ -22,6 +22,7 @@ import {
 import { anonymise, importPrzemo, type LegacySource, openMysqlSource, summarise } from "@postmodem/importer";
 import { type AppContext, createContext, readConfig } from "../lib/server/bootstrap.ts";
 import { DEMO_PASSWORD, seedDemo, seedLongTopic } from "../lib/server/demo.ts";
+import { INSTALLED_PACKAGES, packagePermissions } from "../lib/server/packages.ts";
 import { copyLegacyFiles, uploadsDir } from "../lib/server/uploads.ts";
 import {
   BAN_HELP,
@@ -31,6 +32,8 @@ import {
   forumCommand,
   GROUP_HELP,
   groupCommand,
+  PACKAGES_HELP,
+  packagesCommand,
   USER_EXPIRE_HELP,
 } from "./admin.ts";
 
@@ -63,6 +66,7 @@ ${USER_EXPIRE_HELP}
 ${GROUP_HELP}
 ${FORUM_HELP}
 ${BAN_HELP}
+${PACKAGES_HELP}
   settings list | get <key> | set <key> <value>
                 show or change board settings (values are JSON, or plain text for
                 strings), e.g. settings set core.urls.style numbered; running servers
@@ -370,7 +374,7 @@ async function init(env: Record<string, string | undefined>): Promise<number> {
   const ctx = await createContext({ migrate: true });
   try {
     const { repos } = ctx.db;
-    await installCorePermissions(repos);
+    await installCorePermissions(repos, packagePermissions(INSTALLED_PACKAGES));
     const adminRole = await repos.roles.byKey("core:admin");
     const existing = (await repos.grants.all()).find(
       (g) => g.roleId === adminRole?.id && g.nodeId === null && g.subject.type === "user",
@@ -586,6 +590,8 @@ async function main(argv: string[]): Promise<number> {
       return forumCommand(sub, argv.slice(2));
     case "ban":
       return banCommand(sub, argv.slice(2));
+    case "packages":
+      return packagesCommand(sub, argv.slice(2));
     case "settings":
       if (sub !== "list" && sub !== "get" && sub !== "set") break;
       return settingsCommand(sub, argv.slice(2));

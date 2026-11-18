@@ -180,6 +180,11 @@ export const actions: Actions = {
     if (isNew) await ctx.throttles.posting.fail(key, now);
     // Render now, so the first reader doesn't pay for it.
     await ctx.renderer.render([result.post]);
+    const happened = { topic: result.topic, post: result.post, actor: locals.user! };
+    await ctx.packages.emit(
+      mode === "newtopic" ? "topic.created" : mode === "editpost" ? "post.edited" : "post.created",
+      happened,
+    );
     ctx.log.info(mode === "editpost" ? "post edited" : "post created", {
       postId: result.post.id,
       userId: locals.user!.id,
@@ -192,6 +197,12 @@ export const actions: Actions = {
     const result = await deletePost(locals.ctx.db.repos, locals.perms, locals.user, post!.id);
     if (!result.ok) return fail(STATUS[result.problem], { problem: result.problem });
     locals.ctx.log.info("post deleted", { postId: post!.id, userId: locals.user!.id });
+    await locals.ctx.packages.emit("post.deleted", {
+      topic: result.topic,
+      post: result.post,
+      actor: locals.user!,
+      topicDeleted: !!result.topicDeleted,
+    });
     const node = await locals.ctx.db.repos.nodes.get(result.topic.nodeId);
     redirect(
       303,
