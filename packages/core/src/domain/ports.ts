@@ -77,6 +77,8 @@ export interface NodeRepository {
   ): Promise<Node>;
   /** Recomputes topic/post counts and last post from public content (fixes stale legacy counters). */
   recount(id: Id): Promise<Node>;
+  /** Deletes a node with no children and no topics (of any visibility); false otherwise. */
+  removeEmpty(id: Id): Promise<boolean>;
   /** A new public post in the node (and a new topic, if `topic`): counts and last post, no recount. */
   notePost(id: Id, post: { id: Id; topic: boolean }): Promise<void>;
 }

@@ -675,6 +675,38 @@ tr.pm-unread a {
 .search-results p {
   margin: 0 0 var(--pm-space-1);
 }
+.admin {
+  display: grid;
+  gap: var(--pm-space-3);
+}
+.admin-nav ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pm-space-3);
+  list-style: none;
+  padding: 0;
+}
+.admin-nav a[aria-current="page"] {
+  font-weight: 700;
+}
+.admin-tree {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: var(--pm-space-2);
+}
+.admin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pm-space-3);
+  align-items: flex-end;
+}
+.explain,
+.invite-link,
+.audit-details {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
 .post-subject {
   font-weight: 600;
   margin-inline-start: var(--pm-space-2);

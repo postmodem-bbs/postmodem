@@ -29,6 +29,7 @@
           >{t("pm-header")}{#if data.unreadMessages}{" "}<span class="count">{data.unreadMessages}</span>{/if}</a
         >
         <Slot items={data.headerBadges} {t} />
+        {#if data.isAdmin}<a href="/admin">{t("admin-link")}</a>{/if}
         <form method="POST" action="/login.php?/logout">
           <button type="submit" class="link-button">{t("logout")}</button>
         </form>

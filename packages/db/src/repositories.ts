@@ -356,6 +356,14 @@ export function createRepositories(db: Db, dialect: "sqlite" | "pg"): Repositori
         return (await self.nodes.get(id))!;
       });
     },
+    async removeEmpty(id) {
+      const child = await db.selectFrom("nodes").select("id").where("parentId", "=", id).executeTakeFirst();
+      const topic = await db.selectFrom("topics").select("id").where("nodeId", "=", id).executeTakeFirst();
+      if (child || topic) return false;
+      await db.deleteFrom("grants").where("nodeId", "=", id).execute();
+      const r = await db.deleteFrom("nodes").where("id", "=", id).executeTakeFirst();
+      return Number(r.numDeletedRows) === 1;
+    },
     async notePost(id, post) {
       await db
         .updateTable("nodes")
