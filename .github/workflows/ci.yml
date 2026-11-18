@@ -198,6 +198,24 @@ jobs:
           PM_IGNORE_HTTPS_ERRORS: ${{ matrix.mode == 'stack' && '1' || '0' }}
           PM_MAILPIT_URL: http://localhost:8025
         run: pnpm exec playwright test ${{ matrix.mode == 'stack' && '--project=chromium' || '' }}
+      - name: Permalinks in the other URL styles (ADR 0012)
+        working-directory: deploy
+        env:
+          PM_BASE_URL: ${{ matrix.mode == 'solo' && 'http://localhost:8080' || 'https://localhost' }}
+          PW_BROWSERS: chromium,firefox
+          PM_IGNORE_HTTPS_ERRORS: ${{ matrix.mode == 'stack' && '1' || '0' }}
+        # The setting changes from the CLI while the board runs; the spec waits for it to apply.
+        run: |
+          if [ "${{ matrix.mode }}" = solo ]; then
+            pm() { docker compose -f compose.solo.yaml -f ci/mailpit.yaml exec -T postmodem /nodejs/bin/node /app/postmodem.js "$@"; }
+          else
+            pm() { docker compose exec -T web /nodejs/bin/node /app/postmodem.js "$@"; }
+          fi
+          for style in numbered slug; do
+            pm settings set core.urls.style "$style"
+            PM_URL_STYLE="$style" pnpm --dir .. exec playwright test e2e/permalinks.spec.ts e2e/board.spec.ts -g "permalinks|WCAG"
+          done
+          pm settings set core.urls.style classic
       - name: Container logs
         if: failure()
         working-directory: deploy

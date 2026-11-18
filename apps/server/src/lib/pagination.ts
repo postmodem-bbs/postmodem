@@ -2,6 +2,9 @@
 // phpBB2-style pagination: pages are addressed by item offset (`start=`), shown as
 // "1 … 4 5 [6] 7 8 … 12".
 
+export const TOPICS_PER_PAGE = 25;
+export const POSTS_PER_PAGE = 15;
+
 export interface PageLink {
   number: number;
   start: number;

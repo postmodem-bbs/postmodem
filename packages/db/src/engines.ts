@@ -17,17 +17,44 @@ export interface Engine {
 
 const plugins = [new CamelCasePlugin()];
 
-/** Adapts node:sqlite to Kysely's SqliteDatabase contract (array parameters + `reader` flag). */
+/** Prepared statements kept per SQL text; queries are built from a small set of shapes. */
+const STATEMENT_CACHE_SIZE = 500;
+
+/**
+ * Adapts node:sqlite to Kysely's SqliteDatabase contract (array parameters + `reader` flag).
+ * Statements are reused: preparing was ~13% of CPU on a busy board (M1 slice 7). Reuse is
+ * safe because node:sqlite runs all() and run() synchronously, start to finish; iterate()
+ * (streaming, which can interleave) always gets a fresh statement. SQLite re-prepares a
+ * cached statement by itself if a migration changes the schema.
+ */
 function nodeSqliteAdapter(db: DatabaseSync) {
+  type Prepared = { st: ReturnType<DatabaseSync["prepare"]>; reader: boolean };
+  const cache = new Map<string, Prepared>();
+  const get = (text: string): Prepared => {
+    const hit = cache.get(text);
+    if (hit) {
+      cache.delete(text); // move to the back: least recently used goes first
+      cache.set(text, hit);
+      return hit;
+    }
+    const st = db.prepare(text);
+    const prepared = { st, reader: st.columns().length > 0 };
+    cache.set(text, prepared);
+    if (cache.size > STATEMENT_CACHE_SIZE) cache.delete(cache.keys().next().value!);
+    return prepared;
+  };
   return {
-    close: () => db.close(),
+    close: () => {
+      cache.clear();
+      db.close();
+    },
     prepare(text: string) {
-      const st = db.prepare(text);
+      const { st, reader } = get(text);
       return {
-        reader: st.columns().length > 0,
+        reader,
         all: (p: readonly unknown[]) => st.all(...(p as never[])),
         run: (p: readonly unknown[]) => st.run(...(p as never[])),
-        iterate: (p: readonly unknown[]) => st.iterate(...(p as never[])),
+        iterate: (p: readonly unknown[]) => db.prepare(text).iterate(...(p as never[])),
       };
     },
   };

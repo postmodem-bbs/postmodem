@@ -44,6 +44,10 @@ Usage: postmodem <command>
   user set-password <name> [--password-file <path>]
                 set a password (prompted, read from stdin, or from a file); signs the
                 user out everywhere and activates a pending account
+  settings list | get <key> | set <key> <value>
+                show or change board settings (values are JSON, or plain text for
+                strings), e.g. settings set core.urls.style numbered; running servers
+                pick changes up within a few seconds
   healthcheck   exit 0 if the local web server answers /healthz
   config print  show the effective configuration (secrets redacted)
   version       print version information
@@ -54,6 +58,50 @@ const SHUTDOWN_GRACE_MS = 25_000;
 function flag(args: string[], name: string): string | undefined {
   const i = args.indexOf(`--${name}`);
   return i >= 0 ? args[i + 1] : undefined;
+}
+
+async function settingsCommand(sub: "list" | "get" | "set", args: string[]): Promise<number> {
+  const ctx = await createContext({ migrate: true });
+  try {
+    const { settings } = ctx;
+    if (sub === "list") {
+      for (const [key, value] of settings.entries()) console.log(`${key} = ${JSON.stringify(value)}`);
+      return 0;
+    }
+    const [key, raw] = args;
+    const def = key ? settings.definition(key) : undefined;
+    if (!def) {
+      console.error(
+        key ? `unknown setting '${key}' (see: postmodem settings list)` : "usage: settings get <key>",
+      );
+      return 2;
+    }
+    if (sub === "get") {
+      console.log(JSON.stringify(settings.get(def)));
+      return 0;
+    }
+    if (raw === undefined) {
+      console.error("usage: settings set <key> <value>");
+      return 2;
+    }
+    let value: unknown = raw;
+    try {
+      value = JSON.parse(raw);
+    } catch {
+      // Not JSON: a plain string (`settings set core.board.name My board`).
+      value = args.slice(1).join(" ");
+    }
+    try {
+      const saved = await settings.set(def, value);
+      console.log(`${key} = ${JSON.stringify(saved)}`);
+      return 0;
+    } catch (e) {
+      console.error((e as Error).message);
+      return 1;
+    }
+  } finally {
+    await ctx.db.close();
+  }
 }
 
 async function permsExplain(args: string[]): Promise<number> {
@@ -246,6 +294,7 @@ async function startWeb(ctx: AppContext): Promise<Server> {
     process.env.PROTOCOL_HEADER ??= "x-forwarded-proto";
   }
   globalThis.__postmodem = Promise.resolve(ctx);
+  ctx.watchSettings();
   const handlerUrl = pathToFileURL(join(import.meta.dirname, "handler.js")).href;
   const { handler } = (await import(handlerUrl)) as { handler: (req: unknown, res: unknown) => void };
   const server = createServer(handler as never);
@@ -480,6 +529,9 @@ async function main(argv: string[]): Promise<number> {
     case "user":
       if (sub !== "set-password") break;
       return setPassword(argv.slice(2));
+    case "settings":
+      if (sub !== "list" && sub !== "get" && sub !== "set") break;
+      return settingsCommand(sub, argv.slice(2));
     case "perms":
       if (sub !== "explain") break;
       return permsExplain(argv.slice(2));

@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { defaultLocale, resolveSession } from "@postmodem/core";
+import { defaultLocale, resolveSession, urlStyle } from "@postmodem/core";
 import { negotiate } from "@postmodem/i18n";
 import type { Handle } from "@sveltejs/kit/hooks";
 import { clearSessionCookie, sessionCookieName } from "#lib/server/auth.ts";
 import { getContext } from "#lib/server/bootstrap.ts";
+import { urlsFor } from "#lib/server/links.ts";
 import { LANG_COOKIE, parseTheme, THEME_COOKIE } from "#lib/server/preferences.ts";
 
 const SECURITY_HEADERS: Record<string, string> = {
@@ -50,6 +51,7 @@ export const handle: Handle = async ({ event, resolve }) => {
     boardDefault: ctx.settings.get(defaultLocale),
   });
   event.locals.theme = parseTheme(event.cookies.get(THEME_COOKIE));
+  event.locals.urls = urlsFor(ctx.settings.get(urlStyle));
   // Session: an opaque cookie whose hash names a server-side session (core accounts.ts).
   const cookieName = sessionCookieName(ctx.config);
   const token = event.cookies.get(cookieName);

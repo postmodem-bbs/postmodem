@@ -5,10 +5,11 @@
   import ForumTable from "#lib/components/ForumTable.svelte";
   import Pagination from "#lib/components/Pagination.svelte";
   import { formatDateTime, isoDate } from "#lib/format.ts";
-  import { urls } from "#lib/urls.ts";
+  import { links } from "#lib/links.ts";
 
   let { data } = $props();
   const t = $derived(translator(data.locale));
+  const urls = $derived(links());
   const crumbs = $derived(data.breadcrumbs.slice(0, -1));
   const badge = (type: string) =>
     type === "announcement" ? t("topic-announcement") : type === "sticky" ? t("topic-sticky") : null;
@@ -16,6 +17,7 @@
 
 <svelte:head>
   <title>{data.forum.title} · {data.boardName}</title>
+  <link rel="canonical" href={data.canonical} />
 </svelte:head>
 
 <Breadcrumbs {crumbs} current={data.forum.title} {t} />
@@ -30,7 +32,7 @@
 {/if}
 
 {#if data.forum.kind !== "category"}
-  <Pagination total={data.total} perPage={data.perPage} start={data.start} href={(s) => urls.forum(data.forum.id, s)} {t} />
+  <Pagination total={data.total} perPage={data.perPage} start={data.start} href={(s) => urls.forum(data.forum, s)} {t} />
 
   {#if data.topics.length}
     <table class="board-table topics">
@@ -50,11 +52,11 @@
             <th scope="row">
               {#if badge(topic.type)}<span class="badge">{badge(topic.type)}</span>{/if}
               {#if topic.locked}<span class="badge muted-badge">{t("topic-locked")}</span>{/if}
-              {#if topic.movedToTopicId}
+              {#if topic.movedTo}
                 <span class="badge muted-badge">{t("topic-moved")}</span>
-                <a href={urls.topic(topic.movedToTopicId)}>{topic.title}</a>
+                <a href={urls.topic(topic.movedTo)}>{topic.title}</a>
               {:else}
-                <a class="topic-title" href={urls.topic(topic.id)}>{topic.title}</a>
+                <a class="topic-title" href={urls.topic(topic.ref)}>{topic.title}</a>
               {/if}
             </th>
             <td>{topic.author || t("guest")}</td>
@@ -76,5 +78,5 @@
     <p class="panel">{t("forum-no-topics")}</p>
   {/if}
 
-  <Pagination total={data.total} perPage={data.perPage} start={data.start} href={(s) => urls.forum(data.forum.id, s)} {t} />
+  <Pagination total={data.total} perPage={data.perPage} start={data.start} href={(s) => urls.forum(data.forum, s)} {t} />
 {/if}

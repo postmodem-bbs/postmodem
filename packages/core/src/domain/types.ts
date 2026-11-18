@@ -85,6 +85,8 @@ export interface User {
   username: string;
   /** Normalised username for uniqueness (see username.ts). */
   usernameKey: string;
+  /** URL slug (ADR 0012), unique; old ones stay in slug_history after a rename. */
+  slug: string;
   email: string | null;
   /** "local" or the remote host for federated actors (ADR 0009). */
   origin: string;

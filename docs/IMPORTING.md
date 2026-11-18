@@ -46,5 +46,18 @@ again: it continues where it stopped. A board of 200,000 posts takes a few minut
 Users (with their passwords: old MD5 and phpass hashes are upgraded at first sign-in),
 groups and memberships, ranks, smilies (copy their images over), categories and forums
 including Przemo sub-forums, forum permissions, topics and posts with their original
-numbers, so old links like `viewtopic.php?t=123` keep working, and the board name,
-description and default language.
+numbers, and the board name, description and default language.
+
+## Your old links
+
+With the default URL style (`classic`) the board answers phpBB2's own addresses
+unchanged, with no redirect: `viewtopic.php?t=123&start=30`, `viewtopic.php?p=4567`,
+`viewforum.php?f=7`, `profile.php?mode=viewprofile&u=42` and `index.php?c=3`. Categories got
+new internal numbers, but `index.php?c=` keeps using the old ones. Przemo's sub-forum
+categories became their forum, so their `index.php?c=` links go to that forum.
+
+Prefer readable links? `postmodem settings set core.urls.style numbered` gives
+`/t/123-topic-title`, and `slug` gives `/topic/topic-title`. Every style keeps working
+in every setting: old links get a permanent (301) redirect to the current style, so
+search engines follow along. phpBB2's `sid=` and `highlight=` parameters are dropped
+the same way. See [ADR 0012](adr/0012-configurable-permalinks.md).

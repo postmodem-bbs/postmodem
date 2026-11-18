@@ -71,6 +71,8 @@ postmodem backup|restore # consistent dump of DB + /data/uploads to /data/backup
 postmodem import <src>   # phpBB2 / Przemo / phpBB3 importer
 postmodem ext list|add|remove|enable|disable
 postmodem config print   # effective config with secrets redacted, and where each value came from
+postmodem settings list|get|set  # board settings (e.g. core.urls.style); running replicas
+                                 # re-read them within 5 s, no restart needed
 ```
 
 ### 2.3 Dockerfile

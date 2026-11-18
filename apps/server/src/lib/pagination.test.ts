@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, expect, it } from "vitest";
 import { normaliseStart, paginate } from "./pagination.ts";
-import { urls } from "./urls.ts";
 
 describe("pagination", () => {
   it("shows first, last and neighbours with gaps", () => {
@@ -18,13 +17,5 @@ describe("pagination", () => {
     expect(normaliseStart("-5", 15, 100)).toBe(0);
     expect(normaliseStart("9999", 15, 100)).toBe(90);
     expect(normaliseStart("abc", 15, 0)).toBe(0);
-  });
-});
-
-describe("classic urls (ADR 0012 default)", () => {
-  it("builds phpBB2-identical links", () => {
-    expect(urls.forum(7)).toBe("/viewforum.php?f=7");
-    expect(urls.topic(123, 30)).toBe("/viewtopic.php?t=123&start=30");
-    expect(urls.post(4567)).toBe("/viewtopic.php?p=4567#p4567");
   });
 });

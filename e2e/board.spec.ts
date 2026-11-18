@@ -54,9 +54,15 @@ test.describe("board index", () => {
     );
   });
 
-  test("keeps phpBB2's index.php?c= links working", async ({ page }) => {
+  test("keeps phpBB2's index.php and index.php?c= links working", async ({ page }) => {
     await page.goto("/index.php");
     await expect(page).toHaveURL(/\/$/);
+    await page.getByRole("link", { name: "Ogólne", exact: true }).first().click();
+    await expect(page).toHaveURL(/\/index\.php\?c=\d+$/);
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Ogólne");
+    await expect(page.getByRole("link", { name: "Hydepark", exact: true })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Komputery", exact: true })).toHaveCount(0);
+    await expectNoAxeViolations(page);
   });
 });
 
@@ -91,14 +97,15 @@ test.describe("browsing", () => {
     await page.getByRole("link", { name: "Wasze pierwsze komputery" }).click();
     await page.getByRole("link", { name: "Next" }).first().click();
     await expect(page).toHaveURL(/start=15/);
-    const permalink = await page
-      .locator("article.post")
-      .first()
-      .getByRole("link", { name: "Link to this post" })
-      .getAttribute("href");
+    const post = page.locator("article.post").first();
+    const id = (await post.getAttribute("id"))!.slice(1);
+    await expect(post.getByRole("link", { name: "Link to this post" })).toHaveAttribute(
+      "href",
+      new RegExp(`viewtopic\\.php\\?t=\\d+&start=15#p${id}$`),
+    );
     await page.goto("/");
-    await page.goto(permalink!);
-    await expect(page).toHaveURL(/viewtopic\.php\?t=\d+&start=15#p\d+$/);
+    await page.goto(`/viewtopic.php?p=${id}`); // phpBB2's own post link
+    await expect(page).toHaveURL(new RegExp(`viewtopic\\.php\\?t=\\d+&start=15#p${id}$`));
   });
 
   test("the showcase post renders BBCode safely and keeps hidden content out", async ({ page }) => {
@@ -123,11 +130,14 @@ test.describe("browsing", () => {
       await page.goto("/");
       await expectNoAxeViolations(page);
       await page.getByRole("link", { name: "Hydepark", exact: true }).click();
+      await expect(page.getByRole("heading", { level: 1 })).toHaveText("Hydepark");
       await expectNoAxeViolations(page);
       await page.getByRole("link", { name: "Regulamin forum" }).click();
+      await expect(page.getByRole("heading", { level: 1 })).toContainText("Regulamin forum");
       await expectNoAxeViolations(page);
       await page.goto("/");
       await page.getByRole("link", { name: "Witamy na forum Postmodem!" }).click();
+      await expect(page.getByRole("heading", { level: 1 })).toContainText("Witamy na forum Postmodem!");
       await expectNoAxeViolations(page);
     });
   }

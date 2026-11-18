@@ -54,7 +54,7 @@ users-count = { $count ->
 }
 stats-heading = Statystyki
 stats-totals = Nasi użytkownicy napisali { $posts } w { $topics }. Mamy { $users }.
-stats-newest = Najnowszy użytkownik: { $name }
+stats-newest-label = Najnowszy użytkownik:
 
 forum-topic = Temat
 forum-author = Autor
@@ -191,3 +191,8 @@ reset-new-password = Nowe hasło
 reset-submit = Zapisz i zaloguj
 reset-invalid = Ten link wygasł albo został już użyty. Poniżej możesz poprosić o nowy.
 reset-done-notice = Hasło zostało zmienione, a Ty jesteś zalogowany(-a). Pozostałe urządzenia zostały wylogowane.
+
+## Profiles
+profile-title = Profil użytkownika { $name }
+profile-last-seen = Ostatnia wizyta
+profile-website = Strona WWW

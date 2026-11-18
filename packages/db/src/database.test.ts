@@ -293,6 +293,31 @@ describe.each(testEngines())("%s", (engine) => {
       expect(await r.smilies.all()).toHaveLength(1);
     });
 
+    it("gives renamed forums, topics and users new slugs and keeps the old ones resolving", async () => {
+      const forum = await r.nodes.create({ parentId: null, kind: "forum", title: "Stare forum" });
+      const renamed = await r.nodes.update(forum.id, { title: "Nowe forum" });
+      expect(renamed.slug).toBe("nowe-forum");
+      expect(await r.slugs.resolve("node", "stare-forum")).toBe(forum.id);
+
+      const topic = await r.topics.create({ nodeId: forum.id, title: "Pierwszy tytuł", authorId: null });
+      expect((await r.topics.rename(topic.id, "Drugi tytuł")).slug).toBe("drugi-tytul");
+      expect(await r.slugs.resolve("topic", "pierwszy-tytul")).toBe(topic.id);
+      // Imported topics keep their id in the slug, so a rename can't collide.
+      await r.topics.insertMany([{ id: 9001, nodeId: forum.id, title: "Import", authorId: null }]);
+      expect((await r.topics.rename(9001, "Po imporcie")).slug).toBe("po-imporcie-9001");
+
+      const a = await r.users.create({ username: "Łukasz Żółć", email: null });
+      const b = await r.users.create({ username: "lukasz zolc", email: null });
+      expect(a.slug).toBe("lukasz-zolc");
+      expect(b.slug).toBe(`lukasz-zolc-${b.id}`);
+      expect((await r.users.bySlug("lukasz-zolc"))?.id).toBe(a.id);
+      await r.users.update(a.id, { username: "Łukasz" });
+      expect((await r.users.get(a.id))?.slug).toBe("lukasz");
+      expect(await r.slugs.resolve("user", "lukasz-zolc")).toBe(a.id);
+      const cats = await r.legacyIds.list("category");
+      expect(cats).toEqual([]);
+    });
+
     it("rolls back everything in a failed transaction", async () => {
       await expect(
         r.transaction(async (tx) => {

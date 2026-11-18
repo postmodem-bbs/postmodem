@@ -55,10 +55,18 @@ export interface AppContext {
   worker: Worker;
   /** Permission view for one request (null = guest). Loads a fresh snapshot each call. */
   permissions(userId: Id | null): Promise<Permissions>;
+  /**
+   * Re-reads settings every few seconds, so a change made by the CLI or another replica takes
+   * effect without a restart. Returns a function that stops it.
+   */
+  watchSettings(intervalMs?: number): () => void;
   log: Logger;
   startedAt: Date;
   readiness(): Promise<{ ready: boolean; reason?: string }>;
 }
+
+/** How quickly a setting changed elsewhere (CLI, another replica) reaches this process. */
+export const SETTINGS_REFRESH_MS = 5_000;
 
 export function readConfig(env: Record<string, string | undefined> = process.env): LoadedConfig {
   return loadConfig({
@@ -149,6 +157,18 @@ export async function createContext(opts: { migrate: boolean; loaded?: LoadedCon
       const [snapshot, viewer] = await Promise.all([loadSnapshot(db.repos), viewerFor(db.repos, userId)]);
       return permissionsFor(capabilities, snapshot, viewer);
     },
+    watchSettings(intervalMs = SETTINGS_REFRESH_MS) {
+      const timer = setInterval(async () => {
+        if (!settingsLoaded) return;
+        try {
+          for (const p of await settings.reload()) log.warn(p);
+        } catch (e) {
+          log.warn("could not reload settings", { error: (e as Error).message });
+        }
+      }, intervalMs);
+      timer.unref();
+      return () => clearInterval(timer);
+    },
     log,
     startedAt: new Date(),
     async readiness() {
@@ -177,6 +197,7 @@ declare global {
 export function getContext(): Promise<AppContext> {
   globalThis.__postmodem ??= createContext({ migrate: true }).then((ctx) => {
     ctx.worker.start();
+    ctx.watchSettings();
     return ctx;
   });
   return globalThis.__postmodem;

@@ -47,3 +47,6 @@ export function slugify(text: string, max = 80): string {
   const lastHyphen = cut.lastIndexOf("-");
   return (lastHyphen > max / 2 ? cut.slice(0, lastHyphen) : ascii.slice(0, max)).replace(/-+$/, "");
 }
+
+/** Username slugs are shorter than title slugs. */
+export const USER_SLUG_MAX = 40;

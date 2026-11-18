@@ -17,6 +17,24 @@
       "port": 8097
     },
     {
+      "name": "postmodem-e2e",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "POSTMODEM_DATA_DIR=var/e2e-data POSTMODEM_PORT=8098 POSTMODEM_PUBLIC_URL=http://localhost:8098 node apps/server/build/postmodem.js run"
+      ],
+      "port": 8098
+    },
+    {
+      "name": "postmodem-perf",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "POSTMODEM_DATA_DIR=var/perf-data POSTMODEM_PORT=8099 POSTMODEM_PUBLIC_URL=http://localhost:8099 taskset -c 0 node apps/server/build/postmodem.js run"
+      ],
+      "port": 8099
+    },
+    {
       "name": "island-spike",
       "runtimeExecutable": "node",
       "runtimeArgs": ["tools/spikes/island-origin/server.mjs"],

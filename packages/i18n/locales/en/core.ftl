@@ -50,7 +50,7 @@ users-count = { $count ->
 }
 stats-heading = Statistics
 stats-totals = Our users have written { $posts } in { $topics }. We have { $users }.
-stats-newest = Newest member: { $name }
+stats-newest-label = Newest member:
 
 forum-topic = Topic
 forum-author = Author
@@ -184,3 +184,8 @@ reset-new-password = New password
 reset-submit = Save and sign in
 reset-invalid = This link has expired or has already been used. You can ask for a new one below.
 reset-done-notice = Your password has been changed and you are signed in. Other devices have been signed out.
+
+## Profiles
+profile-title = Profile of { $name }
+profile-last-seen = Last visit
+profile-website = Website

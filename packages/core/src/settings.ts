@@ -58,14 +58,33 @@ export class Settings {
   /** Load persisted values; values that no longer validate fall back to the default. */
   async init(): Promise<string[]> {
     const problems: string[] = [];
+    const next = new Map<string, unknown>();
     for (const [key, value] of await this.#store.loadAll()) {
       const def = this.#registry.get(key);
       if (!def) continue; // owned by a package that isn't installed: keep in DB, ignore here
       const parsed = def.schema.safeParse(value);
-      if (parsed.success) this.#values.set(key, parsed.data);
+      if (parsed.success) next.set(key, parsed.data);
       else problems.push(`stored value for '${key}' is invalid; using the default`);
     }
+    // Swapped in one go, so a reload never shows readers a half-loaded mix of defaults.
+    this.#values.clear();
+    for (const [k, v] of next) this.#values.set(k, v);
     return problems;
+  }
+
+  /** Re-reads every value (another process, e.g. the CLI or a replica, may have changed one). */
+  reload(): Promise<string[]> {
+    return this.init();
+  }
+
+  /** The registered definition for a key (CLI `settings set`). */
+  definition(key: string): SettingDef<unknown> | undefined {
+    return this.#registry.get(key);
+  }
+
+  /** Every registered key with its current value. */
+  entries(): [string, unknown][] {
+    return this.#registry.all().map((d) => [d.key, this.get(d)]);
   }
 
   get<T>(def: SettingDef<T>): T {

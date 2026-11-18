@@ -71,6 +71,16 @@ export const disallowedUsernames = defineSetting<string[]>({
   ],
 });
 
+/** Link shape for forums, topics and profiles (ADR 0012). Every style always resolves; links
+ * in another style get a 301 to this one, so switching never breaks a link. */
+export const URL_STYLES = ["classic", "numbered", "slug"] as const;
+export type UrlStyle = (typeof URL_STYLES)[number];
+export const urlStyle = defineSetting<UrlStyle>({
+  key: "core.urls.style",
+  schema: z.enum(URL_STYLES),
+  default: "classic",
+});
+
 export function coreSettings(): SettingsRegistry {
   return new SettingsRegistry().register(
     boardName,
@@ -81,5 +91,6 @@ export function coreSettings(): SettingsRegistry {
     boardRules,
     rulesVersion,
     disallowedUsernames,
+    urlStyle,
   );
 }

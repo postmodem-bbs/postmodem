@@ -3,9 +3,10 @@
   import type { Translate } from "@postmodem/i18n";
   import { formatDateTime, isoDate } from "#lib/format.ts";
   import type { ForumRow } from "#lib/server/board.ts";
-  import { urls } from "#lib/urls.ts";
+  import { links } from "#lib/links.ts";
 
   let { rows, caption, t, locale }: { rows: ForumRow[]; caption: string; t: Translate; locale: string } = $props();
+  const urls = $derived(links());
 </script>
 
 <table class="board-table forums">
@@ -22,13 +23,13 @@
     {#each rows as f (f.id)}
       <tr>
         <th scope="row">
-          <a class="forum-title" href={urls.forum(f.id)}>{f.title}</a>
+          <a class="forum-title" href={urls.node(f.ref)}>{f.title}</a>
           {#if f.locked}<span class="muted">{t("index-locked")}</span>{/if}
           {#if f.description}<p class="forum-desc">{f.description}</p>{/if}
           {#if f.subforums.length}
             <p class="subforums">
               {t("index-subforums")}:
-              {#each f.subforums as s, i (s.id)}{#if i > 0},{/if} <a href={urls.forum(s.id)}>{s.title}</a>{/each}
+              {#each f.subforums as s, i (s.id)}{#if i > 0},{/if} <a href={urls.node(s.ref)}>{s.title}</a>{/each}
             </p>
           {/if}
         </th>

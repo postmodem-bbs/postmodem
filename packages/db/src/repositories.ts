@@ -33,6 +33,7 @@ import {
   skeleton,
   slugify,
   type Topic,
+  USER_SLUG_MAX,
   type User,
   type UserStatus,
 } from "@postmodem/core";
@@ -56,7 +57,13 @@ const atomic = <T>(db: Db, fn: (db: Db) => Promise<T>): Promise<T> =>
 
 const pending = () => `__pending_${Math.random().toString(36).slice(2)}`;
 
-async function uniqueSlug(db: Db, table: "nodes" | "topics", base: string, id: Id, fallback: string) {
+async function uniqueSlug(
+  db: Db,
+  table: "nodes" | "topics" | "users",
+  base: string,
+  id: Id,
+  fallback: string,
+) {
   const slug = base || fallback;
   const clash = await db
     .selectFrom(table)
@@ -65,6 +72,27 @@ async function uniqueSlug(db: Db, table: "nodes" | "topics", base: string, id: I
     .where("id", "!=", id)
     .executeTakeFirst();
   return clash ? `${slug}-${id}` : slug;
+}
+
+const SLUG_KIND = { nodes: "node", topics: "topic", users: "user" } as const;
+
+/** Gives a renamed entity a new slug and keeps the old one resolving (ADR 0012). */
+async function reslug(db: Db, table: "nodes" | "topics" | "users", id: Id, title: string, max = 80) {
+  const row = await db.selectFrom(table).select("slug").where("id", "=", id).executeTakeFirst();
+  if (!row) return;
+  const fallback = `${SLUG_KIND[table]}-${id}`;
+  const base = slugify(title, max);
+  // Imported topics carry their id (`title-123`); keep that shape so renames don't collide.
+  const keepsId = table === "topics" && row.slug.endsWith(`-${id}`);
+  const wanted = keepsId ? `${base || "topic"}-${id}` : base;
+  const slug = await uniqueSlug(db, table, wanted, id, fallback);
+  if (slug === row.slug) return;
+  await db
+    .insertInto("slugHistory")
+    .values({ kind: SLUG_KIND[table], slug: row.slug, entityId: id, createdAt: Date.now() })
+    .onConflict((oc) => oc.columns(["kind", "slug"]).doUpdateSet({ entityId: id }))
+    .execute();
+  await db.updateTable(table).set({ slug }).where("id", "=", id).execute();
 }
 
 function paginate<T>(items: T[], total: number, p: PageRequest): Page<T> {
@@ -133,6 +161,7 @@ const toUser = (r: Selectable<UsersTable>): User => ({
   id: r.id,
   username: r.username,
   usernameKey: r.usernameKey,
+  slug: r.slug,
   email: r.email,
   origin: r.origin,
   status: r.status as UserStatus,
@@ -296,21 +325,26 @@ export function createRepositories(db: Db): Repositories {
       });
     },
     async update(id, patch) {
-      await db
-        .updateTable("nodes")
-        .set({
-          ...(patch.title !== undefined ? { title: patch.title } : {}),
-          ...(patch.description !== undefined ? { description: patch.description } : {}),
-          ...(patch.position !== undefined ? { position: patch.position } : {}),
-          ...(patch.linkUrl !== undefined ? { linkUrl: patch.linkUrl } : {}),
-          ...(patch.locked !== undefined ? { locked: patch.locked ? 1 : 0 } : {}),
-          updatedAt: Date.now(),
-        })
-        .where("id", "=", id)
-        .execute();
-      const node = await nodes.get(id);
-      if (!node) throw new Error(`node ${id} does not exist`);
-      return node;
+      return atomic(db, async (db) => {
+        const self = createRepositories(db);
+        const before = await self.nodes.get(id);
+        if (!before) throw new Error(`node ${id} does not exist`);
+        await db
+          .updateTable("nodes")
+          .set({
+            ...(patch.title !== undefined ? { title: patch.title } : {}),
+            ...(patch.description !== undefined ? { description: patch.description } : {}),
+            ...(patch.position !== undefined ? { position: patch.position } : {}),
+            ...(patch.linkUrl !== undefined ? { linkUrl: patch.linkUrl } : {}),
+            ...(patch.locked !== undefined ? { locked: patch.locked ? 1 : 0 } : {}),
+            updatedAt: Date.now(),
+          })
+          .where("id", "=", id)
+          .execute();
+        if (patch.title !== undefined && patch.title !== before.title)
+          await reslug(db, "nodes", id, patch.title);
+        return (await self.nodes.get(id))!;
+      });
     },
     async recount(id) {
       const topicCount = await db
@@ -421,6 +455,17 @@ export function createRepositories(db: Db): Repositories {
     async bySlug(slug) {
       const r = await db.selectFrom("topics").selectAll().where("slug", "=", slug).executeTakeFirst();
       return r && toTopic(r);
+    },
+    async rename(id, title) {
+      return atomic(db, async (db) => {
+        const self = createRepositories(db);
+        const before = await self.topics.get(id);
+        if (!before) throw new Error(`topic ${id} does not exist`);
+        if (title === before.title) return before;
+        await db.updateTable("topics").set({ title, updatedAt: Date.now() }).where("id", "=", id).execute();
+        await reslug(db, "topics", id, title);
+        return (await self.topics.get(id))!;
+      });
     },
     async listByNode(nodeId, page, opts) {
       const base = db
@@ -576,6 +621,7 @@ export function createRepositories(db: Db): Repositories {
           ...(input.id !== undefined ? { id: input.id } : {}),
           username: input.username,
           usernameKey: nameKey(input.username),
+          slug: pending(),
           usernameSkeleton: skeleton(input.username),
           email: input.email,
           emailKey: emailKey(input.email),
@@ -597,6 +643,8 @@ export function createRepositories(db: Db): Repositories {
         })
         .returning("id")
         .executeTakeFirstOrThrow();
+      const slug = await uniqueSlug(db, "users", slugify(input.username, USER_SLUG_MAX), id, `user-${id}`);
+      await db.updateTable("users").set({ slug }).where("id", "=", id).execute();
       return (await users.get(id))!;
     },
     async get(id) {
@@ -621,6 +669,10 @@ export function createRepositories(db: Db): Repositories {
         .executeTakeFirst();
       return r && toUser(r);
     },
+    async bySlug(slug) {
+      const r = await db.selectFrom("users").selectAll().where("slug", "=", slug).executeTakeFirst();
+      return r && toUser(r);
+    },
     async lookalike(username) {
       const r = await db
         .selectFrom("users")
@@ -641,7 +693,8 @@ export function createRepositories(db: Db): Repositories {
       return r && toUser(r);
     },
     async update(id, patch) {
-      const { email, ...rest } = patch;
+      const { email, slug: _slug, ...rest } = patch;
+      const before = rest.username !== undefined ? await users.get(id) : undefined;
       await db
         .updateTable("users")
         .set({
@@ -653,6 +706,8 @@ export function createRepositories(db: Db): Repositories {
         })
         .where("id", "=", id)
         .execute();
+      if (before && rest.username !== before.username)
+        await reslug(db, "users", id, rest.username!, USER_SLUG_MAX);
       const user = await users.get(id);
       if (!user) throw new Error(`user ${id} does not exist`);
       return user;
@@ -901,6 +956,13 @@ export function createRepositories(db: Db): Repositories {
         .where("legacyId", "=", legacyId)
         .executeTakeFirst();
       return r?.newId;
+    },
+    async list(kind) {
+      return db
+        .selectFrom("legacyIds")
+        .select(["source", "legacyId", "newId"])
+        .where("kind", "=", kind)
+        .execute();
     },
   };
 

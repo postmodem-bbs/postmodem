@@ -95,6 +95,8 @@ export interface TopicRepository {
   get(id: Id): Promise<Topic | undefined>;
   getMany(ids: Id[]): Promise<Map<Id, Topic>>;
   bySlug(slug: string): Promise<Topic | undefined>;
+  /** Changes the title and slug; the old slug keeps resolving through slug_history. */
+  rename(id: Id, title: string): Promise<Topic>;
   /** Announcements, then stickies, then the rest; each by most recent activity. */
   listByNode(nodeId: Id, page: PageRequest, opts?: { visibility?: VisibilityState[] }): Promise<Page<Topic>>;
   /** Recomputes reply count, first/last post and last activity from posts. */
@@ -159,6 +161,7 @@ export interface UserRepository {
   get(id: Id): Promise<User | undefined>;
   getMany(ids: Id[]): Promise<Map<Id, User>>;
   byUsername(username: string): Promise<User | undefined>;
+  bySlug(slug: string): Promise<User | undefined>;
   /** A local user whose name looks the same (same `skeleton()`), if any. */
   lookalike(username: string): Promise<User | undefined>;
   byEmail(email: string): Promise<User | undefined>;
@@ -270,6 +273,8 @@ export interface GrantRepository {
 export interface LegacyIdRepository {
   set(source: string, kind: string, legacyId: string, newId: Id): Promise<void>;
   get(source: string, kind: string, legacyId: string): Promise<Id | undefined>;
+  /** Every mapping of one kind, from any source (small kinds only, e.g. categories). */
+  list(kind: string): Promise<{ source: string; legacyId: string; newId: Id }[]>;
 }
 
 export interface SlugHistoryRepository {

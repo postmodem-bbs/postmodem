@@ -3,7 +3,7 @@
 // append only, expand/contract, never edit a released migration.
 // They run without the CamelCasePlugin, so names here are the real snake_case names.
 
-import { skeleton } from "@postmodem/core";
+import { skeleton, slugify, USER_SLUG_MAX } from "@postmodem/core";
 import { type ColumnDefinitionBuilder, type CreateTableBuilder, type Kysely, sql } from "kysely";
 import type { Migration } from "kysely/migration";
 
@@ -302,6 +302,40 @@ export function migrations(dialect: Dialect): Record<string, Migration> {
           .execute();
         await s.createIndex("throttle_last").on("throttle").column("last").execute();
         await s.createIndex("email_tokens_user").on("email_tokens").columns(["user_id", "purpose"]).execute();
+      },
+    },
+    "0005_user_slugs": {
+      async up(db: Db) {
+        // Profile URLs in the numbered and slug styles (ADR 0012): /u/42-alucard, /user/alucard.
+        await db.schema.alterTable("users").addColumn("slug", "text", empty).execute();
+        const rows = await sql<{
+          id: number;
+          username: string;
+        }>`select id, username from users order by id`.execute(db);
+        const taken = new Set<string>();
+        for (const r of rows.rows) {
+          const base = slugify(r.username, USER_SLUG_MAX) || `user-${r.id}`;
+          const slug = taken.has(base) ? `${base}-${r.id}` : base;
+          taken.add(slug);
+          await sql`update users set slug = ${slug} where id = ${r.id}`.execute(db);
+        }
+        await db.schema.createIndex("users_slug").on("users").column("slug").unique().execute();
+      },
+    },
+    "0006_listing_indexes": {
+      async up(db: Db) {
+        // Forum pages list topics announcements first, then stickies, then by last activity
+        // (topics.listByNode). Indexing those exact expressions lets SQLite and Postgres walk
+        // the index instead of sorting the whole forum on every page view (M1 slice 7).
+        await sql`create index topics_node_listing on topics (node_id, visibility,
+          (case type when 'announcement' then 0 when 'sticky' then 1 else 2 end),
+          (coalesce(last_post_at, created_at)) desc, id desc)`.execute(db);
+        // "Newest member" on the index page: local, active, latest first.
+        await db.schema
+          .createIndex("users_newest")
+          .on("users")
+          .columns(["origin", "status", "created_at", "id"])
+          .execute();
       },
     },
   };

@@ -507,6 +507,22 @@ main:focus {
 .author-facts dd {
   margin: 0;
 }
+.profile-facts {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--pm-space-2) var(--pm-space-4);
+  margin: 0;
+}
+.profile-facts div {
+  display: contents;
+}
+.profile-facts dt {
+  font-weight: 600;
+}
+.profile-facts dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
 .post-main {
   padding: var(--pm-space-3);
   min-width: 0;

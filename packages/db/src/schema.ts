@@ -38,6 +38,7 @@ export interface UsersTable {
   username: string;
   usernameKey: string;
   usernameSkeleton: string;
+  slug: string;
   email: string | null;
   emailKey: string | null;
   origin: string;

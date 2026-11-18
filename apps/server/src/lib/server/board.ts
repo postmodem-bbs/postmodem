@@ -4,20 +4,32 @@
 // node.view but not node.read are listed but closed (403), and nothing from an unreadable
 // forum (last-post titles, counts) leaks through a readable one.
 import type { Id, Node, Permissions, Post, Repositories, Topic } from "@postmodem/core";
-import { normaliseStart } from "../pagination.ts";
+import { normaliseStart, POSTS_PER_PAGE, TOPICS_PER_PAGE } from "../pagination.ts";
+import type { NodeRef, TopicRef, UserRef } from "../urls.ts";
 
-export const TOPICS_PER_PAGE = 25;
-export const POSTS_PER_PAGE = 15;
+export { POSTS_PER_PAGE, TOPICS_PER_PAGE };
+
+/** Category numbers for classic `index.php?c=` links (see links.ts). */
+export type ClassicIds = ReadonlyMap<Id, Id | null>;
+
+const nodeRef = (n: Node, classic?: ClassicIds): NodeRef => ({
+  id: n.id,
+  slug: n.slug,
+  kind: n.kind,
+  ...(n.kind === "category" ? { classicId: classic ? (classic.get(n.id) ?? null) : n.id } : {}),
+});
+const topicRef = (t: Topic): TopicRef => ({ id: t.id, slug: t.slug });
 
 export interface LastPost {
   postId: Id;
-  topicId: Id;
+  topic: TopicRef;
   topicTitle: string;
   at: number;
   author: string; // "" = guest without a name
 }
 export interface ForumRow {
   id: Id;
+  ref: NodeRef;
   title: string;
   description: string;
   locked: boolean;
@@ -25,13 +37,13 @@ export interface ForumRow {
   restricted: boolean;
   topicCount: number;
   postCount: number;
-  subforums: { id: Id; title: string }[];
+  subforums: { id: Id; ref: NodeRef; title: string }[];
   lastPost: LastPost | null;
 }
 export interface Crumb {
   id: Id;
+  ref: NodeRef;
   title: string;
-  kind: Node["kind"];
 }
 
 /** 404 when the viewer may not even know the forum exists, 403 when they may see but not read it. */
@@ -73,7 +85,7 @@ async function lastPosts(
   for (const p of posts.values()) {
     out.set(p.id, {
       postId: p.id,
-      topicId: p.topicId,
+      topic: topicRef(topics.get(p.topicId)!),
       topicTitle: topics.get(p.topicId)?.title ?? "",
       at: p.createdAt,
       author: (p.authorId && users.get(p.authorId)?.username) || p.authorName,
@@ -100,6 +112,7 @@ async function forumRows(
   );
   return forums.map((f) => ({
     id: f.id,
+    ref: nodeRef(f),
     title: f.title,
     description: f.description,
     locked: f.locked,
@@ -108,18 +121,29 @@ async function forumRows(
     postCount: f.postCount,
     subforums: all
       .filter((n) => n.parentId === f.id && n.kind !== "category")
-      .map((n) => ({ id: n.id, title: n.title })),
+      .map((n) => ({ id: n.id, ref: nodeRef(n), title: n.title })),
     lastPost: f.lastPostId ? (last.get(f.lastPostId) ?? null) : null,
   }));
 }
 
-export async function loadIndex(repos: Repositories, perms: Permissions) {
-  const all = visibleTree(perms, await repos.nodes.tree());
-  const top = all.filter((n) => n.parentId === null);
+/**
+ * The board index, or (phpBB2's `index.php?c=`) one category of it. Returns null when the
+ * category doesn't exist or the viewer may not see it.
+ */
+export async function loadIndex(
+  repos: Repositories,
+  perms: Permissions,
+  opts: { categoryId?: Id; classic?: ClassicIds } = {},
+) {
+  const tree = await repos.nodes.tree();
+  const all = visibleTree(perms, tree);
+  const root = opts.categoryId === undefined ? undefined : all.find((n) => n.id === opts.categoryId);
+  if (opts.categoryId !== undefined && root?.kind !== "category") return null;
+  const top = root ? [root] : all.filter((n) => n.parentId === null);
   // Top-level forums without a category are shown in an untitled group, as phpBB2 did.
-  const groups: { id: Id; title: string; nodes: Node[] }[] = [];
+  const groups: { id: Id; ref: NodeRef | null; title: string; nodes: Node[] }[] = [];
   const loose = top.filter((n) => n.kind !== "category");
-  if (loose.length) groups.push({ id: 0, title: "", nodes: loose });
+  if (loose.length) groups.push({ id: 0, ref: null, title: "", nodes: loose });
   // Every category gets its own section, nested ones too (Przemo allowed categories inside
   // categories), titled with their trail: "Ogólne › Sondy".
   const byParent = (id: Id) => all.filter((n) => n.parentId === id);
@@ -127,74 +151,105 @@ export async function loadIndex(repos: Repositories, perms: Permissions) {
     const title = [...trail, cat.title];
     groups.push({
       id: cat.id,
+      ref: nodeRef(cat, opts.classic),
       title: title.join(" › "),
       nodes: byParent(cat.id).filter((n) => n.kind !== "category"),
     });
     for (const sub of byParent(cat.id).filter((n) => n.kind === "category")) walk(sub, title);
   };
-  for (const cat of top.filter((n) => n.kind === "category")) walk(cat, []);
+  const trail = root ? await crumbs(repos, root, opts.classic) : [];
+  for (const cat of top.filter((n) => n.kind === "category"))
+    walk(
+      cat,
+      trail.slice(0, -1).map((c) => c.title),
+    );
   const categories = await Promise.all(
     groups
       .filter((g) => g.nodes.length)
-      .map(async (g) => ({ id: g.id, title: g.title, forums: await forumRows(repos, perms, g.nodes, all) })),
+      .map(async (g) => ({
+        id: g.id,
+        ref: g.ref,
+        title: g.title,
+        forums: await forumRows(repos, perms, g.nodes, all),
+      })),
   );
   const readable = all.filter((n) => perms.can("node.read", n));
   const newest = await repos.users.newest();
   return {
+    category: root
+      ? { ...nodeRef(root, opts.classic), title: root.title, description: root.description }
+      : null,
+    breadcrumbs: trail.slice(0, -1),
     categories,
     stats: {
       posts: readable.reduce((s, n) => s + n.postCount, 0),
       topics: readable.reduce((s, n) => s + n.topicCount, 0),
       users: await repos.users.count(),
-      newest: newest ? { id: newest.id, name: newest.username } : null,
+      newest: newest ? { ref: { id: newest.id, slug: newest.slug } as UserRef, name: newest.username } : null,
     },
   };
 }
 
-async function crumbs(repos: Repositories, node: Node): Promise<Crumb[]> {
+async function crumbs(repos: Repositories, node: Node, classic?: ClassicIds): Promise<Crumb[]> {
   const ids = node.path.split("/").filter(Boolean).map(Number);
   const nodes = await Promise.all(ids.map((id) => repos.nodes.get(id)));
-  return nodes.filter((n): n is Node => !!n).map((n) => ({ id: n.id, title: n.title, kind: n.kind }));
+  return nodes
+    .filter((n): n is Node => !!n)
+    .map((n) => ({ id: n.id, ref: nodeRef(n, classic), title: n.title }));
 }
 
 export interface TopicRow {
   id: Id;
+  ref: TopicRef;
   title: string;
   type: Topic["type"];
   locked: boolean;
-  movedToTopicId: Id | null;
+  /** A shadow left behind by a move: links to where the topic went. */
+  movedTo: TopicRef | null;
   author: string;
   replyCount: number;
   viewCount: number;
   lastPost: LastPost | null;
 }
 
-export async function loadForum(repos: Repositories, perms: Permissions, id: Id, startParam: unknown) {
-  const node = await repos.nodes.get(id);
-  if (!node || node.kind === "link") return deny(404);
+export async function loadForum(
+  repos: Repositories,
+  perms: Permissions,
+  node: Node,
+  startParam: unknown,
+  classic?: ClassicIds,
+) {
+  if (node.kind === "link") return deny(404);
   const all = visibleTree(perms, await repos.nodes.tree());
   const allowed = all.some((n) => n.id === node.id) ? access(perms, node) : 404;
   if (allowed !== "ok") return deny(allowed);
   const children = all.filter((n) => n.parentId === node.id && n.kind !== "category");
   const subforums = await forumRows(repos, perms, children, all);
-  const first = await repos.topics.listByNode(node.id, { page: 1, perPage: 1 });
-  const start = normaliseStart(startParam, TOPICS_PER_PAGE, first.total);
-  const page = await repos.topics.listByNode(node.id, {
-    page: start / TOPICS_PER_PAGE + 1,
-    perPage: TOPICS_PER_PAGE,
-  });
+  // One query for the requested page; a second only when the request was past the end.
+  const fetch = (start: number) =>
+    repos.topics.listByNode(node.id, { page: start / TOPICS_PER_PAGE + 1, perPage: TOPICS_PER_PAGE });
+  const asked = normaliseStart(startParam, TOPICS_PER_PAGE, Number.MAX_SAFE_INTEGER);
+  let page = await fetch(asked);
+  const start = normaliseStart(asked, TOPICS_PER_PAGE, page.total);
+  if (start !== asked) page = await fetch(start);
   const last = await lastPosts(
     repos,
     page.items.map((t) => t.lastPostId),
     () => true,
   );
   const authors = await repos.users.getMany(page.items.flatMap((t) => (t.authorId ? [t.authorId] : [])));
+  const moved = await repos.topics.getMany(
+    page.items.flatMap((t) => (t.movedToTopicId ? [t.movedToTopicId] : [])),
+  );
   const topics: TopicRow[] = page.items.map((t) => ({
     id: t.id,
+    ref: topicRef(t),
     title: t.title,
     type: t.type,
     locked: t.locked,
-    movedToTopicId: t.movedToTopicId,
+    movedTo: t.movedToTopicId
+      ? topicRef(moved.get(t.movedToTopicId) ?? { ...t, id: t.movedToTopicId, slug: "" })
+      : null,
     author: (t.authorId && authors.get(t.authorId)?.username) || t.authorName,
     replyCount: t.replyCount,
     viewCount: t.viewCount,
@@ -202,13 +257,13 @@ export async function loadForum(repos: Repositories, perms: Permissions, id: Id,
   }));
   return {
     forum: {
-      id: node.id,
+      ...nodeRef(node, classic),
       title: node.title,
       description: node.description,
       kind: node.kind,
       locked: node.locked,
     },
-    breadcrumbs: await crumbs(repos, node),
+    breadcrumbs: await crumbs(repos, node, classic),
     subforums,
     topics,
     total: page.total,
@@ -222,7 +277,7 @@ export interface PostView {
   at: number;
   editedAt: number | null;
   author: string;
-  authorId: Id | null;
+  authorRef: UserRef | null;
   authorPosts: number | null;
   authorJoined: number | null;
   authorLocation: string;
@@ -232,7 +287,7 @@ export interface PostView {
 /** Where a post lives, for `viewtopic.php?p=` links. */
 export async function locatePost(repos: Repositories, perms: Permissions, postId: Id) {
   const post = await repos.posts.get(postId);
-  if (!post || post.visibility !== "core:public") return null;
+  if (post?.visibility !== "core:public") return null;
   const topic = await repos.topics.get(post.topicId);
   const node = topic && (await repos.nodes.get(topic.nodeId));
   if (!node) return null;
@@ -240,23 +295,26 @@ export async function locatePost(repos: Repositories, perms: Permissions, postId
   if (allowed !== "ok") return deny(allowed);
   const position = await repos.posts.positionInTopic(postId);
   if (position === undefined) return null;
-  return { topicId: post.topicId, start: Math.floor(position / POSTS_PER_PAGE) * POSTS_PER_PAGE };
+  return { topic: topicRef(topic), start: Math.floor(position / POSTS_PER_PAGE) * POSTS_PER_PAGE };
 }
 
 export async function loadTopic(
   repos: Repositories,
   perms: Permissions,
   render: (posts: Post[]) => Promise<Map<Id, string>>,
-  id: Id,
+  topic: Topic,
   startParam: unknown,
+  classic?: ClassicIds,
 ) {
-  const topic = await repos.topics.get(id);
-  if (!topic || topic.visibility !== "core:public") return null;
+  if (topic.visibility !== "core:public") return null;
   const node = await repos.nodes.get(topic.nodeId);
   if (!node) return null;
   const allowed = access(perms, node);
   if (allowed !== "ok") return deny(allowed);
-  if (topic.movedToTopicId) return { movedTo: topic.movedToTopicId } as const;
+  if (topic.movedToTopicId) {
+    const target = await repos.topics.get(topic.movedToTopicId);
+    return target ? ({ movedTo: topicRef(target) } as const) : null;
+  }
   const total = topic.replyCount + 1;
   const start = normaliseStart(startParam, POSTS_PER_PAGE, total);
   const page = await repos.posts.listByTopic(topic.id, {
@@ -273,7 +331,7 @@ export async function loadTopic(
       at: p.createdAt,
       editedAt: p.editedAt,
       author: u?.username || p.authorName,
-      authorId: u?.id ?? null,
+      authorRef: u ? { id: u.id, slug: u.slug } : null,
       authorPosts: u ? u.postCount : null,
       authorJoined: u ? u.createdAt : null,
       authorLocation: u?.location ?? "",
@@ -282,13 +340,13 @@ export async function loadTopic(
   });
   return {
     topic: {
-      id: topic.id,
+      ...topicRef(topic),
       title: topic.title,
       type: topic.type,
       locked: topic.locked,
       viewCount: topic.viewCount + 1,
     },
-    breadcrumbs: await crumbs(repos, node),
+    breadcrumbs: await crumbs(repos, node, classic),
     posts,
     total: page.total,
     start,
