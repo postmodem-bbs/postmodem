@@ -30,6 +30,20 @@ export const registrationOpen = defineSetting({
   default: true,
 });
 
+/** With registration open: only people with an invite link may register (the beta's mode). */
+export const registrationInviteOnly = defineSetting({
+  key: "core.registration.inviteOnly",
+  schema: z.boolean(),
+  default: false,
+});
+
+/** Until members have this many posts, their posts may not contain links and they can't send private messages. */
+export const newMemberPosts = defineSetting({
+  key: "core.newMembers.posts",
+  schema: z.number().int().min(0).max(1000),
+  default: 3,
+});
+
 /** New accounts must confirm their e-mail address before they can sign in. */
 export const verifyEmailOnRegistration = defineSetting({
   key: "core.registration.verifyEmail",
@@ -142,6 +156,8 @@ export function coreSettings(): SettingsRegistry {
     boardDescription,
     defaultLocale,
     registrationOpen,
+    registrationInviteOnly,
+    newMemberPosts,
     verifyEmailOnRegistration,
     boardRules,
     rulesVersion,

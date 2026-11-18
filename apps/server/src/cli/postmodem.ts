@@ -33,6 +33,8 @@ import {
   forumCommand,
   GROUP_HELP,
   groupCommand,
+  INVITE_HELP,
+  inviteCommand,
   PACKAGES_HELP,
   packagesCommand,
   USER_EXPIRE_HELP,
@@ -67,6 +69,7 @@ ${USER_EXPIRE_HELP}
 ${GROUP_HELP}
 ${FORUM_HELP}
 ${BAN_HELP}
+${INVITE_HELP}
 ${PACKAGES_HELP}
   settings list | get <key> | set <key> <value>
                 show or change board settings (values are JSON, or plain text for
@@ -600,6 +603,8 @@ async function main(argv: string[]): Promise<number> {
       return forumCommand(sub, argv.slice(2));
     case "ban":
       return banCommand(sub, argv.slice(2));
+    case "invite":
+      return inviteCommand(sub, argv.slice(2));
     case "packages":
       return packagesCommand(sub, argv.slice(2));
     case "search": {

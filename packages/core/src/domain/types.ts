@@ -245,6 +245,18 @@ export interface PrivateMessage {
   recipientDeleted: boolean;
 }
 
+/** An invitation to register while registration is invite-only (M2 slice 7). */
+export interface Invite {
+  id: Id;
+  /** sha256 of the code; the code itself is only ever shown once, when created. */
+  codeHash: string;
+  createdBy: Id | null;
+  createdAt: Millis;
+  expiresAt: Millis | null;
+  usesLeft: number;
+  note: string;
+}
+
 export interface AuditEntry {
   id: Id;
   at: Millis;

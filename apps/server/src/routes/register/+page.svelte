@@ -1,8 +1,39 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
   import { translator } from "@postmodem/i18n";
+  import { onMount } from "svelte";
 
   let { data, form } = $props();
+  // Proof of work (lib/server/captcha.ts): find the number whose SHA-256 the server sent.
+  // It starts when the page loads; submitting waits for it if it isn't done yet.
+  let answer = $state("");
+  let checking = $state(false);
+  let solving: Promise<void> | undefined;
+  $effect(() => {
+    answer = data.answer;
+  });
+  const hex = (buf: ArrayBuffer) => [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
+  async function solve(c: typeof data.challenge) {
+    const enc = new TextEncoder();
+    for (let n = 0; n <= c.max; n++) {
+      if (hex(await crypto.subtle.digest("SHA-256", enc.encode(`${c.salt}${n}`))) === c.challenge) {
+        answer = btoa(JSON.stringify({ ...c, number: n })).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+        return;
+      }
+    }
+  }
+  onMount(() => {
+    solving = solve(data.challenge);
+  });
+  async function onsubmit(e: SubmitEvent) {
+    const formEl = e.currentTarget as HTMLFormElement;
+    if (!solving || answer !== data.answer) return;
+    e.preventDefault();
+    checking = true;
+    await solving;
+    checking = false;
+    formEl.submit();
+  }
   const t = $derived(translator(data.locale));
   const errors = $derived((form?.errors ?? {}) as Record<string, string | undefined>);
   const rules = $derived((data.rules || t("rules-default")).split(/\n\s*\n/));
@@ -16,9 +47,17 @@
 
 <h1 class="page-title">{t("register-title")}</h1>
 
-<form method="POST" class="panel narrow form" novalidate>
+{#if data.inviteOnly && !data.inviteValid}
+  <p class="panel notice" role="status">{t("register-invite-only")}</p>
+{/if}
+<form method="POST" class="panel narrow form" novalidate {onsubmit}>
+  <input type="hidden" name="captcha" value={answer} />
   {#if form?.throttled}
     <p class="form-error" role="alert">{t("register-error-throttled", { minutes: form.throttled })}</p>
+  {:else if errors.captcha}
+    <p class="form-error" role="alert">{t(`register-error-captcha-${errors.captcha}`)}</p>
+  {:else if errors.invite}
+    <p class="form-error" role="alert">{t("register-invite-only")}</p>
   {:else if Object.keys(errors).length}
     <p class="form-error" role="alert">{t("form-has-errors")}</p>
   {/if}
@@ -83,6 +122,7 @@
   </label>
   {#if errors.rules}<p class="field-error" id="rules-error">{t("rules-error-required")}</p>{/if}
 
-  <button type="submit">{t("register-submit")}</button>
+  <button type="submit" aria-describedby={checking ? "captcha-status" : undefined}>{t("register-submit")}</button>
+  <p id="captcha-status" class="muted" role="status">{checking ? t("register-captcha-checking") : ""}</p>
   <p class="muted">{t("register-have-account")} <a href="/login.php">{t("login-link")}</a></p>
 </form>

@@ -12,6 +12,7 @@ import {
   type Id,
   maxPostLength,
   may,
+  newMemberPosts,
   type PostingProblem,
   reply,
   type TopicType,
@@ -121,6 +122,7 @@ const STATUS: Record<PostingProblem, number> = {
   "body-missing": 400,
   "body-long": 400,
   "not-last-post": 409,
+  "new-member-links": 403,
 };
 
 export const actions: Actions = {
@@ -142,6 +144,7 @@ export const actions: Actions = {
     const key = String(locals.user!.id);
     const rules = {
       floodSeconds: ctx.settings.get(floodSeconds),
+      newMemberPosts: ctx.settings.get(newMemberPosts),
       maxLength: ctx.settings.get(maxPostLength),
       now,
     };

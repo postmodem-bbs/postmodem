@@ -9,6 +9,7 @@ import type {
   Grant,
   Group,
   Id,
+  Invite,
   Job,
   MarkupFormat,
   Membership,
@@ -418,6 +419,16 @@ export interface SearchRepository {
   query(q: { terms: string[]; nodeIds: Id[]; authorId?: Id | null; page: PageRequest }): Promise<Page<Id>>;
 }
 
+export interface InviteRepository {
+  create(i: Omit<Invite, "id" | "createdAt"> & { createdAt?: Millis }): Promise<Invite>;
+  /** A usable invite (uses left, not expired) by its code's hash. */
+  usable(codeHash: string, now: Millis): Promise<Invite | undefined>;
+  /** Takes one use; false if none was left (someone else got there first). */
+  consume(id: Id): Promise<boolean>;
+  list(): Promise<Invite[]>;
+  remove(id: Id): Promise<void>;
+}
+
 export interface Repositories {
   nodes: NodeRepository;
   topics: TopicRepository;
@@ -441,6 +452,7 @@ export interface Repositories {
   messages: PrivateMessageRepository;
   watches: WatchRepository;
   search: SearchRepository;
+  invites: InviteRepository;
   /** Runs fn atomically; the repositories passed in are bound to the transaction. */
   transaction<T>(fn: (repos: Repositories) => Promise<T>): Promise<T>;
 }

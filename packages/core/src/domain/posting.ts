@@ -26,7 +26,8 @@ export type PostingProblem =
   | "title-long"
   | "body-missing"
   | "body-long"
-  | "not-last-post";
+  | "not-last-post"
+  | "new-member-links";
 
 export type PostingResult =
   | { ok: true; topic: Topic; post: Post }
@@ -35,6 +36,8 @@ export type PostingResult =
 export interface PostingRules {
   floodSeconds: number;
   maxLength: number;
+  /** Until a member has this many posts, their posts may not contain links (spam). */
+  newMemberPosts?: number;
   now?: Millis;
 }
 
@@ -56,6 +59,15 @@ export function titleProblem(title: string): PostingProblem | null {
   if ([...title].length > TITLE_MAX) return "title-long";
   return null;
 }
+
+/** Links in BBCode or bare: what new members may not post yet. */
+export const containsLink = (source: string) => /\[(url|img|email)\b|https?:\/\/|\bwww\./i.test(source);
+
+const newMemberLinks = (perms: Permissions, node: Node, user: User, source: string, rules: PostingRules) =>
+  !!rules.newMemberPosts &&
+  user.postCount < rules.newMemberPosts &&
+  !isModerator(perms, node) &&
+  containsLink(source);
 
 export function bodyProblem(source: string, maxLength: number): PostingProblem | null {
   if (!source.trim()) return "body-missing";
@@ -152,6 +164,7 @@ export async function createTopic(
   const title = cleanTitle(input.title);
   const problem = titleProblem(title) ?? bodyProblem(input.source, rules.maxLength);
   if (problem) return fail(problem);
+  if (newMemberLinks(perms, node, user!, input.source, rules)) return fail("new-member-links");
   const wait = await flood(repos, perms, user!, node, rules);
   if (wait) return fail("flood", wait);
 
@@ -190,6 +203,7 @@ export async function reply(
   if ([...subject].length > TITLE_MAX) return fail("title-long");
   const problem = bodyProblem(input.source, rules.maxLength);
   if (problem) return fail(problem);
+  if (newMemberLinks(perms, node, user!, input.source, rules)) return fail("new-member-links");
   const wait = await flood(repos, perms, user!, node, rules);
   if (wait) return fail("flood", wait);
 
@@ -251,6 +265,7 @@ export async function editPost(
     ([...subject].length > TITLE_MAX ? "title-long" : null) ??
     bodyProblem(input.source, rules.maxLength);
   if (problem) return fail(problem);
+  if (newMemberLinks(perms, found.node, user!, input.source, rules)) return fail("new-member-links");
 
   const now = rules.now ?? Date.now();
   // phpBB2: an edit only shows once someone has replied after the post.

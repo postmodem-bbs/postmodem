@@ -9,6 +9,7 @@ import {
   inboxLimit,
   type MessageProblem,
   maxPostLength,
+  newMemberPosts,
   openMessage,
   sendMessage,
 } from "@postmodem/core";
@@ -102,6 +103,7 @@ const STATUS: Record<MessageProblem, number> = {
   "subject-long": 400,
   "body-missing": 400,
   "body-long": 400,
+  "new-member": 403,
 };
 
 export const actions: Actions = {
@@ -124,6 +126,7 @@ export const actions: Actions = {
     const result = await sendMessage(ctx.db.repos, locals.perms, user, values, {
       maxLength: ctx.settings.get(maxPostLength),
       inboxLimit: ctx.settings.get(inboxLimit),
+      newMemberPosts: ctx.settings.get(newMemberPosts),
       now,
     });
     if (!result.ok) return fail(STATUS[result.problem], { values, problem: result.problem, waitSeconds: 0 });

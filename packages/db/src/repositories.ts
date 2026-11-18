@@ -12,6 +12,7 @@ import {
   type Group,
   type GroupKind,
   type Id,
+  type Invite,
   idsOf,
   type Job,
   type JobStatus,
@@ -1420,6 +1421,57 @@ export function createRepositories(db: Db, dialect: "sqlite" | "pg"): Repositori
     },
   };
 
+  const toInvite = (i: Selectable<Schema["invites"]>): Invite => ({
+    id: i.id,
+    codeHash: i.codeHash,
+    createdBy: i.createdBy,
+    createdAt: n(i.createdAt),
+    expiresAt: i.expiresAt === null ? null : n(i.expiresAt),
+    usesLeft: i.usesLeft,
+    note: i.note,
+  });
+  const invites: Repositories["invites"] = {
+    async create(i) {
+      const row = {
+        codeHash: i.codeHash,
+        createdBy: i.createdBy,
+        createdAt: i.createdAt ?? Date.now(),
+        expiresAt: i.expiresAt,
+        usesLeft: i.usesLeft,
+        note: i.note,
+      };
+      const { id } = await db.insertInto("invites").values(row).returning("id").executeTakeFirstOrThrow();
+      return toInvite({ id, ...row });
+    },
+    async usable(codeHash, now) {
+      const r = await db
+        .selectFrom("invites")
+        .selectAll()
+        .where("codeHash", "=", codeHash)
+        .where("usesLeft", ">", 0)
+        .where((eb) => eb.or([eb("expiresAt", "is", null), eb("expiresAt", ">", now)]))
+        .executeTakeFirst();
+      return r && toInvite(r);
+    },
+    async consume(id) {
+      const r = await db
+        .updateTable("invites")
+        .set({ usesLeft: sql<number>`uses_left - 1` })
+        .where("id", "=", id)
+        .where("usesLeft", ">", 0)
+        .executeTakeFirst();
+      return Number(r.numUpdatedRows) === 1;
+    },
+    async list() {
+      return (await db.selectFrom("invites").selectAll().orderBy("createdAt", "desc").execute()).map(
+        toInvite,
+      );
+    },
+    async remove(id) {
+      await db.deleteFrom("invites").where("id", "=", id).execute();
+    },
+  };
+
   const sqlite = dialect === "sqlite";
   const search: Repositories["search"] = {
     async index(docs) {
@@ -1802,6 +1854,7 @@ export function createRepositories(db: Db, dialect: "sqlite" | "pg"): Repositori
     messages,
     watches,
     search,
+    invites,
     transaction: (fn) =>
       db.isTransaction
         ? fn(createRepositories(db, dialect))

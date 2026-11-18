@@ -283,4 +283,43 @@ describe.each(testEngines())("posting on %s", (engine) => {
     await r.watches.unwatch(bob.id, t.topic.id);
     expect(await r.watches.isWatching(bob.id, t.topic.id)).toBe(false);
   });
+
+  it("keeps links and private messages from new members until they have a few posts", async () => {
+    const rules = { ...RULES, newMemberPosts: 2 };
+    const p = await perms(alice);
+    expect(
+      await createTopic(
+        r,
+        p,
+        alice,
+        { nodeId: forum.id, title: "x", source: "see https://spam.example" },
+        rules,
+      ),
+    ).toEqual({ ok: false, problem: "new-member-links" });
+    expect(
+      await createTopic(r, p, alice, { nodeId: forum.id, title: "x", source: "[url=x]y[/url]" }, rules),
+    ).toMatchObject({ problem: "new-member-links" });
+    expect(
+      await sendMessage(
+        r,
+        p,
+        alice,
+        { to: "bob", subject: "x", source: "y" },
+        { maxLength: 1000, inboxLimit: 0, newMemberPosts: 2 },
+      ),
+    ).toEqual({ ok: false, problem: "new-member" });
+    const first = await createTopic(
+      r,
+      p,
+      alice,
+      { nodeId: forum.id, title: "x", source: "plain text" },
+      rules,
+    );
+    expect(first.ok).toBe(true);
+    await reply(r, p, alice, { topicId: first.ok ? first.topic.id : 0, source: "more" }, rules);
+    const fresh = (await r.users.get(alice.id))!;
+    expect(
+      await createTopic(r, p, fresh, { nodeId: forum.id, title: "x", source: "www.example.org" }, rules),
+    ).toMatchObject({ ok: true });
+  });
 });

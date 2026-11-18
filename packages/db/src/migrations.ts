@@ -470,5 +470,18 @@ export function migrations(dialect: Dialect): Record<string, Migration> {
         }
       },
     },
+    "0013_invites": {
+      async up(db: Db) {
+        // Invite-only registration (M2 slice 7); only the codes' hashes are stored.
+        await withId(db.schema.createTable("invites"), dialect)
+          .addColumn("code_hash", "text", (c) => c.notNull().unique())
+          .addColumn("created_by", "bigint")
+          .addColumn("created_at", "bigint", notNull)
+          .addColumn("expires_at", "bigint")
+          .addColumn("uses_left", "integer", notNull)
+          .addColumn("note", "text", empty)
+          .execute();
+      },
+    },
   };
 }

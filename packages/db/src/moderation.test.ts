@@ -190,4 +190,26 @@ describe.each(testEngines())("moderation on %s", (engine) => {
     expect(wildcardMatch("10.0.*", "10.0.0.1")).toBe(true);
     expect(wildcardMatch("10.0.*", "110.0.0.1")).toBe(false);
   });
+
+  it("invites: usable while they have uses left and haven't expired, used up one at a time", async () => {
+    const now = Date.now();
+    const inv = await r.invites.create({
+      codeHash: "h1",
+      createdBy: mod.id,
+      expiresAt: now + 60_000,
+      usesLeft: 2,
+      note: "beta",
+    });
+    await r.invites.create({ codeHash: "h2", createdBy: null, expiresAt: now - 1, usesLeft: 5, note: "" });
+    expect(await r.invites.usable("h1", now)).toMatchObject({ id: inv.id, usesLeft: 2 });
+    expect(await r.invites.usable("h2", now)).toBeUndefined();
+    expect(await r.invites.usable("nope", now)).toBeUndefined();
+    expect(await r.invites.consume(inv.id)).toBe(true);
+    expect(await r.invites.consume(inv.id)).toBe(true);
+    expect(await r.invites.consume(inv.id)).toBe(false);
+    expect(await r.invites.usable("h1", now)).toBeUndefined();
+    expect((await r.invites.list()).length).toBe(2);
+    await r.invites.remove(inv.id);
+    expect((await r.invites.list()).length).toBe(1);
+  });
 });

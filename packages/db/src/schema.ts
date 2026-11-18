@@ -247,6 +247,16 @@ export interface SearchMetaTable {
   createdAt: number;
 }
 
+export interface InvitesTable {
+  id: Generated<number>;
+  codeHash: string;
+  createdBy: number | null;
+  createdAt: number;
+  expiresAt: number | null;
+  usesLeft: number;
+  note: string;
+}
+
 export interface BansTable {
   id: Generated<number>;
   kind: string;
@@ -306,6 +316,7 @@ export interface Schema {
   privateMessages: PrivateMessagesTable;
   topicWatches: TopicWatchesTable;
   searchMeta: SearchMetaTable;
+  invites: InvitesTable;
   auditLog: AuditLogTable;
   legacyIds: LegacyIdsTable;
   slugHistory: SlugHistoryTable;

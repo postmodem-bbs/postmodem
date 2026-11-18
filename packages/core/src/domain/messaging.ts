@@ -16,7 +16,8 @@ export type MessageProblem =
   | "subject-missing"
   | "subject-long"
   | "body-missing"
-  | "body-long";
+  | "body-long"
+  | "new-member";
 
 export type SendResult =
   | { ok: true; message: PrivateMessage; recipient: User }
@@ -27,10 +28,13 @@ export async function sendMessage(
   perms: Permissions,
   sender: User | null,
   input: { to: string; subject: string; source: string },
-  rules: { maxLength: number; inboxLimit: number; now?: Millis },
+  rules: { maxLength: number; inboxLimit: number; newMemberPosts?: number; now?: Millis },
 ): Promise<SendResult> {
   if (!sender) return { ok: false, problem: "sign-in" };
   if (sender.status !== "active" || !perms.can("pm.send", null)) return { ok: false, problem: "forbidden" };
+  // New members can't message anyone yet: private messages are where spam goes first.
+  if (rules.newMemberPosts && sender.postCount < rules.newMemberPosts && !perms.can("moderate.edit", null))
+    return { ok: false, problem: "new-member" };
   const recipient = await repos.users.byUsername(input.to.trim());
   if (!recipient || recipient.status !== "active" || recipient.origin !== "local")
     return { ok: false, problem: "recipient-unknown" };

@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Board administration from the CLI until the web admin panel exists (M2): groups, forums
 // and the clean-up of imported password hashes. Every change goes into the audit log.
+
+import { createHash, randomBytes } from "node:crypto";
 import {
   banProblem,
   banUser,
@@ -11,7 +13,7 @@ import {
   type NodeKind,
   type Repositories,
 } from "@postmodem/core";
-import { createContext } from "../lib/server/bootstrap.ts";
+import { type AppContext, createContext } from "../lib/server/bootstrap.ts";
 
 const DAY = 86_400_000;
 
@@ -30,10 +32,10 @@ export function parseArgs(args: string[], booleans: string[] = []) {
 
 class Usage extends Error {}
 
-async function withRepos(fn: (repos: Repositories) => Promise<number>): Promise<number> {
+async function withRepos(fn: (repos: Repositories, ctx: AppContext) => Promise<number>): Promise<number> {
   const ctx = await createContext({ migrate: false });
   try {
-    return await fn(ctx.db.repos);
+    return await fn(ctx.db.repos, ctx);
   } catch (e) {
     if (e instanceof Usage) {
       console.error(e.message);
@@ -362,4 +364,52 @@ export async function packagesCommand(sub: string | undefined, args: string[]): 
   } finally {
     await ctx.db.close();
   }
+}
+
+export const INVITE_HELP = `  invite create [--uses <n>] [--days <n>] [--note <text>] | list | revoke <id>
+                invite links for invite-only registration (core.registration.inviteOnly);
+                the code is shown once, only its hash is stored`;
+
+export function inviteCommand(sub: string | undefined, args: string[]): Promise<number> {
+  const { flags, rest } = parseArgs(args);
+  return withRepos(async (repos, ctx) => {
+    const now = Date.now();
+    switch (sub) {
+      case "create": {
+        const uses = flags.uses === undefined ? 1 : Number(flags.uses);
+        const days = flags.days === undefined ? 14 : Number(flags.days);
+        if (!Number.isInteger(uses) || uses < 1 || uses > 10_000) throw new Usage("--uses must be 1–10000");
+        if (!Number.isInteger(days) || days < 1 || days > 365) throw new Usage("--days must be 1–365");
+        const code = randomBytes(18).toString("base64url");
+        const invite = await repos.invites.create({
+          codeHash: createHash("sha256").update(code).digest("hex"),
+          createdBy: null,
+          expiresAt: now + days * DAY,
+          usesLeft: uses,
+          note: (flags.note ?? "").slice(0, 200),
+        });
+        await audit(repos, "invite.created", "invite", invite.id, { uses, days });
+        console.log(`invite ${invite.id}: ${uses} use(s), valid ${days} day(s)`);
+        console.log(new URL(`/register?invite=${code}`, ctx.config.publicUrl).href);
+        return 0;
+      }
+      case "list": {
+        const all = await repos.invites.list();
+        for (const i of all)
+          console.log(
+            `${i.id}\t${i.usesLeft} left\t${i.expiresAt ? `until ${new Date(i.expiresAt).toISOString().slice(0, 10)}` : "no expiry"}${i.expiresAt && i.expiresAt < now ? " (expired)" : ""}${i.note ? `\t${i.note}` : ""}`,
+          );
+        if (!all.length) console.log("no invites");
+        return 0;
+      }
+      case "revoke": {
+        if (!rest[0] || !/^\d+$/.test(rest[0])) throw new Usage("usage: postmodem invite revoke <id>");
+        await repos.invites.remove(Number(rest[0]));
+        await audit(repos, "invite.revoked", "invite", Number(rest[0]));
+        console.log(`revoked invite ${rest[0]}`);
+        return 0;
+      }
+    }
+    throw new Usage(`usage:\n${INVITE_HELP}`);
+  });
 }
