@@ -24,6 +24,8 @@ import { type AppContext, createContext, readConfig } from "../lib/server/bootst
 import { DEMO_PASSWORD, seedDemo, seedLongTopic } from "../lib/server/demo.ts";
 import { copyLegacyFiles, uploadsDir } from "../lib/server/uploads.ts";
 import {
+  BAN_HELP,
+  banCommand,
   expireLegacyPasswords,
   FORUM_HELP,
   forumCommand,
@@ -60,6 +62,7 @@ Usage: postmodem <command>
 ${USER_EXPIRE_HELP}
 ${GROUP_HELP}
 ${FORUM_HELP}
+${BAN_HELP}
   settings list | get <key> | set <key> <value>
                 show or change board settings (values are JSON, or plain text for
                 strings), e.g. settings set core.urls.style numbered; running servers
@@ -581,6 +584,8 @@ async function main(argv: string[]): Promise<number> {
       return groupCommand(sub, argv.slice(2));
     case "forum":
       return forumCommand(sub, argv.slice(2));
+    case "ban":
+      return banCommand(sub, argv.slice(2));
     case "settings":
       if (sub !== "list" && sub !== "get" && sub !== "set") break;
       return settingsCommand(sub, argv.slice(2));

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { defaultLocale, resolveSession, urlStyle } from "@postmodem/core";
-import { negotiate } from "@postmodem/i18n";
+import { defaultLocale, endSession, findBan, resolveSession, urlStyle } from "@postmodem/core";
+import { negotiate, translator } from "@postmodem/i18n";
 import type { Handle } from "@sveltejs/kit/hooks";
 import { clearSessionCookie, sessionCookieName } from "#lib/server/auth.ts";
 import { getContext } from "#lib/server/bootstrap.ts";
@@ -52,15 +52,32 @@ export const handle: Handle = async ({ event, resolve }) => {
   });
   event.locals.theme = parseTheme(event.cookies.get(THEME_COOKIE));
   event.locals.urls = urlsFor(ctx.settings.get(urlStyle));
+
+  // Bans (phpBB2's banlist): a banned IP gets nothing but this page; a banned member's
+  // session ends and they browse as a guest (signing in again is refused).
+  const bans = await ctx.activeBans();
+  const ipBan = findBan(
+    bans.filter((b) => b.kind === "ip"),
+    { ip: event.getClientAddress() },
+  );
+  if (ipBan) return bannedPage(event.locals.locale, ipBan.reason);
+
   // Session: an opaque cookie whose hash names a server-side session (core accounts.ts).
   const cookieName = sessionCookieName(ctx.config);
   const token = event.cookies.get(cookieName);
   const auth = token ? await resolveSession(ctx.db.repos, token) : null;
   if (token && !auth) clearSessionCookie(event.cookies, ctx.config);
-  event.locals.user = auth?.user ?? null;
-  event.locals.session = auth?.session ?? null;
-  event.locals.perms = await ctx.permissions(auth?.user.id ?? null);
-
+  if (auth && token && findBan(bans, { userId: auth.user.id, email: auth.user.email })) {
+    await endSession(ctx.db.repos, token);
+    clearSessionCookie(event.cookies, ctx.config);
+    event.locals.user = null;
+    event.locals.session = null;
+    event.locals.perms = await ctx.permissions(null);
+  } else {
+    event.locals.user = auth?.user ?? null;
+    event.locals.session = auth?.session ?? null;
+    event.locals.perms = await ctx.permissions(auth?.user.id ?? null);
+  }
   const response = await resolve(event, {
     transformPageChunk: ({ html }) =>
       html
@@ -73,3 +90,14 @@ export const handle: Handle = async ({ event, resolve }) => {
     response.headers.set("cache-control", "private, no-cache");
   return response;
 };
+
+/** A minimal page, outside the app: banned visitors get no board at all (phpBB2 did the same). */
+function bannedPage(locale: App.Locals["locale"], reason: string): Response {
+  const t = translator(locale);
+  const esc = (v: string) => v.replace(/[&<>"]/g, (c) => `&#${c.charCodeAt(0)};`);
+  const body = `<!doctype html><html lang="${esc(locale)}"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>${esc(t("banned-title"))}</title><h1>${esc(t("banned-title"))}</h1>${reason ? `<p>${esc(t("banned-reason"))} ${esc(reason)}</p>` : ""}`;
+  return new Response(body, {
+    status: 403,
+    headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store", ...SECURITY_HEADERS },
+  });
+}

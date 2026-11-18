@@ -6,6 +6,7 @@
 import {
   type Id,
   may,
+  moderates,
   type Node,
   type Permissions,
   type Poll,
@@ -434,6 +435,7 @@ export async function loadTopic(
       lastPostAt: topic.lastPostAt,
       replies: topic.replyCount,
       canReply: may.reply(perms, node, topic),
+      canModerate: moderates(perms, node),
       viewCount: topic.viewCount + views.pending(topic.id),
     },
     breadcrumbs: await crumbs(repos, node, classic),

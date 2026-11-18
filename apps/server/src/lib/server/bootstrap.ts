@@ -5,6 +5,7 @@ import { randomBytes } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import {
+  type Ban,
   boardName,
   type CapabilityRegistry,
   type Config,
@@ -56,6 +57,10 @@ export interface AppContext {
   sendMail(message: MailMessage): Promise<void>;
   /** This process's job worker; started only by roles that run one (run, worker, dev). */
   worker: Worker;
+  /** Active bans, cached for a few seconds (every replica sees a new ban within BAN_REFRESH_MS). */
+  activeBans(): Promise<Ban[]>;
+  /** Drop the cache after this process changed the bans. */
+  invalidateBans(): void;
   /** Topic views, written in batches (started by roles that serve pages, flushed at shutdown). */
   views: ViewCounter;
   /** Permission view for one request (null = guest). Loads a fresh snapshot each call. */
@@ -155,6 +160,7 @@ export async function createContext(opts: { migrate: boolean; loaded?: LoadedCon
     },
     mailer,
     worker,
+    ...banCache(db),
     views: new ViewCounter(
       (id, by) => db.repos.topics.addViews(id, by),
       (e) => log.warn("could not save topic views", { error: (e as Error).message }),
@@ -191,6 +197,27 @@ export async function createContext(opts: { migrate: boolean; loaded?: LoadedCon
       } catch (e) {
         return { ready: false, reason: `database unavailable: ${(e as Error).message}` };
       }
+    },
+  };
+}
+
+export const BAN_REFRESH_MS = 15_000;
+
+function banCache(db: Database) {
+  let cached: { at: number; bans: Promise<Ban[]> } | undefined;
+  return {
+    activeBans() {
+      const now = Date.now();
+      if (!cached || now - cached.at > BAN_REFRESH_MS) {
+        const bans = db.repos.bans.active(now);
+        // A failed read isn't cached: the next request tries again.
+        bans.catch(() => (cached = undefined));
+        cached = { at: now, bans };
+      }
+      return cached.bans;
+    },
+    invalidateBans() {
+      cached = undefined;
     },
   };
 }

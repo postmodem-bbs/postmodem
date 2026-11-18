@@ -252,3 +252,34 @@ post-edited = { $count ->
    *[other] Edited { $count } times, last
 }
 topic-locked-hint = This topic is locked: no new replies.
+
+## Bans
+banned-title = You have been banned from this board.
+banned-reason = Reason:
+email-error-banned = This e-mail address can't be used here.
+
+## Moderation
+modcp-title = Moderate topic
+modcp-link = Moderate
+modcp-reason = Reason
+modcp-lock = Lock topic
+modcp-unlock = Unlock topic
+modcp-move = Move topic
+modcp-move-to = Move to
+modcp-move-shadow = Leave a "moved" link in the old forum
+modcp-merge = Merge into another topic
+modcp-merge-target = Topic to merge into (number or link)
+modcp-merge-hint = Every post of this topic moves there; this topic's links will lead there too.
+modcp-split = Split topic
+modcp-split-posts = Posts to move to the new topic
+modcp-split-title = Title of the new topic
+modcp-split-forum = Forum of the new topic
+modcp-delete = Delete topic
+modcp-delete-confirm = Yes, delete this topic and all its posts
+modcp-error-forbidden = You can't do that in this forum.
+modcp-error-not-found = That topic or forum doesn't exist.
+modcp-error-same-forum = The topic is already in that forum.
+modcp-error-title-missing = Give the new topic a title.
+modcp-error-title-long = The title is too long (at most 100 characters).
+modcp-error-nothing-selected = Choose some of the posts, but not all of them.
+modcp-error-invalid = That didn't work: check the form.

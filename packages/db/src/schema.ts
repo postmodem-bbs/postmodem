@@ -219,6 +219,16 @@ export interface PollVotersTable {
   userId: number;
 }
 
+export interface BansTable {
+  id: Generated<number>;
+  kind: string;
+  value: string;
+  reason: string;
+  createdBy: number | null;
+  createdAt: number;
+  expiresAt: number | null;
+}
+
 export interface AuditLogTable {
   id: Generated<number>;
   at: number;
@@ -264,6 +274,7 @@ export interface Schema {
   polls: PollsTable;
   pollOptions: PollOptionsTable;
   pollVoters: PollVotersTable;
+  bans: BansTable;
   auditLog: AuditLogTable;
   legacyIds: LegacyIdsTable;
   slugHistory: SlugHistoryTable;

@@ -4,6 +4,7 @@
 // importer writes in bulk and then calls recount(); posting (M2) will update them incrementally.
 import {
   type AuditEntry,
+  type Ban,
   childPath,
   depthOf,
   type Effect,
@@ -533,6 +534,24 @@ export function createRepositories(db: Db): Repositories {
         .execute();
       return (await topics.get(id))!;
     },
+    async setLocked(id, locked) {
+      await db
+        .updateTable("topics")
+        .set({ locked: locked ? 1 : 0, updatedAt: Date.now() })
+        .where("id", "=", id)
+        .execute();
+    },
+    async markMoved(id, targetId) {
+      await db
+        .updateTable("topics")
+        .set({ movedToTopicId: targetId, updatedAt: Date.now() })
+        .where("id", "=", id)
+        .execute();
+    },
+    async moveTo(id, nodeId) {
+      await db.updateTable("topics").set({ nodeId, updatedAt: Date.now() }).where("id", "=", id).execute();
+      await db.updateTable("posts").set({ nodeId }).where("topicId", "=", id).execute();
+    },
     async setType(id, type) {
       await db.updateTable("topics").set({ type, updatedAt: Date.now() }).where("id", "=", id).execute();
     },
@@ -680,6 +699,29 @@ export function createRepositories(db: Db): Repositories {
     },
     async setVisibility(id, visibility) {
       await db.updateTable("posts").set({ visibility }).where("id", "=", id).execute();
+    },
+    async moveTo(postIds, topicId) {
+      if (!postIds.length) return;
+      const topic = await db
+        .selectFrom("topics")
+        .select("nodeId")
+        .where("id", "=", topicId)
+        .executeTakeFirstOrThrow();
+      await db
+        .updateTable("posts")
+        .set({ topicId, nodeId: topic.nodeId })
+        .where("id", "in", postIds)
+        .execute();
+    },
+    async allInTopic(topicId) {
+      const rows = await db
+        .selectFrom("posts")
+        .selectAll()
+        .where("topicId", "=", topicId)
+        .orderBy("createdAt")
+        .orderBy("id")
+        .execute();
+      return rows.map(toPost);
     },
     async lastByAuthor(authorId) {
       const r = await db
@@ -1159,6 +1201,45 @@ export function createRepositories(db: Db): Repositories {
     },
   };
 
+  const bans: Repositories["bans"] = {
+    async create(b) {
+      const { id } = await db
+        .insertInto("bans")
+        .values({
+          kind: b.kind,
+          value: b.value,
+          reason: b.reason,
+          createdBy: b.createdBy,
+          createdAt: b.createdAt ?? Date.now(),
+          expiresAt: b.expiresAt,
+        })
+        .returning("id")
+        .executeTakeFirstOrThrow();
+      return { ...b, id, createdAt: b.createdAt ?? Date.now() };
+    },
+    async remove(id) {
+      await db.deleteFrom("bans").where("id", "=", id).execute();
+    },
+    async active(now) {
+      const rows = await db
+        .selectFrom("bans")
+        .selectAll()
+        .where((eb) => eb.or([eb("expiresAt", "is", null), eb("expiresAt", ">", now)]))
+        .orderBy("createdAt", "desc")
+        .orderBy("id", "desc")
+        .execute();
+      return rows.map((b) => ({
+        id: b.id,
+        kind: b.kind as Ban["kind"],
+        value: b.value,
+        reason: b.reason,
+        createdBy: b.createdBy,
+        createdAt: n(b.createdAt),
+        expiresAt: b.expiresAt === null ? null : n(b.expiresAt),
+      }));
+    },
+  };
+
   const polls: Repositories["polls"] = {
     async create(p) {
       const { id } = await db
@@ -1471,6 +1552,7 @@ export function createRepositories(db: Db): Repositories {
     ranks,
     smilies,
     polls,
+    bans,
     transaction: (fn) =>
       db.isTransaction
         ? fn(createRepositories(db))

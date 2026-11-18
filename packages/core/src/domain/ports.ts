@@ -3,6 +3,7 @@
 // for SQLite and Postgres (ADR 0013). E-mail tokens arrive with mail (slice 4b).
 import type {
   AuditEntry,
+  Ban,
   Effect,
   EmailTokenPurpose,
   Grant,
@@ -102,6 +103,11 @@ export interface TopicRepository {
   rename(id: Id, title: string): Promise<Topic>;
   setType(id: Id, type: TopicType): Promise<void>;
   setVisibility(id: Id, visibility: VisibilityState): Promise<void>;
+  setLocked(id: Id, locked: boolean): Promise<void>;
+  /** Turns the topic into a "moved" shadow of another (its old links then lead there). */
+  markMoved(id: Id, targetId: Id): Promise<void>;
+  /** Moves the topic and its posts to another node (counters: recount both nodes). */
+  moveTo(id: Id, nodeId: Id): Promise<void>;
   /** A new public post in the topic: reply count, first/last post and activity, without a recount. */
   notePost(id: Id, post: { id: Id; createdAt: Millis; first: boolean }): Promise<void>;
   /** Announcements, then stickies, then the rest; each by most recent activity. */
@@ -147,6 +153,10 @@ export interface PostRepository {
     patch: { source: string; subject?: string; editedAt: Millis | null; editCount: number },
   ): Promise<Post>;
   setVisibility(id: Id, visibility: VisibilityState): Promise<void>;
+  /** Moves posts into another topic (split, merge); counters: recount both topics. */
+  moveTo(postIds: Id[], topicId: Id): Promise<void>;
+  /** Every post of a topic, any visibility, oldest first (moderation). */
+  allInTopic(topicId: Id): Promise<Post[]>;
   /** When the user last posted (flood interval). */
   lastByAuthor(authorId: Id): Promise<Millis | undefined>;
   /** Bulk insert with explicit ids and node (importers); no per-row lookups. */
@@ -335,6 +345,13 @@ export interface PollRepository {
   addVoters(pollId: Id, userIds: Id[]): Promise<void>;
 }
 
+export interface BanRepository {
+  create(ban: Omit<Ban, "id" | "createdAt"> & { createdAt?: Millis }): Promise<Ban>;
+  remove(id: Id): Promise<void>;
+  /** Unexpired bans, newest first. */
+  active(now: Millis): Promise<Ban[]>;
+}
+
 export interface Repositories {
   nodes: NodeRepository;
   topics: TopicRepository;
@@ -354,6 +371,7 @@ export interface Repositories {
   ranks: RankRepository;
   smilies: SmileyRepository;
   polls: PollRepository;
+  bans: BanRepository;
   /** Runs fn atomically; the repositories passed in are bound to the transaction. */
   transaction<T>(fn: (repos: Repositories) => Promise<T>): Promise<T>;
 }

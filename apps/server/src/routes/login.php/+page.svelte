@@ -31,6 +31,8 @@
           ? t("login-error-throttled", { seconds: form.seconds })
           : form.error === "inactive"
             ? t("login-error-inactive")
+            : form.error === "banned"
+              ? `${t("banned-title")}${"reason" in form && form.reason ? ` ${t("banned-reason")} ${form.reason}` : ""}`
             : form.error === "unverified"
               ? t("login-error-unverified")
               : t("login-error-invalid")}

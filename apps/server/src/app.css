@@ -586,6 +586,25 @@ main:focus {
   background: var(--pm-color-danger);
   border-color: var(--pm-color-danger);
 }
+.modcp {
+  display: grid;
+  gap: var(--pm-space-3);
+}
+.modcp fieldset {
+  border: 1px solid var(--pm-color-border);
+  border-radius: var(--pm-radius);
+  max-block-size: 24rem;
+  overflow-y: auto;
+}
+.modcp .check {
+  display: flex;
+  gap: var(--pm-space-2);
+  align-items: flex-start;
+}
+.split-post {
+  padding-block: var(--pm-space-1);
+  border-block-end: 1px solid var(--pm-color-border);
+}
 .post-subject {
   font-weight: 600;
   margin-inline-start: var(--pm-space-2);

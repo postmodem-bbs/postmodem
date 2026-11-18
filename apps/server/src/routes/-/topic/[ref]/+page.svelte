@@ -26,7 +26,10 @@
   {data.topic.title}
 </h1>
 
-{#if data.topic.canReply}<div class="topic-actions"><a class="button-link" href={urls.posting.reply(data.topic.id)}>{t("posting-reply")}</a></div>{:else if data.topic.locked}<p class="muted">{t("topic-locked-hint")}</p>{/if}
+<div class="topic-actions">
+  {#if data.topic.canReply}<a class="button-link" href={urls.posting.reply(data.topic.id)}>{t("posting-reply")}</a>{:else if data.topic.locked}<p class="muted">{t("topic-locked-hint")}</p>{/if}
+  {#if data.topic.canModerate}<a href={urls.modcp(data.topic.id)}>{t("modcp-link")}</a>{/if}
+</div>
 <Pagination total={data.total} perPage={data.perPage} start={data.start} href={(s) => urls.topic(data.topic, s)} {t} />
 
 {#if data.poll}
@@ -105,4 +108,7 @@
 </div>
 
 <Pagination total={data.total} perPage={data.perPage} start={data.start} href={(s) => urls.topic(data.topic, s)} {t} />
-{#if data.topic.canReply}<div class="topic-actions"><a class="button-link" href={urls.posting.reply(data.topic.id)}>{t("posting-reply")}</a></div>{:else if data.topic.locked}<p class="muted">{t("topic-locked-hint")}</p>{/if}
+<div class="topic-actions">
+  {#if data.topic.canReply}<a class="button-link" href={urls.posting.reply(data.topic.id)}>{t("posting-reply")}</a>{:else if data.topic.locked}<p class="muted">{t("topic-locked-hint")}</p>{/if}
+  {#if data.topic.canModerate}<a href={urls.modcp(data.topic.id)}>{t("modcp-link")}</a>{/if}
+</div>

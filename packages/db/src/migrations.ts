@@ -382,5 +382,19 @@ export function migrations(dialect: Dialect): Record<string, Migration> {
           .execute();
       },
     },
+    "0010_bans": {
+      async up(db: Db) {
+        // phpBB2's banlist (user, IP with wildcards, e-mail with wildcards), with an optional expiry.
+        await withId(db.schema.createTable("bans"), dialect)
+          .addColumn("kind", "text", notNull)
+          .addColumn("value", "text", notNull)
+          .addColumn("reason", "text", empty)
+          .addColumn("created_by", "bigint")
+          .addColumn("created_at", "bigint", notNull)
+          .addColumn("expires_at", "bigint")
+          .execute();
+        await db.schema.createIndex("bans_kind").on("bans").columns(["kind", "value"]).execute();
+      },
+    },
   };
 }

@@ -200,6 +200,8 @@ test.describe("browsing", () => {
   test("the index says who is signed in right now", async ({ page }) => {
     await page.goto("/");
     await expect(page.locator(".stats .online")).toContainText(/Signed in during the last 10 minutes: \d+/);
+    // Names are separated by ", " so a long list wraps (no "a,b,c" run on narrow screens).
+    expect(await page.locator(".stats .online").textContent()).not.toMatch(/,\S/);
   });
 
   test("unknown forums and topics are 404s", async ({ request }) => {

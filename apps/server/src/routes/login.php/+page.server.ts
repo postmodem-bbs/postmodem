@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // /login.php — phpBB2's URL. Named actions: ?/login, ?/logout, ?/logoutAll. Sign-out is POST
 // only (phpBB2's GET ?logout=true was a CSRF hole); SvelteKit rejects cross-origin form posts.
-import { authenticate, endSession, nameKey, startSession } from "@postmodem/core";
+import { authenticate, endSession, findBan, nameKey, startSession } from "@postmodem/core";
 import { fail, redirect } from "@sveltejs/kit";
 import { clearSessionCookie, sessionCookieName, setSessionCookie } from "#lib/server/auth.ts";
 import { mayMail, sendAccountMail } from "#lib/server/emails.ts";
@@ -45,6 +45,12 @@ export const actions: Actions = {
       return fail(400, { login, redirectTo, error: result.reason, seconds: 0 });
     }
     await ctx.throttles.login.reset(accountKey);
+    const ban = findBan(await ctx.activeBans(), {
+      userId: result.user.id,
+      email: result.user.email,
+      ip: ipKey,
+    });
+    if (ban) return fail(403, { login, redirectTo, error: "banned", seconds: 0, reason: ban.reason });
 
     // Session rotation: a session id that existed before sign-in never survives it.
     const previous = cookies.get(sessionCookieName(ctx.config));

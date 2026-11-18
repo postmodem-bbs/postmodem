@@ -1,7 +1,15 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Board administration from the CLI until the web admin panel exists (M2): groups, forums
 // and the clean-up of imported password hashes. Every change goes into the audit log.
-import type { GroupKind, Id, Node, NodeKind, Repositories } from "@postmodem/core";
+import {
+  banProblem,
+  banUser,
+  type GroupKind,
+  type Id,
+  type Node,
+  type NodeKind,
+  type Repositories,
+} from "@postmodem/core";
 import { createContext } from "../lib/server/bootstrap.ts";
 
 const DAY = 86_400_000;
@@ -250,5 +258,64 @@ export function expireLegacyPasswords(args: string[]): Promise<number> {
     });
     console.log(`expired ${stale.length} legacy password(s)${bySchemes ? ` (${bySchemes})` : ""}`);
     return 0;
+  });
+}
+
+export const BAN_HELP = `  ban list
+  ban user <name> | ip <pattern> | email <pattern> [--reason <text>] [--days <n>]
+  ban remove <id>
+                phpBB2's banlist: * wildcards (192.168.*, *@spam.example); a banned
+                member is signed out everywhere; --days makes the ban expire`;
+
+export function banCommand(sub: string | undefined, args: string[]): Promise<number> {
+  const { flags, rest } = parseArgs(args);
+  return withRepos(async (repos) => {
+    const now = Date.now();
+    switch (sub) {
+      case "list": {
+        const bans = await repos.bans.active(now);
+        const users = await repos.users.getMany(
+          bans.filter((b) => b.kind === "user").map((b) => Number(b.value)),
+        );
+        for (const b of bans) {
+          const who = b.kind === "user" ? (users.get(Number(b.value))?.username ?? `#${b.value}`) : b.value;
+          const until = b.expiresAt ? ` until ${new Date(b.expiresAt).toISOString().slice(0, 10)}` : "";
+          console.log(`${b.id}\t${b.kind}\t${who}${until}${b.reason ? `\t${b.reason}` : ""}`);
+        }
+        if (!bans.length) console.log("no active bans");
+        return 0;
+      }
+      case "user":
+      case "ip":
+      case "email": {
+        const reason = (flags.reason ?? "").slice(0, 500);
+        const days = flags.days === undefined ? null : Number(flags.days);
+        if (days !== null && (!Number.isInteger(days) || days < 1))
+          throw new Usage("--days must be a whole number of days");
+        const expiresAt = days === null ? null : now + days * DAY;
+        if (sub === "user") {
+          const user = await userNamed(repos, rest[0]);
+          const ban = await banUser(repos, null, user.id, { reason, expiresAt });
+          if (!ban) throw new Usage(`can't ban '${user.username}'`);
+          console.log(`banned ${user.username} (ban ${ban.id})`);
+          return 0;
+        }
+        const value = (rest[0] ?? "").trim();
+        const problem = banProblem(sub, value);
+        if (problem) throw new Usage(`not a valid ${sub} pattern: '${value}'`);
+        const ban = await repos.bans.create({ kind: sub, value, reason, createdBy: null, expiresAt });
+        await audit(repos, "ban.created", "ban", ban.id, { kind: sub, value, reason });
+        console.log(`banned ${sub} ${value} (ban ${ban.id})`);
+        return 0;
+      }
+      case "remove": {
+        if (!rest[0] || !/^\d+$/.test(rest[0])) throw new Usage("usage: postmodem ban remove <id>");
+        await repos.bans.remove(Number(rest[0]));
+        await audit(repos, "ban.removed", "ban", Number(rest[0]));
+        console.log(`removed ban ${rest[0]}; running servers apply it within 15 s`);
+        return 0;
+      }
+    }
+    throw new Usage(`usage:\n${BAN_HELP}`);
   });
 }

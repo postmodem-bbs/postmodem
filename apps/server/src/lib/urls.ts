@@ -66,6 +66,8 @@ export interface Urls {
     edit(postId: Id): string;
     delete(postId: Id): string;
   };
+  /** phpBB2's modcp.php for one topic. */
+  modcp(topicId: Id): string;
 }
 
 const POSTING = {
@@ -113,6 +115,7 @@ export function makeUrls(style: UrlStyle): Urls {
     post: (id) => (classic ? `/viewtopic.php?p=${id}#p${id}` : `/p/${id}`),
     postOnPage: (t, start, id) => `${topic(t, start)}#p${id}`,
     posting: POSTING,
+    modcp: (t) => `/modcp.php?t=${t}`,
     user: (u) =>
       classic
         ? `/profile.php?mode=viewprofile&u=${u.id}`

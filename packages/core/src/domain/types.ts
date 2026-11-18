@@ -216,6 +216,17 @@ export interface Poll {
   voterCount: number;
 }
 
+/** phpBB2's banlist: a user, an IP address (with * wildcards, e.g. 192.168.*) or an e-mail address (*@spam.example). */
+export interface Ban {
+  id: Id;
+  kind: "user" | "ip" | "email";
+  value: string;
+  reason: string;
+  createdBy: Id | null;
+  createdAt: Millis;
+  expiresAt: Millis | null;
+}
+
 export interface AuditEntry {
   id: Id;
   at: Millis;

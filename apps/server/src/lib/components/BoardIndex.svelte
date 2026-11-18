@@ -53,7 +53,7 @@
   {/if}
   <p class="online">
     {t("stats-online", { count: data.stats.online.count, minutes: data.stats.online.minutes })}{#if data.stats.online.users.length}&nbsp;—
-      {#each data.stats.online.users as u, i (u.ref.id)}{#if i > 0}, {/if}<a href={urls.user(u.ref)}>{u.name}</a>{/each}
+      {#each data.stats.online.users as u, i (u.ref.id)}{#if i > 0}{", "}{/if}<a href={urls.user(u.ref)}>{u.name}</a>{/each}
     {/if}
   </p>
 </section>

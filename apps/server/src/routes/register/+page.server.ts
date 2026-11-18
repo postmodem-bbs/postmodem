@@ -4,6 +4,7 @@
 import {
   boardRules,
   disallowedUsernames,
+  findBan,
   register,
   registrationOpen,
   rulesVersion,
@@ -34,6 +35,10 @@ export const actions: Actions = {
     const now = Date.now();
     const wait = await ctx.throttles.register.wait(ip, now);
     if (wait > 0) return fail(429, { values, errors: {}, throttled: Math.ceil(wait / 60_000) });
+
+    // phpBB2's banlist: banned addresses (and wildcards like *@spam.example) can't register.
+    if (findBan(await ctx.activeBans(), { email: values.email.trim(), ip }))
+      return fail(403, { values, errors: { email: "banned" } });
 
     const result = await register(
       ctx.db.repos,

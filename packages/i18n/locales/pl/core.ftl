@@ -263,3 +263,34 @@ post-edited = { $count ->
    *[other] Edytowany { $count } razy, ostatnio
 }
 topic-locked-hint = Ten temat jest zamknięty: nie można w nim odpowiadać.
+
+## Bans
+banned-title = Masz zakaz korzystania z tego forum.
+banned-reason = Powód:
+email-error-banned = Tego adresu e-mail nie można tu użyć.
+
+## Moderation
+modcp-title = Moderuj temat
+modcp-link = Moderuj
+modcp-reason = Powód
+modcp-lock = Zamknij temat
+modcp-unlock = Otwórz temat
+modcp-move = Przenieś temat
+modcp-move-to = Przenieś do
+modcp-move-shadow = Zostaw w starym forum odnośnik „przeniesiony”
+modcp-merge = Połącz z innym tematem
+modcp-merge-target = Temat docelowy (numer lub link)
+modcp-merge-hint = Wszystkie posty tego tematu trafią tam; linki do tego tematu też będą tam prowadzić.
+modcp-split = Podziel temat
+modcp-split-posts = Posty do przeniesienia do nowego tematu
+modcp-split-title = Tytuł nowego tematu
+modcp-split-forum = Forum nowego tematu
+modcp-delete = Usuń temat
+modcp-delete-confirm = Tak, usuń ten temat ze wszystkimi postami
+modcp-error-forbidden = Nie możesz tego zrobić w tym forum.
+modcp-error-not-found = Taki temat lub forum nie istnieje.
+modcp-error-same-forum = Temat już jest w tym forum.
+modcp-error-title-missing = Nadaj nowemu tematowi tytuł.
+modcp-error-title-long = Tytuł jest za długi (najwyżej 100 znaków).
+modcp-error-nothing-selected = Wybierz część postów, ale nie wszystkie.
+modcp-error-invalid = Nie udało się: sprawdź formularz.
