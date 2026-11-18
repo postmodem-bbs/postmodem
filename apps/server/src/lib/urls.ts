@@ -58,7 +58,23 @@ export interface Urls {
   /** A post on a known page of its topic (no extra redirect). */
   postOnPage(topic: TopicRef, start: number, postId: Id): string;
   user(user: UserRef): string;
+  /** phpBB2's posting.php, the same in every style. */
+  posting: {
+    newTopic(forumId: Id): string;
+    reply(topicId: Id): string;
+    quote(postId: Id): string;
+    edit(postId: Id): string;
+    delete(postId: Id): string;
+  };
 }
+
+const POSTING = {
+  newTopic: (f: Id) => `/posting.php?mode=newtopic&f=${f}`,
+  reply: (t: Id) => `/posting.php?mode=reply&t=${t}`,
+  quote: (p: Id) => `/posting.php?mode=quote&p=${p}`,
+  edit: (p: Id) => `/posting.php?mode=editpost&p=${p}`,
+  delete: (p: Id) => `/posting.php?mode=delete&p=${p}`,
+};
 
 export function makeUrls(style: UrlStyle): Urls {
   const classic = style === "classic";
@@ -96,6 +112,7 @@ export function makeUrls(style: UrlStyle): Urls {
     topic,
     post: (id) => (classic ? `/viewtopic.php?p=${id}#p${id}` : `/p/${id}`),
     postOnPage: (t, start, id) => `${topic(t, start)}#p${id}`,
+    posting: POSTING,
     user: (u) =>
       classic
         ? `/profile.php?mode=viewprofile&u=${u.id}`

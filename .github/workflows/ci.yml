@@ -172,6 +172,8 @@ jobs:
           docker compose -f compose.solo.yaml -f ci/mailpit.yaml up -d --wait
           # The e2e suite browses the demo board (index, forums, topics).
           docker compose -f compose.solo.yaml -f ci/mailpit.yaml exec -T postmodem /nodejs/bin/node /app/postmodem.js seed-demo
+          # e2e/posting.spec.ts: no flood interval (two browsers post as the same demo user).
+          docker compose -f compose.solo.yaml -f ci/mailpit.yaml exec -T postmodem /nodejs/bin/node /app/postmodem.js settings set core.posting.floodSeconds 0
       - name: Start (stack)
         if: matrix.mode == 'stack'
         working-directory: deploy
@@ -191,6 +193,7 @@ jobs:
           docker compose up -d proxy
           for _ in $(seq 1 30); do curl -skf https://localhost/readyz && break; sleep 2; done
           docker compose exec -T web /nodejs/bin/node /app/postmodem.js seed-demo
+          docker compose exec -T web /nodejs/bin/node /app/postmodem.js settings set core.posting.floodSeconds 0
       - name: Run Playwright
         env:
           PM_BASE_URL: ${{ matrix.mode == 'solo' && 'http://localhost:8080' || 'https://localhost' }}

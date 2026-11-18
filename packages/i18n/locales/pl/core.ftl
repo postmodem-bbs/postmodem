@@ -213,3 +213,53 @@ poll-total = Wszystkich głosów: { $count }
 poll-hidden = Wyniki będą widoczne po zakończeniu ankiety.
 poll-ends = Koniec
 poll-ended = Zakończona
+
+## Posting
+posting-new-topic = Nowy temat
+posting-reply = Odpowiedz
+posting-edit = Edycja posta
+posting-delete = Usuwanie posta
+posting-in-topic = W temacie
+posting-title = Tytuł tematu
+posting-subject = Temat posta
+posting-optional = opcjonalnie
+posting-type = Rodzaj tematu
+posting-type-normal = Zwykły
+posting-type-sticky = Przyklejony
+posting-type-announcement = Ogłoszenie
+posting-body = Treść
+posting-toolbar = Formatowanie
+posting-tag-b = Pogrubienie
+posting-tag-i = Kursywa
+posting-tag-u = Podkreślenie
+posting-tag-quote = Cytat
+posting-tag-code = Kod
+posting-tag-url = Link
+posting-tag-img = Obrazek
+posting-bbcode-hint = Działa BBCode: [b]pogrubienie[/b], [quote]…[/quote], [url]https://…[/url]. Emotikony też.
+posting-submit = Wyślij
+posting-save = Zapisz
+posting-preview = Podgląd
+posting-cancel = Anuluj
+posting-delete-confirm = Usunąć ten post? Moderatorzy nadal będą go widzieć.
+posting-delete-submit = Usuń
+posting-quote = Cytuj
+posting-edit-link = Edytuj
+posting-delete-link = Usuń
+posting-error-sign-in = Zaloguj się, żeby pisać.
+posting-error-not-found = Ten temat lub forum nie istnieje (już).
+posting-error-forbidden = Nie możesz tego zrobić w tym miejscu.
+posting-error-locked = Ten temat jest zamknięty.
+posting-error-flood = Piszesz za szybko. Spróbuj za { $seconds } s.
+posting-error-title-missing = Nadaj tematowi tytuł.
+posting-error-title-long = Tytuł jest za długi (najwyżej 100 znaków).
+posting-error-body-missing = Napisz wiadomość.
+posting-error-body-long = Wiadomość jest za długa.
+posting-error-not-last-post = Swój post możesz usunąć tylko, dopóki nikt na niego nie odpowiedział.
+post-edited = { $count ->
+    [one] Edytowany raz, ostatnio
+    [few] Edytowany { $count } razy, ostatnio
+    [many] Edytowany { $count } razy, ostatnio
+   *[other] Edytowany { $count } razy, ostatnio
+}
+topic-locked-hint = Ten temat jest zamknięty: nie można w nim odpowiadać.

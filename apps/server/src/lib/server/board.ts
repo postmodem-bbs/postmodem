@@ -3,7 +3,16 @@
 // Permission-aware (ADR 0015): forums without node.view are invisible (and 404), forums with
 // node.view but not node.read are listed but closed (403), and nothing from an unreadable
 // forum (last-post titles, counts) leaks through a readable one.
-import type { Id, Node, Permissions, Poll, Post, Repositories, Topic } from "@postmodem/core";
+import {
+  type Id,
+  may,
+  type Node,
+  type Permissions,
+  type Poll,
+  type Post,
+  type Repositories,
+  type Topic,
+} from "@postmodem/core";
 import { excerpt } from "@postmodem/markup";
 import { normaliseStart, POSTS_PER_PAGE, TOPICS_PER_PAGE } from "../pagination.ts";
 import type { NodeRef, TopicRef, UserRef } from "../urls.ts";
@@ -13,13 +22,13 @@ export { POSTS_PER_PAGE, TOPICS_PER_PAGE };
 /** Category numbers for classic `index.php?c=` links (see links.ts). */
 export type ClassicIds = ReadonlyMap<Id, Id | null>;
 
-const nodeRef = (n: Node, classic?: ClassicIds): NodeRef => ({
+export const nodeRef = (n: Node, classic?: ClassicIds): NodeRef => ({
   id: n.id,
   slug: n.slug,
   kind: n.kind,
   ...(n.kind === "category" ? { classicId: classic ? (classic.get(n.id) ?? null) : n.id } : {}),
 });
-const topicRef = (t: Topic): TopicRef => ({ id: t.id, slug: t.slug });
+export const topicRef = (t: Topic): TopicRef => ({ id: t.id, slug: t.slug });
 
 export interface LastPost {
   postId: Id;
@@ -279,6 +288,7 @@ export async function loadForum(
       kind: node.kind,
       locked: node.locked,
     },
+    canCreateTopic: may.createTopic(perms, node),
     breadcrumbs: await crumbs(repos, node, classic),
     subforums,
     topics,
@@ -292,6 +302,7 @@ export interface PostView {
   id: Id;
   at: number;
   editedAt: number | null;
+  editCount: number;
   author: string;
   authorRef: UserRef | null;
   authorPosts: number | null;
@@ -301,6 +312,8 @@ export interface PostView {
   authorAvatar: string | null;
   subject: string;
   html: string;
+  canEdit: boolean;
+  canDelete: boolean;
 }
 
 export interface PollView {
@@ -391,6 +404,7 @@ export async function loadTopic(
       id: p.id,
       at: p.createdAt,
       editedAt: p.editedAt,
+      editCount: p.editCount,
       author: u?.username || p.authorName,
       authorRef: u ? { id: u.id, slug: u.slug } : null,
       authorPosts: u ? u.postCount : null,
@@ -398,6 +412,8 @@ export async function loadTopic(
       authorLocation: u?.location ?? "",
       authorAvatar: avatarUrl(u?.avatar ?? null),
       subject: p.subject,
+      canEdit: may.edit(perms, node, topic, p, perms.viewer.userId),
+      canDelete: may.delete(perms, node, topic, p, perms.viewer.userId),
       html: html.get(p.id) ?? "",
     };
   });
@@ -417,6 +433,7 @@ export async function loadTopic(
       createdAt: topic.createdAt,
       lastPostAt: topic.lastPostAt,
       replies: topic.replyCount,
+      canReply: may.reply(perms, node, topic),
       viewCount: topic.viewCount + views.pending(topic.id),
     },
     breadcrumbs: await crumbs(repos, node, classic),

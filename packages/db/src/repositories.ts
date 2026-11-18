@@ -347,6 +347,17 @@ export function createRepositories(db: Db): Repositories {
         return (await self.nodes.get(id))!;
       });
     },
+    async notePost(id, post) {
+      await db
+        .updateTable("nodes")
+        .set({
+          topicCount: post.topic ? sql<number>`topic_count + 1` : sql<number>`topic_count`,
+          postCount: sql<number>`post_count + 1`,
+          lastPostId: post.id,
+        })
+        .where("id", "=", id)
+        .execute();
+    },
     async recount(id) {
       const topicCount = await db
         .selectFrom("topics")
@@ -522,6 +533,29 @@ export function createRepositories(db: Db): Repositories {
         .execute();
       return (await topics.get(id))!;
     },
+    async setType(id, type) {
+      await db.updateTable("topics").set({ type, updatedAt: Date.now() }).where("id", "=", id).execute();
+    },
+    async setVisibility(id, visibility) {
+      await db
+        .updateTable("topics")
+        .set({ visibility, updatedAt: Date.now() })
+        .where("id", "=", id)
+        .execute();
+    },
+    async notePost(id, post) {
+      await db
+        .updateTable("topics")
+        .set({
+          replyCount: post.first ? sql<number>`reply_count` : sql<number>`reply_count + 1`,
+          firstPostId: sql<number>`coalesce(first_post_id, ${post.id})`,
+          lastPostId: post.id,
+          lastPostAt: post.createdAt,
+          updatedAt: post.createdAt,
+        })
+        .where("id", "=", id)
+        .execute();
+    },
     async addViews(id, by) {
       await db
         .updateTable("topics")
@@ -629,6 +663,32 @@ export function createRepositories(db: Db): Repositories {
     async setRendered(id, html, renderVersion) {
       await db.updateTable("posts").set({ rendered: html, renderVersion }).where("id", "=", id).execute();
     },
+    async edit(id, patch) {
+      await db
+        .updateTable("posts")
+        .set({
+          source: patch.source,
+          ...(patch.subject !== undefined ? { subject: patch.subject } : {}),
+          editedAt: patch.editedAt,
+          editCount: patch.editCount,
+          rendered: null,
+          renderVersion: 0,
+        })
+        .where("id", "=", id)
+        .execute();
+      return (await posts.get(id))!;
+    },
+    async setVisibility(id, visibility) {
+      await db.updateTable("posts").set({ visibility }).where("id", "=", id).execute();
+    },
+    async lastByAuthor(authorId) {
+      const r = await db
+        .selectFrom("posts")
+        .select((eb) => eb.fn.max("createdAt").as("at"))
+        .where("authorId", "=", authorId)
+        .executeTakeFirst();
+      return r?.at == null ? undefined : n(r.at);
+    },
   };
 
   const users: Repositories["users"] = {
@@ -729,6 +789,13 @@ export function createRepositories(db: Db): Repositories {
       const user = await users.get(id);
       if (!user) throw new Error(`user ${id} does not exist`);
       return user;
+    },
+    async adjustPostCount(id, by) {
+      await db
+        .updateTable("users")
+        .set({ postCount: sql<number>`case when post_count + ${by} < 0 then 0 else post_count + ${by} end` })
+        .where("id", "=", id)
+        .execute();
     },
     async count() {
       const r = await db

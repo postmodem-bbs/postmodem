@@ -62,3 +62,12 @@ export async function mailCount(to: string): Promise<number> {
   const res = await fetch(`${MAILPIT}/api/v1/search?query=${encodeURIComponent(`to:"${to}"`)}`);
   return ((await res.json()) as { messages_count: number }).messages_count;
 }
+
+/** Signs in through the header link and the plain form (works with and without JavaScript). */
+export async function signIn(page: Page, login: string, password: string) {
+  await page.goto("/");
+  await page.getByRole("link", { name: "Sign in" }).click();
+  await page.getByLabel("Username or e-mail address").fill(login);
+  await page.getByLabel("Password").fill(password);
+  await page.getByRole("button", { name: "Sign in" }).click();
+}

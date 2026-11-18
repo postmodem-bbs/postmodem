@@ -12,6 +12,8 @@ export interface Renderer {
     viewerName: string | null,
     messages: { guest: string; hiddenContent: string },
   ): string;
+  /** HTML for text that isn't saved yet (posting preview); nothing is cached. */
+  preview(source: string): Promise<string>;
   /** Call after smilies change, so the next render picks them up. */
   invalidateSmilies(): void;
 }
@@ -47,6 +49,7 @@ export function createRenderer(repos: Repositories): Renderer {
       return out;
     },
     forReader: (html, viewerName, messages) => resolveHoles(html, { viewerName, messages }),
+    preview: async (source) => renderHtml(source, { smilies: await loadSmilies() }),
     invalidateSmilies() {
       smilies = undefined;
     },

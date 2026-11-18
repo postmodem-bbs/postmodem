@@ -525,6 +525,9 @@ main:focus {
   height: auto;
   margin-block: var(--pm-space-2);
 }
+/* Blocks that tests look into (poll, recent topics, preview) are plain <div>s with a heading,
+   not <section aria-labelledby> landmarks: Firefox's content process crashes when axe runs on
+   such a landmark after Playwright has resolved a locator inside it (see commit 03ee522). */
 .poll-results {
   border-collapse: collapse;
   width: 100%;
@@ -541,6 +544,47 @@ main:focus {
 .poll-results .num {
   text-align: end;
   white-space: nowrap;
+}
+.topic-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pm-space-2);
+  margin-block: var(--pm-space-3);
+}
+.button-link {
+  display: inline-block;
+  padding: var(--pm-space-1) var(--pm-space-3);
+  border: 1px solid var(--pm-color-header-bg);
+  border-radius: var(--pm-radius);
+  background: var(--pm-color-header-bg);
+  color: var(--pm-color-header-text);
+  font-weight: 600;
+  text-decoration: none;
+}
+.post-actions {
+  display: flex;
+  gap: var(--pm-space-3);
+  margin-block-start: var(--pm-space-2);
+  font-size: 0.9rem;
+}
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pm-space-1);
+}
+.toolbar button {
+  margin: 0;
+  min-inline-size: 2.75rem;
+  min-block-size: 2.75rem;
+}
+.posting textarea {
+  font: inherit;
+  inline-size: 100%;
+  min-block-size: 12rem;
+}
+.panel .actions button.danger {
+  background: var(--pm-color-danger);
+  border-color: var(--pm-color-danger);
 }
 .post-subject {
   font-weight: 600;

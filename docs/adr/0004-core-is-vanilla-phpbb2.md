@@ -19,7 +19,7 @@ authoritative list of those additions is Przemo's own uninstaller
   keyed by the core id.
 - Each package carries its own importer slice for its share of the legacy data.
 - Distribution profiles (`vanilla`, `przemo`, `modern`) install sets of packages;
-  `przemo` is the default.
+  `przemo` is the default. *(Amended by [ADR 0019](0019-package-tiers-and-essentials-profile.md): `essentials` is the default; `modern` became `essentials`.)*
 
 ## Consequences
 - About 75 packages. Most are small, but each must be versioned, tested

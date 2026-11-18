@@ -32,6 +32,7 @@
 {/if}
 
 {#if data.forum.kind !== "category"}
+  {#if data.canCreateTopic}<div class="topic-actions"><a class="button-link" href={urls.posting.newTopic(data.forum.id)}>{t("posting-new-topic")}</a></div>{/if}
   <Pagination total={data.total} perPage={data.perPage} start={data.start} href={(s) => urls.forum(data.forum, s)} {t} />
 
   {#if data.topics.length}

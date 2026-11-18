@@ -429,15 +429,16 @@ disabled, which is how we keep feature parity with Przemo.
 2. **M1 — Readable board:** node tree, topics, posts, auth, registration,
    Classic theme, permissions engine. *Importer from Przemo* early so we can
    test against real-shaped data. Detailed plan: [milestones/M1.md](milestones/M1.md).
-3. **M2 — Usable board:** editor, notifications, PMs, moderation, search,
-   ACP (vanilla scope). **Platform services v0** (slots, settings schema,
-   capabilities, entity fields, counters, preferences, collections, channels)
-   and the 12 core extension points from PACKAGES.md §3, built because M3
-   needs them. CI starts the *core-only* vs *przemo profile* matrix here.
-4. **M3 — The Przemo packages** (PACKAGES.md §2), in dependency order:
-   attachments, revisions, unread-tracking, login-security, reports, warnings
-   first; then the rest. Each package ships with its importer slice. Any gap a
-   package hits is fixed in the platform, never with a special case.
+3. **M2 — Usable board** ([milestones/M2.md](milestones/M2.md), draft): **M2a** is a
+   public beta (~13–17 days) that can run as a staging board: posting, moderation, PMs and notifications,
+   search, anti-abuse, admin panel v0, backup, export and account deletion, plus the package
+   runtime with its first tier A packages (`quick-reply`, `reports`, `unread-tracking`).
+   **M2b** completes platform services v0 and the extension points, each landing with the
+   tier A package that needs it. CI starts the `vanilla` vs `essentials` matrix here.
+4. **M3 — The Przemo packages** by priority ([ADR 0019](adr/0019-package-tiers-and-essentials-profile.md),
+   PACKAGES.md §2.11): the rest of tier A first (attachments, warnings, bans-plus, helpful,
+   polls-plus, …), then tier B. Tier C is left to third parties. Each package ships with its
+   importer slice. Any gap a package hits is fixed in the platform, never with a special case.
 5. **M4 — Extension SDK v1** frozen and documented: tier-1 add-on guide plus
    ACP add-on editor, tier-2 module SDK, `postmodem ext graduate`, one third-party
    sample of each tier.
@@ -464,7 +465,8 @@ post markup dialect, class-based output and reader holes ([ADR 0014](adr/0014-po
 permission resolution: never, nearest scope, most specific subject ([ADR 0015](adr/0015-permission-resolution.md)),
 accounts and sessions: Argon2id, opaque server-side sessions, delays not lockouts ([ADR 0016](adr/0016-accounts-and-sessions.md)),
 job queue v0 in the database, and mail only through it ([ADR 0017](adr/0017-job-queue-v0-and-mail.md)),
-the Przemo importer: keep ids, decode per value, self-contained forum grants ([ADR 0018](adr/0018-przemo-importer.md)).
+the Przemo importer: keep ids, decode per value, self-contained forum grants ([ADR 0018](adr/0018-przemo-importer.md)),
+package tiers with `essentials` as the default profile ([ADR 0019](adr/0019-package-tiers-and-essentials-profile.md)).
 
 No architecture decisions are open. Owner actions before going public:
 register `postmodem.app`, create the `postmodem-bbs` GitHub and `@postmodem`

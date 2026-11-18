@@ -33,8 +33,8 @@
   </dl>
 </div>
 
-<section class="panel" aria-labelledby="recent-topics">
-  <h2 id="recent-topics">{t("profile-recent-topics")}</h2>
+<div class="panel recent">
+  <h2>{t("profile-recent-topics")}</h2>
   {#if data.recentTopics.length}
     <ul class="recent-topics">
       {#each data.recentTopics as topic (topic.ref.id)}
@@ -47,4 +47,4 @@
   {:else}
     <p class="muted">{t("profile-no-topics")}</p>
   {/if}
-</section>
+</div>

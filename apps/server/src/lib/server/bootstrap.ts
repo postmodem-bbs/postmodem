@@ -22,6 +22,7 @@ import {
   MAIL_IP_POLICY,
   MAIL_POLICY,
   type Permissions,
+  POSTING_POLICY,
   permissionsFor,
   REGISTER_POLICY,
   Settings,
@@ -48,6 +49,7 @@ export interface AppContext {
     register: Throttle;
     mail: Throttle;
     mailIp: Throttle;
+    posting: Throttle;
   };
   mailer: Mailer;
   /** Queues an e-mail; the worker sends it (with retries), never the web request. */
@@ -148,6 +150,7 @@ export async function createContext(opts: { migrate: boolean; loaded?: LoadedCon
         "register-ip",
       ),
       mail: new Throttle(MAIL_POLICY, db.repos.throttle, "mail"),
+      posting: new Throttle(POSTING_POLICY, db.repos.throttle, "posting"),
       mailIp: new Throttle(MAIL_IP_POLICY, db.repos.throttle, "mail-ip"),
     },
     mailer,

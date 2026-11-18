@@ -26,12 +26,14 @@
   {data.topic.title}
 </h1>
 
+{#if data.topic.canReply}<div class="topic-actions"><a class="button-link" href={urls.posting.reply(data.topic.id)}>{t("posting-reply")}</a></div>{:else if data.topic.locked}<p class="muted">{t("topic-locked-hint")}</p>{/if}
 <Pagination total={data.total} perPage={data.perPage} start={data.start} href={(s) => urls.topic(data.topic, s)} {t} />
 
 {#if data.poll}
   {@const poll = data.poll}
-  <section class="panel poll" aria-labelledby="poll-question">
-    <h2 id="poll-question">{poll.question}</h2>
+  <!-- A plain block, not a <section aria-labelledby> landmark (see the Firefox note in app.css). -->
+  <div class="panel poll">
+    <h2>{poll.question}</h2>
     {#if poll.showResults}
       <table class="poll-results">
         <caption class="visually-hidden">{t("poll-results")}</caption>
@@ -56,7 +58,7 @@
         {poll.ended ? t("poll-ended") : t("poll-ends")} <time datetime={isoDate(poll.endsAt)}>{formatDateTime(poll.endsAt, data.locale)}</time>
       </p>
     {/if}
-  </section>
+  </div>
 {/if}
 
 <div class="posts">
@@ -87,9 +89,20 @@
         </p>
         <!-- Rendered by @postmodem/markup: allow-listed, sanitised HTML (ADR 0014). -->
         <div class="post-body">{@html post.html}</div>
+        {#if post.editedAt && post.editCount > 0}
+          <p class="muted post-edited">{t("post-edited", { count: post.editCount })} <time datetime={isoDate(post.editedAt)}>{formatDateTime(post.editedAt, data.locale)}</time></p>
+        {/if}
+        {#if data.topic.canReply || post.canEdit || post.canDelete}
+          <p class="post-actions">
+            {#if data.topic.canReply}<a href={urls.posting.quote(post.id)}>{t("posting-quote")}</a>{/if}
+            {#if post.canEdit}<a href={urls.posting.edit(post.id)}>{t("posting-edit-link")}</a>{/if}
+            {#if post.canDelete}<a href={urls.posting.delete(post.id)}>{t("posting-delete-link")}</a>{/if}
+          </p>
+        {/if}
       </div>
     </article>
   {/each}
 </div>
 
 <Pagination total={data.total} perPage={data.perPage} start={data.start} href={(s) => urls.topic(data.topic, s)} {t} />
+{#if data.topic.canReply}<div class="topic-actions"><a class="button-link" href={urls.posting.reply(data.topic.id)}>{t("posting-reply")}</a></div>{:else if data.topic.locked}<p class="muted">{t("topic-locked-hint")}</p>{/if}

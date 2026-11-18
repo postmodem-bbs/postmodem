@@ -168,7 +168,8 @@ test.describe("browsing", () => {
 
   test("profiles list recent topics, only from forums the reader can see", async ({ page }) => {
     await page.goto("/profile.php?mode=viewprofile&u=2");
-    const recent = page.getByRole("region", { name: "Recent topics" });
+    const recent = page.locator(".panel.recent");
+    await expect(recent.getByRole("heading", { level: 2 })).toHaveText("Recent topics");
     await expect(recent.getByRole("link", { name: "Ulubiony edytor tekstu" })).toBeVisible();
     // The members-only forum is hidden from guests, and so are its topics.
     await expect(recent).not.toContainText("Tajny zlot");
@@ -179,7 +180,8 @@ test.describe("browsing", () => {
     await page.goto("/");
     await page.getByRole("link", { name: "Gry retro" }).first().click();
     await page.getByRole("link", { name: "Najlepsza gra na Amigę?" }).click();
-    const poll = page.getByRole("region", { name: "Na czym graliście najwięcej?" });
+    const poll = page.locator(".panel.poll");
+    await expect(poll.getByRole("heading", { level: 2 })).toHaveText("Na czym graliście najwięcej?");
     await expect(poll.getByRole("row", { name: /Amiga 500/ })).toContainText("58%");
     await expect(poll).toContainText("Total votes: 12");
     await expectNoAxeViolations(page);

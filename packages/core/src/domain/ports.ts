@@ -74,6 +74,8 @@ export interface NodeRepository {
   ): Promise<Node>;
   /** Recomputes topic/post counts and last post from public content (fixes stale legacy counters). */
   recount(id: Id): Promise<Node>;
+  /** A new public post in the node (and a new topic, if `topic`): counts and last post, no recount. */
+  notePost(id: Id, post: { id: Id; topic: boolean }): Promise<void>;
 }
 
 export interface NewTopic {
@@ -98,6 +100,10 @@ export interface TopicRepository {
   bySlug(slug: string): Promise<Topic | undefined>;
   /** Changes the title and slug; the old slug keeps resolving through slug_history. */
   rename(id: Id, title: string): Promise<Topic>;
+  setType(id: Id, type: TopicType): Promise<void>;
+  setVisibility(id: Id, visibility: VisibilityState): Promise<void>;
+  /** A new public post in the topic: reply count, first/last post and activity, without a recount. */
+  notePost(id: Id, post: { id: Id; createdAt: Millis; first: boolean }): Promise<void>;
   /** Announcements, then stickies, then the rest; each by most recent activity. */
   listByNode(nodeId: Id, page: PageRequest, opts?: { visibility?: VisibilityState[] }): Promise<Page<Topic>>;
   /** Public topics a user started in the given nodes, newest first (profiles). */
@@ -135,6 +141,14 @@ export interface PostRepository {
   /** 0-based position of a post within its topic (for `?p=` permalinks to the right page). */
   positionInTopic(postId: Id): Promise<number | undefined>;
   setRendered(id: Id, html: string, renderVersion: number): Promise<void>;
+  /** New text (and subject); the cached HTML is dropped so the next read renders it again. */
+  edit(
+    id: Id,
+    patch: { source: string; subject?: string; editedAt: Millis | null; editCount: number },
+  ): Promise<Post>;
+  setVisibility(id: Id, visibility: VisibilityState): Promise<void>;
+  /** When the user last posted (flood interval). */
+  lastByAuthor(authorId: Id): Promise<Millis | undefined>;
   /** Bulk insert with explicit ids and node (importers); no per-row lookups. */
   insertMany(rows: (NewPost & { id: Id; nodeId: Id })[]): Promise<void>;
 }
@@ -170,6 +184,7 @@ export interface UserRepository {
   lookalike(username: string): Promise<User | undefined>;
   byEmail(email: string): Promise<User | undefined>;
   update(id: Id, patch: Partial<Omit<User, "id" | "usernameKey" | "createdAt">>): Promise<User>;
+  adjustPostCount(id: Id, by: number): Promise<void>;
   count(): Promise<number>;
   newest(): Promise<User | undefined>;
 }

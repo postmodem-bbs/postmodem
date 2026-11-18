@@ -215,6 +215,57 @@ Not a Przemo feature; listed here because it shapes the core and the stack.
 | `anti_robotic_reg` | Core CAPTCHA provider (vanilla had visual confirmation) |
 | `jr_admin_users`, `disallow_forums`, `user_jr`, PM limit multipliers | Absorbed by core roles and quotas |
 
+### 2.11 Priority (2026-11-18, [ADR 0019](adr/0019-package-tiers-and-essentials-profile.md))
+
+Przemo shipped everything switched on, and most boards turned much of it off again. Not
+every package earns the same effort, so each one has a priority. These are judgement calls
+(no usage data exists yet) and will be checked against the feature switches in early
+adopters' report bundles (see below).
+
+**A: must-have.** Why people chose Przemo, or what a public board needs to be run. Built by
+the project, enabled by the default `essentials` profile (§5), each with its importer slice.
+
+| Package | Why |
+|---|---|
+| `unread-tracking` | Przemo's best-known feature: exact per-topic unread state |
+| `attachments` | Expected on any board; the reason for blob storage |
+| `quick-reply` | On nearly every board |
+| `revisions` | Post history; moderators rely on it |
+| `reports`, `warnings`, `bans-plus`, `ip-logging` | The moderation toolkit; IP logs are how ban evasion is spotted |
+| `login-security` | On by default by design (§2.5) |
+| `trash-bin` | Moderators "delete to trash" rather than for good |
+| `helpful` | "Pomógł", the signature of Polish help boards |
+| `polls-plus` | Multiple-choice polls and hidden results |
+| `hide-until-reply` | Imported posts use `[hide]`; the reader-hole rendering already exists (ADR 0014) |
+| `global-announcements`, `edit-policy`, `mod-notices`, `admin-tools` | Small, and expected by admins |
+
+**B: worth having, off by default.** Built by the project after tier A; part of the `przemo`
+profile. `shoutbox`, `groups-plus`, `name-colours`, `topic-prefixes`, `post-merge`,
+`link-forums`, `forum-password`, `no-count-forums`, `ignore-users`, `ignore-topics`,
+`custom-fields`, `premoderation`, `expiry`, `author-delete`, `syndication`, `stats` with a few
+`stats-widgets` (latest, most active and most viewed topics, top posters), `theme-manager`, `visitors`, `staff`, `pages`, `announcements`, `nav-links`, `seo`, `print`,
+`notify-admin`, `display-preferences`, `listing-options`, `topic-subtitle`, `topic-colours`,
+`topic-timeline`, `registration-rules`, `profile-photo`, `ranks-plus`, `activity-stats`,
+`share`, `seeker`, `bbcode-extras` (center and the colour picker only), `post-preview`.
+
+**C: not built by the project.** Left to third parties; their legacy data is reported, not
+imported.
+
+| Why | Packages |
+|---|---|
+| Dated | `fun-text`, the fade/scroll/glow BBCode, `debug-footer`, `quick-register`, `topic-start-date`, `post-icons`, `signature-images`, `avatar-plus`, `gender` |
+| Hostile to privacy or security | `topic-viewers` ("who viewed", moderator spy), `html-markup` (HTML in posts), `post-user-agent` |
+| Dead service | the Gadu-Gadu notifier; `notifier-push` / `-matrix` / `-webhook` replace it as tier B |
+| Unclear value for the effort | `threaded-view`, `marked-posts`, `censor-bypass`, `ads`, the other `stats-widgets` |
+
+Extension points used only by tier C packages (alternate renderers, #10) stay in SDK v1's
+design but are built last.
+
+**Checking the tiers.** The anonymised report bundle gains the values of Przemo's on/off
+feature switches (e.g. `cshoutbox`, `helped`, `read_tracking`): booleans with nothing
+personal in them. Each bundle early adopters send then shows which features a real board
+used, and the tiers move accordingly.
+
 **Count:** about **75 packages**: ~30 T1 add-ons (counting the 15 stat
 widgets) and ~45 T2 modules. That's a lot of packages, but most are small.
 Installing Przemo's feature set in one step is handled by a **distribution
@@ -298,8 +349,8 @@ virus scanning.
 
 ### 4.3 Consequences for dev & CI
 
-- **Package matrix:** CI boots the image with three install profiles:
-  *core only*, *Przemo profile* (everything), and *random subsets* (nightly).
+- **Package matrix:** CI boots the image with each install profile:
+  *vanilla* (core only), *essentials*, *przemo* (tiers A and B), and *random subsets* (nightly).
   That proves the core really is vanilla and packages don't secretly depend
   on each other.
 - **Backend matrix for the services that have one:** counters and channels run
@@ -318,9 +369,10 @@ includes **profiles** (a manifest listing packages + default settings):
 | Profile | Contents |
 |---|---|
 | `vanilla` | Core only: a modern phpBB2 |
-| `przemo` | Core + every package in §2 with Przemo's defaults. **The default for `postmodem init`** |
-| `modern` | Core + a curated subset (revisions, reactions/helpful, unread-tracking, attachments, reports, warnings, login-security, quick-reply…) with no Przemo-era extras |
+| `essentials` | Core + the tier A packages (§2.11). **The default for `postmodem init`** and for imports |
+| `przemo` | Core + tiers A and B with Przemo's defaults, for boards that want the full set back |
 
-`POSTMODEM_PROFILE=przemo` (or the setup wizard) chooses one. After that, every
+`POSTMODEM_PROFILE=essentials` (or the setup wizard) chooses one; `modern`, an earlier idea
+for a curated set without Przemo-era extras, is what `essentials` became. After that, every
 package can be switched on or off individually, which is Przemo's "everything can
 be turned off" promise kept literally.

@@ -2,21 +2,21 @@
 // Accounts (M1 slice 4) against the seeded demo: demo members sign in with "postmodem-demo".
 // Mail tests read the board's e-mails from Mailpit (PM_MAILPIT_URL), as CI provides.
 import { expect, type Page, test } from "@playwright/test";
-import { expectNoAxeViolations, guardCsp, latestMail, linkIn, MAILPIT, mailCount } from "./helpers.ts";
+import {
+  expectNoAxeViolations,
+  guardCsp,
+  latestMail,
+  linkIn,
+  MAILPIT,
+  mailCount,
+  signIn,
+} from "./helpers.ts";
 
 guardCsp();
 test.use({ locale: "en-US" });
 
 const DEMO_PASSWORD = "postmodem-demo";
 const unique = () => `e2e${Date.now().toString(36)}${Math.floor(Math.random() * 1e6).toString(36)}`;
-
-async function signIn(page: Page, login: string, password: string) {
-  await page.goto("/");
-  await page.getByRole("link", { name: "Sign in" }).click();
-  await page.getByLabel("Username or e-mail address").fill(login);
-  await page.getByLabel("Password").fill(password);
-  await page.getByRole("button", { name: "Sign in" }).click();
-}
 
 /** Fills in and submits the registration form. */
 async function registerAccount(page: Page, name: string, password = "a long enough passphrase") {
@@ -239,7 +239,7 @@ test("signed-in members show up as online, and see their members-only topics on 
   await page.goto("/");
   await expect(page.locator(".stats .online").getByRole("link", { name: "Łukasz Żółć" })).toBeVisible();
   await page.goto("/profile.php?mode=viewprofile&u=2");
-  const recent = page.getByRole("region", { name: "Recent topics" });
+  const recent = page.locator(".panel.recent");
   await expect(recent.getByRole("link", { name: "Tajny zlot użytkowników" })).toBeVisible();
 });
 

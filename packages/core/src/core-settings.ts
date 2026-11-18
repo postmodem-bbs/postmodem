@@ -81,6 +81,20 @@ export const urlStyle = defineSetting<UrlStyle>({
   default: "classic",
 });
 
+/** phpBB2's flood_interval: seconds a member must wait between two posts (0: no limit). */
+export const floodSeconds = defineSetting({
+  key: "core.posting.floodSeconds",
+  schema: z.number().int().min(0).max(3600),
+  default: 15,
+});
+
+/** Longest post, in characters (phpBB2 had no limit but MySQL's TEXT: 64 KB). */
+export const maxPostLength = defineSetting({
+  key: "core.posting.maxLength",
+  schema: z.number().int().min(100).max(200_000),
+  default: 60_000,
+});
+
 export function coreSettings(): SettingsRegistry {
   return new SettingsRegistry().register(
     boardName,
@@ -92,5 +106,7 @@ export function coreSettings(): SettingsRegistry {
     rulesVersion,
     disallowedUsernames,
     urlStyle,
+    floodSeconds,
+    maxPostLength,
   );
 }

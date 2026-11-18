@@ -16,6 +16,16 @@ export interface ThrottlePolicy {
 }
 
 const MINUTE = 60_000;
+/**
+ * Posts and replies per member: a volume guard on top of the flood interval. Every post
+ * counts; after `free` in the window, each further one waits longer.
+ */
+export const POSTING_POLICY: ThrottlePolicy = {
+  free: 30,
+  baseMs: 30_000,
+  maxMs: 15 * MINUTE,
+  windowMs: 60 * MINUTE,
+};
 export const LOGIN_POLICY: ThrottlePolicy = {
   free: 5,
   baseMs: 1_000,

@@ -130,7 +130,7 @@ are never editable from the browser).
 | `POSTMODEM_REALTIME_URL` | `memory://` | `postgres://` (LISTEN/NOTIFY, default in stack) or `redis://valkey:6379` |
 | `POSTMODEM_COUNTERS_URL` | `memory://` (flush every 10 s) | `redis://valkey:6379` |
 | `POSTMODEM_AV_URL` | — (scanning off) | `clamd://clamav:3310` |
-| `POSTMODEM_PROFILE` | `przemo` | `vanilla` · `przemo` · `modern` (first boot only; see PACKAGES.md §5) |
+| `POSTMODEM_PROFILE` | `essentials` | `vanilla` · `essentials` · `przemo` (first boot only; see PACKAGES.md §5) |
 | `POSTMODEM_SECRET_KEY(_FILE)` | generated into `/data/secrets` | Compose secret |
 | `POSTMODEM_TRUSTED_PROXIES` | — | `10.0.0.0/8` |
 | `POSTMODEM_ADMIN_EMAIL/PASSWORD_FILE` | used by `postmodem init` on first boot (`POSTMODEM_ADMIN_USERNAME` optional, default `admin`) | |
@@ -345,7 +345,7 @@ runtime image never compiles anything:
    │        │
    │        ├─ image scan (Trivy/Grype), SBOM, size budget check
    │        ├─ integration matrix  {sqlite, postgres 16/17/18} × counters/channels {memory, postgres, valkey}
-   │        ├─ package matrix      {core only, przemo profile} (+ random subsets nightly)
+   │        ├─ package matrix      {vanilla, essentials, przemo} (+ random subsets nightly)
    │        ├─ e2e + axe a11y      {solo compose, full stack compose} × {Classic, Modern theme}
    │        ├─ upgrade test        previous release → this image (migrations, rollback one version)
    │        └─ importer test       Przemo dump → this image

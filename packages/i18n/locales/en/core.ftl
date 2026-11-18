@@ -204,3 +204,51 @@ poll-total = Total votes: { $count }
 poll-hidden = Results are shown when the poll ends.
 poll-ends = Ends
 poll-ended = Ended
+
+## Posting
+posting-new-topic = New topic
+posting-reply = Reply
+posting-edit = Edit post
+posting-delete = Delete post
+posting-in-topic = In the topic
+posting-title = Topic title
+posting-subject = Subject
+posting-optional = optional
+posting-type = Topic type
+posting-type-normal = Normal
+posting-type-sticky = Sticky
+posting-type-announcement = Announcement
+posting-body = Message
+posting-toolbar = Formatting
+posting-tag-b = Bold
+posting-tag-i = Italic
+posting-tag-u = Underline
+posting-tag-quote = Quote
+posting-tag-code = Code
+posting-tag-url = Link
+posting-tag-img = Image
+posting-bbcode-hint = BBCode works: [b]bold[/b], [quote]…[/quote], [url]https://…[/url]. Smilies too.
+posting-submit = Post
+posting-save = Save
+posting-preview = Preview
+posting-cancel = Cancel
+posting-delete-confirm = Delete this post? Moderators can still see deleted posts.
+posting-delete-submit = Delete
+posting-quote = Quote
+posting-edit-link = Edit
+posting-delete-link = Delete
+posting-error-sign-in = Sign in to post.
+posting-error-not-found = This topic or forum doesn't exist (any more).
+posting-error-forbidden = You can't do that here.
+posting-error-locked = This topic is locked.
+posting-error-flood = You're posting too fast. Try again in { $seconds } s.
+posting-error-title-missing = Give the topic a title.
+posting-error-title-long = The title is too long (at most 100 characters).
+posting-error-body-missing = Write a message.
+posting-error-body-long = The message is too long.
+posting-error-not-last-post = You can only delete your post while nobody has replied after it.
+post-edited = { $count ->
+    [one] Edited once, last
+   *[other] Edited { $count } times, last
+}
+topic-locked-hint = This topic is locked: no new replies.
