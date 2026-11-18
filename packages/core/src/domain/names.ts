@@ -48,5 +48,20 @@ export function slugify(text: string, max = 80): string {
   return (lastHyphen > max / 2 ? cut.slice(0, lastHyphen) : ascii.slice(0, max)).replace(/-+$/, "");
 }
 
+/**
+ * Text as the search index stores it: lowercase ASCII words, Polish and other Latin letters
+ * transliterated like slugs, so "Łódź" and "lodz" find each other.
+ */
+export function foldForSearch(text: string): string {
+  return [...text]
+    .map((ch) => TRANSLITERATE[ch] ?? ch)
+    .join("")
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
 /** Username slugs are shorter than title slugs. */
 export const USER_SLUG_MAX = 40;

@@ -17,6 +17,7 @@ import {
 import { excerpt } from "@postmodem/markup";
 import { error, fail, redirect } from "@sveltejs/kit";
 import { nodeRef, topicRef } from "#lib/server/board.ts";
+import { reindexTopics } from "#lib/server/search.ts";
 import type { Actions, PageServerLoad, RequestEvent } from "./$types";
 
 const id = (v: unknown) => {
@@ -101,6 +102,7 @@ async function run(
       action: String(form.get("action") ?? ""),
     });
   event.locals.ctx.log.info("moderation", { topicId: topic.id, by: event.locals.user!.id });
+  await reindexTopics(event.locals.ctx.db.repos, [topic.id, result.topic.id]);
   await event.locals.ctx.packages.emit("moderation.action", {
     action: event.url.search.split("&/").pop() ?? "",
     topicId: topic.id,

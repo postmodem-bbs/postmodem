@@ -14,6 +14,7 @@ export * from "./domain/names.ts";
 export * from "./domain/permissions.ts";
 export * from "./domain/ports.ts";
 export * from "./domain/posting.ts";
+export * from "./domain/search.ts";
 export * from "./domain/tree.ts";
 export * from "./domain/types.ts";
 export * from "./log.ts";

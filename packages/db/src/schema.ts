@@ -239,6 +239,14 @@ export interface TopicWatchesTable {
   notified: Bool;
 }
 
+export interface SearchMetaTable {
+  postId: number;
+  topicId: number;
+  nodeId: number;
+  authorId: number | null;
+  createdAt: number;
+}
+
 export interface BansTable {
   id: Generated<number>;
   kind: string;
@@ -297,6 +305,7 @@ export interface Schema {
   bans: BansTable;
   privateMessages: PrivateMessagesTable;
   topicWatches: TopicWatchesTable;
+  searchMeta: SearchMetaTable;
   auditLog: AuditLogTable;
   legacyIds: LegacyIdsTable;
   slugHistory: SlugHistoryTable;

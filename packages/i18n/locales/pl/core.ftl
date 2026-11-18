@@ -392,3 +392,25 @@ account-password-saved = Hasło zmienione. Inne urządzenia zostały wylogowane.
 account-error-website = Podaj pełny link, zaczynający się od https://
 account-error-signature = Podpis jest za długi (najwyżej { $max } znaków).
 account-error-current = To nie jest Twoje obecne hasło.
+
+## Search
+search-title = Szukaj
+search-keywords = Szukane słowa
+search-hint = Muszą wystąpić wszystkie słowa; wystarczy początek słowa, polskie znaki nie mają znaczenia.
+search-author = Autor
+search-forum = W forum
+search-all-forums = Wszystkie fora
+search-submit = Szukaj
+search-found = { $count ->
+    [0] Nic nie znaleziono.
+    [one] Znaleziono jeden post.
+    [few] Znaleziono { $count } posty.
+    [many] Znaleziono { $count } postów.
+   *[other] Znaleziono { $count } posta.
+}
+search-found-more = Znaleziono ponad { $count } postów. Dodaj słowa albo wybierz forum, żeby zawęzić wyniki.
+search-error-terms = Wpisz przynajmniej jedno słowo z co najmniej dwóch liter.
+search-error-author = Nie ma użytkownika o takiej nazwie.
+search-error-throttled = Za dużo wyszukiwań. Spróbuj za { $seconds } s.
+members-title = Użytkownicy
+members-name = Nazwa użytkownika

@@ -122,6 +122,20 @@ export const enabledPackagesSetting = defineSetting<string[] | null>({
   default: null,
 });
 
+/** Searches per IP and minute before each further one waits (0: no limit). */
+export const searchesPerMinute = defineSetting({
+  key: "core.search.perMinute",
+  schema: z.number().int().min(0).max(10_000),
+  default: 30,
+});
+
+/** Whether guests may see the member list (phpBB2 showed it to everyone). */
+export const memberlistForGuests = defineSetting({
+  key: "core.memberlist.guests",
+  schema: z.boolean(),
+  default: true,
+});
+
 export function coreSettings(): SettingsRegistry {
   return new SettingsRegistry().register(
     boardName,
@@ -138,5 +152,7 @@ export function coreSettings(): SettingsRegistry {
     inboxLimit,
     maxPostLength,
     enabledPackagesSetting,
+    memberlistForGuests,
+    searchesPerMinute,
   );
 }

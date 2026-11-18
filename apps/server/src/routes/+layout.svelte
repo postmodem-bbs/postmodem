@@ -18,6 +18,8 @@
     <nav aria-label={t("nav-label")}>
       <ul>
         <li><a href="/" aria-current={page.url.pathname === "/" ? "page" : undefined}>{t("nav-index")}</a></li>
+        <li><a href="/search.php" aria-current={page.url.pathname === "/search.php" ? "page" : undefined}>{t("nav-search")}</a></li>
+        <li><a href="/memberlist.php" aria-current={page.url.pathname === "/memberlist.php" ? "page" : undefined}>{t("nav-members")}</a></li>
       </ul>
     </nav>
     <div class="account">

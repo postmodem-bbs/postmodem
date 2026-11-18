@@ -22,6 +22,7 @@ import { classicCategoryIds } from "#lib/server/links.ts";
 import { afterPost } from "#lib/server/notifications.ts";
 import { quoteSource } from "#lib/server/posting.ts";
 import { readerOf } from "#lib/server/reader.ts";
+import { indexPosts } from "#lib/server/search.ts";
 import type { Actions, PageServerLoad, RequestEvent } from "./$types";
 
 type Mode = "newtopic" | "reply" | "quote" | "editpost" | "delete";
@@ -187,6 +188,7 @@ export const actions: Actions = {
       mode === "newtopic" ? "topic.created" : mode === "editpost" ? "post.edited" : "post.created",
       happened,
     );
+    await indexPosts(ctx.db.repos, [result.post]);
     if (mode !== "editpost") await afterPost(ctx, locals.urls, result.topic, result.post, locals.user!);
     ctx.log.info(mode === "editpost" ? "post edited" : "post created", {
       postId: result.post.id,

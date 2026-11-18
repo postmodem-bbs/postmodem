@@ -23,6 +23,7 @@ import { anonymise, importPrzemo, type LegacySource, openMysqlSource, summarise 
 import { type AppContext, createContext, readConfig } from "../lib/server/bootstrap.ts";
 import { DEMO_PASSWORD, seedDemo, seedLongTopic } from "../lib/server/demo.ts";
 import { INSTALLED_PACKAGES, packagePermissions } from "../lib/server/packages.ts";
+import { rebuildSearch } from "../lib/server/search.ts";
 import { copyLegacyFiles, uploadsDir } from "../lib/server/uploads.ts";
 import {
   BAN_HELP,
@@ -71,6 +72,8 @@ ${PACKAGES_HELP}
                 show or change board settings (values are JSON, or plain text for
                 strings), e.g. settings set core.urls.style numbered; running servers
                 pick changes up within a few seconds
+  search rebuild
+                rebuild the search index from every post (imports do this themselves)
   healthcheck   exit 0 if the local web server answers /healthz
   config print  show the effective configuration (secrets redacted)
   version       print version information
@@ -278,6 +281,11 @@ async function importBoard(args: string[]): Promise<number> {
       if (s.boardDescription !== undefined)
         await ctx.settings.set(boardDescription, s.boardDescription.slice(0, 300));
       if (s.defaultLocale) await ctx.settings.set(defaultLocale, s.defaultLocale);
+      const indexed = await rebuildSearch(
+        ctx.db.repos,
+        (n) => n % 20_000 === 0 && ctx.log.info("search index", { posts: n }),
+      );
+      ctx.log.info("search index built", { posts: indexed });
       await ctx.db.repos.audit.append({
         actorId: null,
         action: "board.imported",
@@ -561,11 +569,13 @@ async function main(argv: string[]): Promise<number> {
           return 2;
         }
         const added = await seedLongTopic(ctx.db.repos, posts);
+        await rebuildSearch(ctx.db.repos);
         console.log(`added topic ${added.topicId} with ${posts} posts in forum ${added.forumId}`);
         await ctx.db.close();
         return 0;
       }
       const result = await seedDemo(ctx.db.repos);
+      if (result.created) await rebuildSearch(ctx.db.repos);
       if (result.created)
         ctx.log.info("demo board created", {
           ...result,
@@ -592,6 +602,20 @@ async function main(argv: string[]): Promise<number> {
       return banCommand(sub, argv.slice(2));
     case "packages":
       return packagesCommand(sub, argv.slice(2));
+    case "search": {
+      if (sub !== "rebuild") break;
+      const ctx = await createContext({ migrate: true });
+      try {
+        const n = await rebuildSearch(
+          ctx.db.repos,
+          (done) => done % 20_000 === 0 && console.log(`${done} posts…`),
+        );
+        console.log(`search index rebuilt: ${n} posts`);
+        return 0;
+      } finally {
+        await ctx.db.close();
+      }
+    }
     case "settings":
       if (sub !== "list" && sub !== "get" && sub !== "set") break;
       return settingsCommand(sub, argv.slice(2));

@@ -26,6 +26,13 @@ export const POSTING_POLICY: ThrottlePolicy = {
   maxMs: 15 * MINUTE,
   windowMs: 60 * MINUTE,
 };
+/** Searches per IP (phpBB2's search_flood_interval, gentler): 30 a minute, then waits. */
+export const SEARCH_POLICY: ThrottlePolicy = {
+  free: 30,
+  baseMs: 2_000,
+  maxMs: MINUTE,
+  windowMs: MINUTE,
+};
 export const LOGIN_POLICY: ThrottlePolicy = {
   free: 5,
   baseMs: 1_000,

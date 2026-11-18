@@ -442,5 +442,33 @@ export function migrations(dialect: Dialect): Record<string, Migration> {
           .execute();
       },
     },
+    "0012_search": {
+      async up(db: Db) {
+        // The database's own full-text index (M2 slice 6). Text is folded before it gets here
+        // (foldForSearch), so both engines index plain ASCII words. Metadata sits next to it for
+        // filtering by forum and author without touching posts.
+        await db.schema
+          .createTable("search_meta")
+          .addColumn("post_id", "bigint", (c) => c.primaryKey())
+          .addColumn("topic_id", "bigint", notNull)
+          .addColumn("node_id", "bigint", notNull)
+          .addColumn("author_id", "bigint")
+          .addColumn("created_at", "bigint", notNull)
+          .execute();
+        await db.schema
+          .createIndex("search_meta_node")
+          .on("search_meta")
+          .columns(["node_id", "created_at"])
+          .execute();
+        if (dialect === "sqlite")
+          await sql`create virtual table search_fts using fts5(title, body, content='', contentless_delete=1)`.execute(
+            db,
+          );
+        else {
+          await db.schema.alterTable("search_meta").addColumn("document", sql`tsvector`).execute();
+          await sql`create index search_meta_document on search_meta using gin (document)`.execute(db);
+        }
+      },
+    },
   };
 }

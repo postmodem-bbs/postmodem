@@ -40,6 +40,10 @@ import {
   type UserStatus,
 } from "@postmodem/core";
 import { type ExpressionBuilder, type Kysely, type Selectable, sql } from "kysely";
+
+/** Search results are counted (and paged) up to this many, as phpBB2 did. */
+export const SEARCH_RESULTS_MAX = 1000;
+
 import type {
   JobsTable,
   NodesTable,
@@ -216,11 +220,11 @@ const subjectToRow = (s: Subject) => ({ subjectType: s.type, subjectId: "id" in 
 const rowToSubject = (type: string, id: number | null): Subject =>
   type === "group" || type === "user" ? ({ type, id: id! } as Subject) : ({ type } as Subject);
 
-export function createRepositories(db: Db): Repositories {
+export function createRepositories(db: Db, dialect: "sqlite" | "pg"): Repositories {
   const nodes: Repositories["nodes"] = {
     async create(input) {
       return atomic(db, async (db) => {
-        const self = createRepositories(db); // queries inside a transaction must use it
+        const self = createRepositories(db, dialect); // queries inside a transaction must use it
         const now = input.createdAt ?? Date.now();
         const parent = input.parentId === null ? undefined : await self.nodes.get(input.parentId);
         if (input.parentId !== null && !parent)
@@ -305,7 +309,7 @@ export function createRepositories(db: Db): Repositories {
     },
     async move(id, newParentId, position) {
       return atomic(db, async (db) => {
-        const self = createRepositories(db);
+        const self = createRepositories(db, dialect);
         const node = await self.nodes.get(id);
         if (!node) throw new Error(`node ${id} does not exist`);
         const parent = newParentId === null ? undefined : await self.nodes.get(newParentId);
@@ -331,7 +335,7 @@ export function createRepositories(db: Db): Repositories {
     },
     async update(id, patch) {
       return atomic(db, async (db) => {
-        const self = createRepositories(db);
+        const self = createRepositories(db, dialect);
         const before = await self.nodes.get(id);
         if (!before) throw new Error(`node ${id} does not exist`);
         await db
@@ -422,7 +426,7 @@ export function createRepositories(db: Db): Repositories {
           .executeTakeFirstOrThrow();
         const slug = await uniqueSlug(db, "topics", input.slug ?? slugify(input.title), id, `topic-${id}`);
         await db.updateTable("topics").set({ slug }).where("id", "=", id).execute();
-        return (await createRepositories(db).topics.get(id))!;
+        return (await createRepositories(db, dialect).topics.get(id))!;
       });
     },
     async get(id) {
@@ -474,7 +478,7 @@ export function createRepositories(db: Db): Repositories {
     },
     async rename(id, title) {
       return atomic(db, async (db) => {
-        const self = createRepositories(db);
+        const self = createRepositories(db, dialect);
         const before = await self.topics.get(id);
         if (!before) throw new Error(`topic ${id} does not exist`);
         if (title === before.title) return before;
@@ -716,6 +720,16 @@ export function createRepositories(db: Db): Repositories {
         .where("id", "in", postIds)
         .execute();
     },
+    async batchAfter(afterId, limit) {
+      const rows = await db
+        .selectFrom("posts")
+        .selectAll()
+        .where("id", ">", afterId)
+        .orderBy("id")
+        .limit(limit)
+        .execute();
+      return rows.map(toPost);
+    },
     async allInTopic(topicId) {
       const rows = await db
         .selectFrom("posts")
@@ -838,6 +852,19 @@ export function createRepositories(db: Db): Repositories {
       const user = await users.get(id);
       if (!user) throw new Error(`user ${id} does not exist`);
       return user;
+    },
+    async list(q) {
+      const base = db.selectFrom("users").where("origin", "=", "local").where("status", "=", "active");
+      const total = await base.select((eb) => eb.fn.countAll().as("c")).executeTakeFirstOrThrow();
+      const column = q.sort === "username" ? "usernameKey" : q.sort === "posts" ? "postCount" : "createdAt";
+      const rows = await base
+        .selectAll()
+        .orderBy(column, q.order)
+        .orderBy("id", q.order)
+        .limit(q.page.perPage)
+        .offset(offset(q.page))
+        .execute();
+      return paginate(rows.map(toUser), n(total.c), q.page);
     },
     async adjustPostCount(id, by) {
       await db
@@ -1022,7 +1049,7 @@ export function createRepositories(db: Db): Repositories {
             .values(caps.map(([capability, effect]) => ({ roleId: id, capability, effect })))
             .execute();
         }
-        return (await createRepositories(db).roles.get(id))!;
+        return (await createRepositories(db, dialect).roles.get(id))!;
       });
     },
     async get(id) {
@@ -1393,6 +1420,72 @@ export function createRepositories(db: Db): Repositories {
     },
   };
 
+  const sqlite = dialect === "sqlite";
+  const search: Repositories["search"] = {
+    async index(docs) {
+      if (!docs.length) return;
+      await search.remove(docs.map((d) => d.postId));
+      for (const d of docs) {
+        await db
+          .insertInto("searchMeta")
+          .values({
+            postId: d.postId,
+            topicId: d.topicId,
+            nodeId: d.nodeId,
+            authorId: d.authorId,
+            createdAt: d.createdAt,
+          })
+          .execute();
+        if (sqlite)
+          await sql`insert into search_fts (rowid, title, body) values (${d.postId}, ${d.title}, ${d.body})`.execute(
+            db,
+          );
+        else
+          await sql`update search_meta set document = setweight(to_tsvector('simple', ${d.title}), 'A') || to_tsvector('simple', ${d.body}) where post_id = ${d.postId}`.execute(
+            db,
+          );
+      }
+    },
+    async remove(postIds) {
+      if (!postIds.length) return;
+      if (sqlite) await sql`delete from search_fts where rowid in (${sql.join(postIds)})`.execute(db);
+      await db.deleteFrom("searchMeta").where("postId", "in", postIds).execute();
+    },
+    async clear() {
+      if (sqlite) await sql`delete from search_fts`.execute(db);
+      await db.deleteFrom("searchMeta").execute();
+    },
+    async query(q) {
+      const terms = q.terms.filter((t) => /^[a-z0-9]+$/.test(t));
+      if (!terms.length || !q.nodeIds.length) return paginate([], 0, q.page);
+      // Only folded [a-z0-9] words reach here, so the match expressions can't be injected.
+      const match = sqlite
+        ? sql`m.post_id in (select rowid from search_fts where search_fts match ${terms.map((t) => `"${t}"*`).join(" ")})`
+        : sql`m.document @@ to_tsquery('simple', ${terms.map((t) => `${t}:*`).join(" & ")})`;
+      const base = sql`from search_meta m
+        join posts p on p.id = m.post_id and p.visibility = 'core:public'
+        join topics t on t.id = m.topic_id and t.visibility = 'core:public'
+        where ${match} and m.node_id in (${sql.join(q.nodeIds)})
+        ${q.authorId != null ? sql`and m.author_id = ${q.authorId}` : sql``}`;
+      // Like phpBB2, results stop at SEARCH_RESULTS_MAX: counting 50,000 matches costs more
+      // than anyone reads. The count says "more" with SEARCH_RESULTS_MAX + 1.
+      const total = await sql<{
+        c: number;
+      }>`select count(*) as c from (select 1 ${base} limit ${SEARCH_RESULTS_MAX + 1}) x`.execute(db);
+      // "pid", not post_id: the CamelCasePlugin renames result columns of raw queries too.
+      const rows = await sql<{
+        pid: number;
+      }>`select m.post_id as pid ${base} order by m.created_at desc, m.post_id desc limit ${q.page.perPage} offset ${offset(q.page)}`.execute(
+        db,
+      );
+      return paginate(
+        rows.rows.map((r) => Number(r.pid)),
+        n(total.rows[0]?.c ?? 0),
+        q.page,
+      );
+    },
+  };
+
   const polls: Repositories["polls"] = {
     async create(p) {
       const { id } = await db
@@ -1708,10 +1801,11 @@ export function createRepositories(db: Db): Repositories {
     bans,
     messages,
     watches,
+    search,
     transaction: (fn) =>
       db.isTransaction
-        ? fn(createRepositories(db))
-        : db.transaction().execute((trx) => fn(createRepositories(trx))),
+        ? fn(createRepositories(db, dialect))
+        : db.transaction().execute((trx) => fn(createRepositories(trx, dialect))),
   };
 }
 

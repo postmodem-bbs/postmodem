@@ -22,6 +22,8 @@ test("quick reply posts from under the topic", async ({ page }) => {
   await expect(box.getByRole("heading", { level: 2 })).toHaveText("Quick reply");
   await box.getByLabel("Message").fill("Szybka odpowiedź.");
   await box.getByRole("button", { name: "Post" }).click();
+  // The reply redirects to the new post; wait for that, not for the old page.
+  await page.waitForURL(/#p\d+$|[?&]p=\d+/);
   await expect(page.locator("article.post")).toHaveCount(2);
   await expect(page.locator("article.post").last()).toContainText("Szybka odpowiedź.");
 });

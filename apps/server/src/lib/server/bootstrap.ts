@@ -27,7 +27,9 @@ import {
   permissionsFor,
   postsPerHour,
   REGISTER_POLICY,
+  SEARCH_POLICY,
   Settings,
+  searchesPerMinute,
   Throttle,
   viewerFor,
 } from "@postmodem/core";
@@ -58,6 +60,7 @@ export interface AppContext {
     register: Throttle;
     mail: Throttle;
     mailIp: Throttle;
+    search: Pick<Throttle, "wait" | "fail" | "reset">;
     posting: Pick<Throttle, "wait" | "fail" | "reset">;
   };
   mailer: Mailer;
@@ -178,6 +181,12 @@ export async function createContext(opts: { migrate: boolean; loaded?: LoadedCon
         "register-ip",
       ),
       mail: new Throttle(MAIL_POLICY, db.repos.throttle, "mail"),
+      get search() {
+        const free = settings.get(searchesPerMinute);
+        return free === 0
+          ? { wait: async () => 0, fail: async () => {}, reset: async () => {} }
+          : new Throttle({ ...SEARCH_POLICY, free }, db.repos.throttle, "search-ip");
+      },
       // The posting limit is a board setting (core.posting.perHour, 0 = off), read per call.
       get posting() {
         const free = settings.get(postsPerHour);

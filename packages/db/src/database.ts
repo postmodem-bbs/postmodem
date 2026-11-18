@@ -93,7 +93,7 @@ export function createDatabase(engine: Engine): Database {
   return {
     dialect,
     kysely: db,
-    repos: createRepositories(db),
+    repos: createRepositories(db, dialect),
     async ping() {
       await sql`select 1`.execute(db);
     },

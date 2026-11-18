@@ -156,6 +156,8 @@ export interface PostRepository {
   setVisibility(id: Id, visibility: VisibilityState): Promise<void>;
   /** Moves posts into another topic (split, merge); counters: recount both topics. */
   moveTo(postIds: Id[], topicId: Id): Promise<void>;
+  /** Posts by id, after `afterId` (bulk jobs such as rebuilding the search index). */
+  batchAfter(afterId: Id, limit: number): Promise<Post[]>;
   /** Every post of a topic, any visibility, oldest first (moderation). */
   allInTopic(topicId: Id): Promise<Post[]>;
   /** When the user last posted (flood interval). */
@@ -198,6 +200,12 @@ export interface UserRepository {
   byEmail(email: string): Promise<User | undefined>;
   update(id: Id, patch: Partial<Omit<User, "id" | "usernameKey" | "createdAt">>): Promise<User>;
   adjustPostCount(id: Id, by: number): Promise<void>;
+  /** Active local members for the member list. */
+  list(q: {
+    sort: "joined" | "username" | "posts";
+    order: "asc" | "desc";
+    page: PageRequest;
+  }): Promise<Page<User>>;
   count(): Promise<number>;
   newest(): Promise<User | undefined>;
 }
@@ -386,6 +394,30 @@ export interface WatchRepository {
   visited(userId: Id, topicId: Id): Promise<void>;
 }
 
+/** One post as the search index sees it (text already folded, see foldForSearch). */
+export interface SearchDocument {
+  postId: Id;
+  topicId: Id;
+  nodeId: Id;
+  authorId: Id | null;
+  createdAt: Millis;
+  title: string;
+  body: string;
+}
+
+/** Search provider (registry #7): the database's full-text index until another is installed. */
+export interface SearchRepository {
+  /** Adds or replaces documents. */
+  index(docs: SearchDocument[]): Promise<void>;
+  remove(postIds: Id[]): Promise<void>;
+  clear(): Promise<void>;
+  /**
+   * Public posts matching every term (prefixes too), in the given nodes, newest first.
+   * Terms are folded words of [a-z0-9] only (see searchTerms).
+   */
+  query(q: { terms: string[]; nodeIds: Id[]; authorId?: Id | null; page: PageRequest }): Promise<Page<Id>>;
+}
+
 export interface Repositories {
   nodes: NodeRepository;
   topics: TopicRepository;
@@ -408,6 +440,7 @@ export interface Repositories {
   bans: BanRepository;
   messages: PrivateMessageRepository;
   watches: WatchRepository;
+  search: SearchRepository;
   /** Runs fn atomically; the repositories passed in are bound to the transaction. */
   transaction<T>(fn: (repos: Repositories) => Promise<T>): Promise<T>;
 }

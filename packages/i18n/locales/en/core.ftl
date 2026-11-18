@@ -381,3 +381,23 @@ account-password-saved = Password changed. Other devices have been signed out.
 account-error-website = Enter a full link, starting with https://
 account-error-signature = The signature is too long (at most { $max } characters).
 account-error-current = That's not your current password.
+
+## Search
+search-title = Search
+search-keywords = Words to find
+search-hint = Every word must appear; the start of a word is enough, and accents don't matter.
+search-author = Posted by
+search-forum = In the forum
+search-all-forums = All forums
+search-submit = Search
+search-found = { $count ->
+    [0] Nothing found.
+    [one] One post found.
+   *[other] { $count } posts found.
+}
+search-found-more = More than { $count } posts found. Add words or choose a forum to narrow it down.
+search-error-terms = Enter at least one word of two or more letters.
+search-error-author = There's no member with that name.
+search-error-throttled = Too many searches. Try again in { $seconds } s.
+members-title = Members
+members-name = Username
