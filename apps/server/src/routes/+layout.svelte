@@ -22,7 +22,10 @@
     </nav>
     <div class="account">
       {#if data.user}
-        <span>{t("signed-in-as", { name: data.user.username })}</span>
+        <a href="/account" aria-current={page.url.pathname === "/account" ? "page" : undefined}>{t("signed-in-as", { name: data.user.username })}</a>
+        <a href="/privmsg.php" class="slot-link" aria-current={page.url.pathname === "/privmsg.php" ? "page" : undefined}
+          >{t("pm-header")}{#if data.unreadMessages}{" "}<span class="count">{data.unreadMessages}</span>{/if}</a
+        >
         <Slot items={data.headerBadges} {t} />
         <form method="POST" action="/login.php?/logout">
           <button type="submit" class="link-button">{t("logout")}</button>

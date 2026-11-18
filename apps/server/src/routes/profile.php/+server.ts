@@ -8,5 +8,6 @@ export const GET: RequestHandler = ({ url }) => {
   const mode = url.searchParams.get("mode");
   if (mode === "register") redirect(301, "/register");
   if (mode === "sendpassword") redirect(301, "/reset");
+  if (mode === "editprofile") redirect(301, "/account");
   error(404, "Not found");
 };

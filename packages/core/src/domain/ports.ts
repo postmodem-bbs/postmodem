@@ -17,6 +17,7 @@ import type {
   NodeKind,
   Poll,
   Post,
+  PrivateMessage,
   Rank,
   Role,
   Session,
@@ -182,6 +183,8 @@ export interface NewUser {
   timezone?: string | null;
   rulesVersion?: number | null;
   rulesAcceptedAt?: Millis | null;
+  notifyPm?: boolean;
+  autoWatch?: boolean;
 }
 
 export interface UserRepository {
@@ -352,6 +355,37 @@ export interface BanRepository {
   active(now: Millis): Promise<Ban[]>;
 }
 
+export interface PrivateMessageRepository {
+  create(
+    m: Omit<PrivateMessage, "id" | "readAt" | "senderDeleted" | "recipientDeleted"> & {
+      id?: Id;
+      readAt?: Millis | null;
+      senderDeleted?: boolean;
+      recipientDeleted?: boolean;
+    },
+  ): Promise<PrivateMessage>;
+  get(id: Id): Promise<PrivateMessage | undefined>;
+  /** The folder's messages, newest first, that the user hasn't deleted. */
+  inbox(userId: Id, page: PageRequest): Promise<Page<PrivateMessage>>;
+  sent(userId: Id, page: PageRequest): Promise<Page<PrivateMessage>>;
+  unreadCount(userId: Id): Promise<number>;
+  inboxCount(userId: Id): Promise<number>;
+  markRead(id: Id, at: Millis): Promise<void>;
+  /** Deletes one side's view; the row goes when both sides have deleted it. */
+  deleteFor(id: Id, userId: Id): Promise<void>;
+}
+
+/** phpBB2's topics_watch: who gets an e-mail on a reply, once until they visit again. */
+export interface WatchRepository {
+  watch(userId: Id, topicId: Id): Promise<void>;
+  unwatch(userId: Id, topicId: Id): Promise<void>;
+  isWatching(userId: Id, topicId: Id): Promise<boolean>;
+  /** Watchers not yet notified since their last visit; marks them notified. */
+  takeWatchersToNotify(topicId: Id, except: Id): Promise<Id[]>;
+  /** The member read the topic: the next reply notifies them again. */
+  visited(userId: Id, topicId: Id): Promise<void>;
+}
+
 export interface Repositories {
   nodes: NodeRepository;
   topics: TopicRepository;
@@ -372,6 +406,8 @@ export interface Repositories {
   smilies: SmileyRepository;
   polls: PollRepository;
   bans: BanRepository;
+  messages: PrivateMessageRepository;
+  watches: WatchRepository;
   /** Runs fn atomically; the repositories passed in are bound to the transaction. */
   transaction<T>(fn: (repos: Repositories) => Promise<T>): Promise<T>;
 }

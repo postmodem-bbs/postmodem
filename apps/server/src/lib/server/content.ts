@@ -12,8 +12,14 @@ export interface Renderer {
     viewerName: string | null,
     messages: { guest: string; hiddenContent: string },
   ): string;
-  /** HTML for text that isn't saved yet (posting preview); nothing is cached. */
-  preview(source: string): Promise<string>;
+  /**
+   * HTML for text that isn't cached (posting preview, private messages), with the reader's
+   * holes filled: [you] is the reader; [hide] stays hidden (it's about topic replies).
+   */
+  preview(
+    source: string,
+    reader?: { name: string | null; messages: { guest: string; hiddenContent: string } },
+  ): Promise<string>;
   /** Call after smilies change, so the next render picks them up. */
   invalidateSmilies(): void;
 }
@@ -49,7 +55,10 @@ export function createRenderer(repos: Repositories): Renderer {
       return out;
     },
     forReader: (html, viewerName, messages) => resolveHoles(html, { viewerName, messages }),
-    preview: async (source) => renderHtml(source, { smilies: await loadSmilies() }),
+    preview: async (source, reader) => {
+      const html = renderHtml(source, { smilies: await loadSmilies() });
+      return reader ? resolveHoles(html, { viewerName: reader.name, messages: reader.messages }) : html;
+    },
     invalidateSmilies() {
       smilies = undefined;
     },

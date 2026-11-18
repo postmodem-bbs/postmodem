@@ -30,6 +30,11 @@
 <div class="topic-actions">
   {#if data.topic.canReply}<a class="button-link" href={urls.posting.reply(data.topic.id)}>{t("posting-reply")}</a>{:else if data.topic.locked}<p class="muted">{t("topic-locked-hint")}</p>{/if}
   {#if data.topic.canModerate}<a href={urls.modcp(data.topic.id)}>{t("modcp-link")}</a>{/if}
+  {#if data.watching !== null}
+    <form method="POST" action={`/watch?t=${data.topic.id}&on=${data.watching ? "0" : "1"}`} class="slot-form inline">
+      <button type="submit" class="link-button">{data.watching ? t("watch-stop") : t("watch-start")}</button>
+    </form>
+  {/if}
 </div>
 <Pagination total={data.total} perPage={data.perPage} start={data.start} href={(s) => urls.topic(data.topic, s)} {t} />
 
@@ -93,6 +98,7 @@
         </p>
         <!-- Rendered by @postmodem/markup: allow-listed, sanitised HTML (ADR 0014). -->
         <div class="post-body">{@html post.html}</div>
+        {#if post.signature}<div class="post-signature">{@html post.signature}</div>{/if}
         {#if post.editedAt && post.editCount > 0}
           <p class="muted post-edited">{t("post-edited", { count: post.editCount })} <time datetime={isoDate(post.editedAt)}>{formatDateTime(post.editedAt, data.locale)}</time></p>
         {/if}

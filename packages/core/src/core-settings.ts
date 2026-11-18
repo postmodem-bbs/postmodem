@@ -98,6 +98,13 @@ export const postsPerHour = defineSetting({
   default: 30,
 });
 
+/** Messages a member's inbox holds before senders are told it's full (phpBB2 max_inbox_privmsgs). */
+export const inboxLimit = defineSetting({
+  key: "core.pm.inboxLimit",
+  schema: z.number().int().min(0).max(100_000),
+  default: 500,
+});
+
 /** Longest post, in characters (phpBB2 had no limit but MySQL's TEXT: 64 KB). */
 export const maxPostLength = defineSetting({
   key: "core.posting.maxLength",
@@ -128,6 +135,7 @@ export function coreSettings(): SettingsRegistry {
     urlStyle,
     floodSeconds,
     postsPerHour,
+    inboxLimit,
     maxPostLength,
     enabledPackagesSetting,
   );

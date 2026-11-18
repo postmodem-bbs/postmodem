@@ -20,5 +20,6 @@ export const load: LayoutServerLoad = async ({ locals, url }) => {
     urlStyle: settings.get(urlStyle),
     // Packages' header links (e.g. the reports queue with its count).
     headerBadges: locals.user ? await forRequest(locals).slot("header.badges") : [],
+    unreadMessages: locals.user ? await locals.ctx.db.repos.messages.unreadCount(locals.user.id) : 0,
   };
 };

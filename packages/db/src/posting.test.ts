@@ -8,10 +8,12 @@ import {
   installCorePermissions,
   loadSnapshot,
   may,
+  openMessage,
   type Permissions,
   permissionsFor,
   type Repositories,
   reply,
+  sendMessage,
   type User,
   viewerFor,
 } from "@postmodem/core";
@@ -224,5 +226,61 @@ describe.each(testEngines())("posting on %s", (engine) => {
     const locked = (await r.nodes.get(forum.id))!;
     expect(may.reply(pb, locked, topic)).toBe(false);
     expect(may.createTopic(pa, locked)).toBe(false);
+  });
+
+  it("sends private messages within limits, and each side deletes its own view", async () => {
+    const pm = { maxLength: 1000, inboxLimit: 2 };
+    const p = await perms(alice);
+    expect(await sendMessage(r, p, alice, { to: "nobody", subject: "x", source: "y" }, pm)).toEqual({
+      ok: false,
+      problem: "recipient-unknown",
+    });
+    expect(await sendMessage(r, p, alice, { to: "bob", subject: " ", source: "y" }, pm)).toMatchObject({
+      problem: "subject-missing",
+    });
+    expect(
+      await sendMessage(r, await perms(null), null, { to: "bob", subject: "x", source: "y" }, pm),
+    ).toMatchObject({ problem: "sign-in" });
+    const sent = await sendMessage(r, p, alice, { to: "BOB", subject: "Cześć", source: "Jak leci?" }, pm);
+    if (!sent.ok) throw new Error(sent.problem);
+    expect(await r.messages.unreadCount(bob.id)).toBe(1);
+    expect(await openMessage(r, (await r.users.get(bob.id))!, sent.message.id)).toMatchObject({
+      subject: "Cześć",
+    });
+    expect(await r.messages.unreadCount(bob.id)).toBe(0);
+    // Nobody else can open it.
+    const carol = await r.users.create({ username: "carol", email: null });
+    expect(await openMessage(r, carol, sent.message.id)).toBeNull();
+    await sendMessage(r, p, alice, { to: "bob", subject: "2", source: "y" }, pm);
+    expect(await sendMessage(r, p, alice, { to: "bob", subject: "3", source: "y" }, pm)).toMatchObject({
+      problem: "inbox-full",
+    });
+    expect((await r.messages.inbox(bob.id, { page: 1, perPage: 10 })).total).toBe(2);
+    expect((await r.messages.sent(alice.id, { page: 1, perPage: 10 })).total).toBe(2);
+    await r.messages.deleteFor(sent.message.id, bob.id);
+    expect((await r.messages.inbox(bob.id, { page: 1, perPage: 10 })).total).toBe(1);
+    expect(await r.messages.get(sent.message.id)).toBeDefined(); // alice still has it
+    await r.messages.deleteFor(sent.message.id, alice.id);
+    expect(await r.messages.get(sent.message.id)).toBeUndefined();
+  });
+
+  it("notifies each watcher once until they visit the topic again", async () => {
+    const t = await createTopic(
+      r,
+      await perms(alice),
+      alice,
+      { nodeId: forum.id, title: "x", source: "a" },
+      RULES,
+    );
+    if (!t.ok) throw new Error(t.problem);
+    await r.watches.watch(alice.id, t.topic.id);
+    await r.watches.watch(bob.id, t.topic.id);
+    expect(await r.watches.isWatching(bob.id, t.topic.id)).toBe(true);
+    expect(await r.watches.takeWatchersToNotify(t.topic.id, bob.id)).toEqual([alice.id]);
+    expect(await r.watches.takeWatchersToNotify(t.topic.id, bob.id)).toEqual([]);
+    await r.watches.visited(alice.id, t.topic.id);
+    expect((await r.watches.takeWatchersToNotify(t.topic.id, 0)).sort()).toEqual([alice.id, bob.id].sort());
+    await r.watches.unwatch(bob.id, t.topic.id);
+    expect(await r.watches.isWatching(bob.id, t.topic.id)).toBe(false);
   });
 });

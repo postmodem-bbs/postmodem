@@ -2,10 +2,13 @@
 // reports (Przemo's report.php): ?p=ID reports a post; ?mode=queue is the moderators' queue.
 // The store and the rules about who sees what are in @postmodem/modules (reports.ts).
 
+import { defaultLocale, systemMessage } from "@postmodem/core";
+import { negotiate, translator } from "@postmodem/i18n";
 import { excerpt } from "@postmodem/markup";
 import { REPORT_REASON_MAX, reportsFor, reportsStore } from "@postmodem/modules";
 import { error, fail, redirect } from "@sveltejs/kit";
 import { topicRef } from "#lib/server/board.ts";
+import { afterMessage } from "#lib/server/notifications.ts";
 import type { Actions, PageServerLoad, RequestEvent } from "./$types";
 
 function guard({ locals, url }: Pick<RequestEvent, "locals" | "url">) {
@@ -97,6 +100,24 @@ export const actions: Actions = {
       .trim()
       .slice(0, 500);
     await store.close(report.id, user.id, outcome);
+    // Tell the reporter, in their language, by private message from the moderator.
+    const reporter = await event.locals.ctx.db.repos.users.get(report.reporterId);
+    if (reporter && reporter.status === "active") {
+      const tr = translator(
+        negotiate({
+          requested: reporter.locale ?? undefined,
+          boardDefault: event.locals.ctx.settings.get(defaultLocale),
+        }),
+      );
+      const link = new URL(event.locals.urls.post(report.postId), event.locals.ctx.config.publicUrl).href;
+      const message = await systemMessage(event.locals.ctx.db.repos, {
+        senderId: user.id,
+        recipientId: reporter.id,
+        subject: tr("reports-closed-subject"),
+        source: tr("reports-closed-body", { link, outcome: outcome ? `\n\n${outcome}` : "" }),
+      });
+      await afterMessage(event.locals.ctx, message, reporter, user);
+    }
     await event.locals.ctx.db.repos.audit.append({
       actorId: user.id,
       action: "reports.closed",

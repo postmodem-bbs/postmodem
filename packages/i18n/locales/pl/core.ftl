@@ -318,3 +318,77 @@ reports-view-post = Zobacz post
 unread-new = nowe
 unread-mark-forum = Oznacz forum jako przeczytane
 unread-mark-all = Oznacz wszystkie fora jako przeczytane
+
+## Notifications
+mail-reply-subject = Nowa odpowiedź w temacie „{ $topic }”
+mail-reply-body =
+    Cześć { $name },
+
+    { $author } odpowiedział(a) w temacie „{ $topic }” na forum { $board }:
+
+    { $excerpt }
+
+    Przeczytaj: { $link }
+
+    Obserwujesz ten temat. Kolejny e-mail o nim dostaniesz dopiero po ponownej wizycie.
+    Żeby przestać obserwować, otwórz temat i wybierz „Przestań obserwować”: { $unwatch }
+mail-pm-subject = Nowa prywatna wiadomość na forum { $board }
+mail-pm-body =
+    Cześć { $name },
+
+    { $from } wysłał(a) Ci prywatną wiadomość na forum { $board }.
+
+    Przeczytaj: { $link }
+
+    Te e-maile możesz wyłączyć w ustawieniach konta.
+watch-start = Obserwuj temat
+watch-stop = Przestań obserwować
+
+## Private messages
+pm-title = Prywatne wiadomości
+pm-folders = Foldery
+pm-inbox = Odebrane
+pm-sent = Wysłane
+pm-new = Nowa wiadomość
+pm-sent-notice = Wiadomość wysłana.
+pm-empty = Nic tu nie ma.
+pm-subject = Temat
+pm-from = Od
+pm-to = Do
+pm-date = Data
+pm-not-read = jeszcze nieprzeczytana
+pm-reply = Odpowiedz
+pm-delete = Usuń
+pm-send = Wyślij
+pm-header = Wiadomości
+pm-error-sign-in = Zaloguj się, żeby wysyłać wiadomości.
+pm-error-forbidden = Nie możesz wysyłać prywatnych wiadomości.
+pm-error-recipient-unknown = Nie ma użytkownika o takiej nazwie.
+pm-error-inbox-full = Skrzynka odbiorcy jest pełna. Spróbuj później.
+pm-error-subject-missing = Nadaj wiadomości temat.
+pm-error-subject-long = Temat jest za długi (najwyżej 100 znaków).
+pm-error-body-missing = Napisz wiadomość.
+pm-error-body-long = Wiadomość jest za długa.
+pm-error-flood = Wysyłasz za szybko. Spróbuj za { $seconds } s.
+reports-closed-subject = Twoje zgłoszenie zostało rozpatrzone
+reports-closed-body = Moderatorzy zajęli się zgłoszonym przez Ciebie postem ({ $link }).{ $outcome }
+
+## Account
+account-title = Twoje konto
+account-link = Konto
+account-intro = Zalogowano jako { $name }
+account-profile = Profil
+account-saved = Zapisano.
+account-signature = Podpis
+account-signature-now = Twój obecny podpis:
+account-notifications = Wysyłaj mi e-mail
+account-notify-pm = gdy dostanę prywatną wiadomość
+account-auto-watch = o odpowiedziach w tematach, które zakładam lub w których odpowiadam
+account-password = Zmiana hasła
+account-password-current = Obecne hasło
+account-password-new = Nowe hasło
+account-password-change = Zmień hasło
+account-password-saved = Hasło zmienione. Inne urządzenia zostały wylogowane.
+account-error-website = Podaj pełny link, zaczynający się od https://
+account-error-signature = Podpis jest za długi (najwyżej { $max } znaków).
+account-error-current = To nie jest Twoje obecne hasło.

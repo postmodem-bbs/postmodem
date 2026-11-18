@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { expect, it } from "vitest";
-import { legacyAvatar, postSubject, safeRelativePath } from "./przemo.ts";
+import { legacyAvatar, legacyMessageView, postSubject, safeRelativePath } from "./przemo.ts";
 
 it("keeps a post's own subject and drops ones that only repeat the topic title", () => {
   expect(postSubject("", "Nowy komputer")).toBe("");
@@ -20,4 +20,14 @@ it("maps phpBB2 avatars and refuses paths that could leave the avatar directory"
   for (const bad of ["../config.php", "a/../../b", "/etc/passwd", "a\\..\\b", "", "a//b", "x\u0000.gif"])
     expect(legacyAvatar(1, bad), bad).toBeNull();
   expect(safeRelativePath("icon_smile.gif")).toBe(true);
+});
+
+it("maps phpBB2's private message types to who still sees each row", () => {
+  expect(legacyMessageView(1)).toEqual({ sender: true, recipient: true, read: false });
+  expect(legacyMessageView(5)).toEqual({ sender: true, recipient: true, read: false });
+  expect(legacyMessageView(0)).toEqual({ sender: false, recipient: true, read: true });
+  expect(legacyMessageView(3)).toEqual({ sender: false, recipient: true, read: true });
+  expect(legacyMessageView(2)).toEqual({ sender: true, recipient: false, read: true });
+  expect(legacyMessageView(4)).toEqual({ sender: true, recipient: false, read: true });
+  expect(legacyMessageView(9)).toBeNull();
 });

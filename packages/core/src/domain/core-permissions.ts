@@ -57,6 +57,7 @@ export const CORE_CAPABILITIES = [
   { key: "moderate.move", scope: "node", requires: readable, description: "Move topics" },
   { key: "moderate.split", scope: "node", requires: readable, description: "Split and merge topics" },
   { key: "moderate.ip", scope: "node", requires: readable, description: "See posters' IP addresses" },
+  { key: "pm.send", scope: "global", description: "Send private messages" },
   { key: "admin.access", scope: "global", description: "Open the admin panel" },
   { key: "admin.config", scope: "global", requires: ["admin.access"], description: "Change board settings" },
   {
@@ -101,6 +102,7 @@ const participate: Record<string, Effect> = {
   "post.delete.own": "allow",
   "poll.vote": "allow",
   "poll.create": "allow",
+  "pm.send": "allow",
 };
 
 /** Built-in roles, (re)installed on every start so upgrades can extend them. */

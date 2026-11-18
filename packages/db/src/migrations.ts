@@ -396,5 +396,51 @@ export function migrations(dialect: Dialect): Record<string, Migration> {
         await db.schema.createIndex("bans_kind").on("bans").columns(["kind", "value"]).execute();
       },
     },
+    "0011_messages_and_watches": {
+      async up(db: Db) {
+        // phpBB2's privmsgs (one row per message, each side deletes its own view), topics_watch,
+        // and the two notification preferences (user_notify_pm, user_notify).
+        await withId(db.schema.createTable("private_messages"), dialect)
+          .addColumn("sender_id", "bigint")
+          .addColumn("recipient_id", "bigint", notNull)
+          .addColumn("subject", "text", notNull)
+          .addColumn("source", "text", notNull)
+          .addColumn("created_at", "bigint", notNull)
+          .addColumn("read_at", "bigint")
+          .addColumn("sender_deleted", "integer", zero)
+          .addColumn("recipient_deleted", "integer", zero)
+          .execute();
+        await db.schema
+          .createIndex("pm_inbox")
+          .on("private_messages")
+          .columns(["recipient_id", "recipient_deleted", "created_at"])
+          .execute();
+        await db.schema
+          .createIndex("pm_sent")
+          .on("private_messages")
+          .columns(["sender_id", "sender_deleted", "created_at"])
+          .execute();
+        await db.schema
+          .createTable("topic_watches")
+          .addColumn("user_id", "bigint", notNull)
+          .addColumn("topic_id", "bigint", notNull)
+          .addColumn("notified", "integer", zero)
+          .addPrimaryKeyConstraint("topic_watches_pk", ["user_id", "topic_id"])
+          .execute();
+        await db.schema
+          .createIndex("topic_watches_topic")
+          .on("topic_watches")
+          .columns(["topic_id", "notified"])
+          .execute();
+        await db.schema
+          .alterTable("users")
+          .addColumn("notify_pm", "integer", (c) => c.notNull().defaultTo(1))
+          .execute();
+        await db.schema
+          .alterTable("users")
+          .addColumn("auto_watch", "integer", (c) => c.notNull().defaultTo(1))
+          .execute();
+      },
+    },
   };
 }

@@ -6,7 +6,9 @@ import { error, redirect } from "@sveltejs/kit";
 import { loadTopic, POSTS_PER_PAGE } from "#lib/server/board.ts";
 import { jsonLdTag } from "#lib/server/jsonld.ts";
 import { absoluteUrl, classicCategoryIds, ensureCanonical, resolveTopic } from "#lib/server/links.ts";
+import { topicVisited } from "#lib/server/notifications.ts";
 import { forRequest } from "#lib/server/packages.ts";
+import { readerOf } from "#lib/server/reader.ts";
 import { requestedStart } from "#lib/urls.ts";
 import type { PageServerLoad } from "./$types";
 
@@ -36,6 +38,8 @@ export const load: PageServerLoad = async ({ url, params, locals }) => {
     viewer: locals.perms.viewer,
     lastPostAt: topic.lastPostAt,
   });
+  await topicVisited(locals.ctx, locals.user, topic);
+  const watching = locals.user ? await repos.watches.isWatching(locals.user.id, topic.id) : null;
   const node = await repos.nodes.get(topic.nodeId);
   const raw = await repos.posts.getMany(data.posts.map((p) => p.id));
   const postSlots = Object.fromEntries(
@@ -46,6 +50,13 @@ export const load: PageServerLoad = async ({ url, params, locals }) => {
     ),
   );
   const afterPosts = await pkg.slot("topic.afterPosts", { topic, node });
+  // Signatures (phpBB2 showed them under every post): rendered once per author per page.
+  const reader = readerOf(locals);
+  const authors = await repos.users.getMany(data.posts.flatMap((p) => (p.authorRef ? [p.authorRef.id] : [])));
+  const signatures = new Map<number, string>();
+  for (const [id, u] of authors)
+    if (u.signatureSource.trim())
+      signatures.set(id, await locals.ctx.renderer.preview(u.signatureSource, reader));
 
   // Reader-dependent parts of the cached HTML ([you], [hide]).
   const t = translator(locals.locale);
@@ -57,11 +68,13 @@ export const load: PageServerLoad = async ({ url, params, locals }) => {
     description: data.summary?.description ?? "",
     jsonLd: data.summary ? jsonLdTag(discussionPosting(data, site, urls)) : "",
     posts: data.posts.map((p) => ({
+      signature: (p.authorRef && signatures.get(p.authorRef.id)) || "",
       ...p,
       slots: postSlots[p.id] ?? [],
-      html: locals.ctx.renderer.forReader(p.html, null, messages),
+      html: locals.ctx.renderer.forReader(p.html, locals.user?.username ?? null, messages),
     })),
     afterPosts,
+    watching,
   };
 };
 

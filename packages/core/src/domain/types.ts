@@ -107,6 +107,10 @@ export interface User {
   /** Version of the board rules the user accepted, and when (null: never, e.g. imported). */
   rulesVersion: number | null;
   rulesAcceptedAt: Millis | null;
+  /** E-mail when a private message arrives (phpBB2 user_notify_pm). */
+  notifyPm: boolean;
+  /** Watch topics one starts or replies to (phpBB2 user_notify), for reply e-mails. */
+  autoWatch: boolean;
 }
 
 /** A signed-in browser. The id is a hash of the cookie value; the cookie itself is never stored. */
@@ -225,6 +229,20 @@ export interface Ban {
   createdBy: Id | null;
   createdAt: Millis;
   expiresAt: Millis | null;
+}
+
+/** phpBB2's privmsgs: one row per message; each side can delete its own view of it. */
+export interface PrivateMessage {
+  id: Id;
+  /** null: sent by the board itself. */
+  senderId: Id | null;
+  recipientId: Id;
+  subject: string;
+  source: string;
+  createdAt: Millis;
+  readAt: Millis | null;
+  senderDeleted: boolean;
+  recipientDeleted: boolean;
 }
 
 export interface AuditEntry {

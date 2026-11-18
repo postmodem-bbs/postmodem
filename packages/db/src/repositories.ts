@@ -23,6 +23,7 @@ import {
   type PageRequest,
   type PasswordScheme,
   type Post,
+  type PrivateMessage,
   planMove,
   type Rank,
   type Repositories,
@@ -180,6 +181,8 @@ const toUser = (r: Selectable<UsersTable>): User => ({
   timezone: r.timezone,
   rulesVersion: r.rulesVersion === null ? null : n(r.rulesVersion),
   rulesAcceptedAt: r.rulesAcceptedAt === null ? null : n(r.rulesAcceptedAt),
+  notifyPm: !!r.notifyPm,
+  autoWatch: !!r.autoWatch,
 });
 
 const toJob = (r: Selectable<JobsTable>): Job => ({
@@ -760,6 +763,8 @@ export function createRepositories(db: Db): Repositories {
           timezone: input.timezone ?? null,
           rulesVersion: input.rulesVersion ?? null,
           rulesAcceptedAt: input.rulesAcceptedAt ?? null,
+          notifyPm: input.notifyPm === false ? 0 : 1,
+          autoWatch: input.autoWatch === false ? 0 : 1,
         })
         .returning("id")
         .executeTakeFirstOrThrow();
@@ -813,12 +818,14 @@ export function createRepositories(db: Db): Repositories {
       return r && toUser(r);
     },
     async update(id, patch) {
-      const { email, slug: _slug, ...rest } = patch;
+      const { email, slug: _slug, notifyPm, autoWatch, ...rest } = patch;
       const before = rest.username !== undefined ? await users.get(id) : undefined;
       await db
         .updateTable("users")
         .set({
           ...rest,
+          ...(notifyPm !== undefined ? { notifyPm: notifyPm ? 1 : 0 } : {}),
+          ...(autoWatch !== undefined ? { autoWatch: autoWatch ? 1 : 0 } : {}),
           ...(rest.username !== undefined
             ? { usernameKey: nameKey(rest.username), usernameSkeleton: skeleton(rest.username) }
             : {}),
@@ -1240,6 +1247,152 @@ export function createRepositories(db: Db): Repositories {
     },
   };
 
+  const toMessage = (m: Selectable<Schema["privateMessages"]>): PrivateMessage => ({
+    id: m.id,
+    senderId: m.senderId,
+    recipientId: m.recipientId,
+    subject: m.subject,
+    source: m.source,
+    createdAt: n(m.createdAt),
+    readAt: m.readAt === null ? null : n(m.readAt),
+    senderDeleted: !!m.senderDeleted,
+    recipientDeleted: !!m.recipientDeleted,
+  });
+  const messageFolder = async (column: "recipientId" | "senderId", userId: Id, page: PageRequest) => {
+    const deleted = column === "recipientId" ? "recipientDeleted" : "senderDeleted";
+    const base = db.selectFrom("privateMessages").where(column, "=", userId).where(deleted, "=", 0);
+    const total = await base.select((eb) => eb.fn.countAll().as("c")).executeTakeFirstOrThrow();
+    const rows = await base
+      .selectAll()
+      .orderBy("createdAt", "desc")
+      .orderBy("id", "desc")
+      .limit(page.perPage)
+      .offset(offset(page))
+      .execute();
+    return paginate(rows.map(toMessage), n(total.c), page);
+  };
+  const messages: Repositories["messages"] = {
+    async create(m) {
+      const { id } = await db
+        .insertInto("privateMessages")
+        .values({
+          ...(m.id !== undefined ? { id: m.id } : {}),
+          senderId: m.senderId,
+          recipientId: m.recipientId,
+          subject: m.subject,
+          source: m.source,
+          createdAt: m.createdAt,
+          readAt: m.readAt ?? null,
+          senderDeleted: m.senderDeleted ? 1 : 0,
+          recipientDeleted: m.recipientDeleted ? 1 : 0,
+        })
+        .returning("id")
+        .executeTakeFirstOrThrow();
+      return (await messages.get(id))!;
+    },
+    async get(id) {
+      const r = await db.selectFrom("privateMessages").selectAll().where("id", "=", id).executeTakeFirst();
+      return r && toMessage(r);
+    },
+    inbox: (userId, page) => messageFolder("recipientId", userId, page),
+    sent: (userId, page) => messageFolder("senderId", userId, page),
+    async unreadCount(userId) {
+      const r = await db
+        .selectFrom("privateMessages")
+        .select((eb) => eb.fn.countAll().as("c"))
+        .where("recipientId", "=", userId)
+        .where("recipientDeleted", "=", 0)
+        .where("readAt", "is", null)
+        .executeTakeFirstOrThrow();
+      return n(r.c);
+    },
+    async inboxCount(userId) {
+      const r = await db
+        .selectFrom("privateMessages")
+        .select((eb) => eb.fn.countAll().as("c"))
+        .where("recipientId", "=", userId)
+        .where("recipientDeleted", "=", 0)
+        .executeTakeFirstOrThrow();
+      return n(r.c);
+    },
+    async markRead(id, at) {
+      await db
+        .updateTable("privateMessages")
+        .set({ readAt: at })
+        .where("id", "=", id)
+        .where("readAt", "is", null)
+        .execute();
+    },
+    async deleteFor(id, userId) {
+      const m = await messages.get(id);
+      if (!m) return;
+      const patch = {
+        ...(m.recipientId === userId ? { recipientDeleted: 1 } : {}),
+        ...(m.senderId === userId ? { senderDeleted: 1 } : {}),
+      };
+      if (!Object.keys(patch).length) return;
+      await db.updateTable("privateMessages").set(patch).where("id", "=", id).execute();
+      await db
+        .deleteFrom("privateMessages")
+        .where("id", "=", id)
+        .where("recipientDeleted", "=", 1)
+        .where((eb) => eb.or([eb("senderDeleted", "=", 1), eb("senderId", "is", null)]))
+        .execute();
+    },
+  };
+
+  const watches: Repositories["watches"] = {
+    async watch(userId, topicId) {
+      await db
+        .insertInto("topicWatches")
+        .values({ userId, topicId, notified: 0 })
+        .onConflict((oc) => oc.columns(["userId", "topicId"]).doNothing())
+        .execute();
+    },
+    async unwatch(userId, topicId) {
+      await db
+        .deleteFrom("topicWatches")
+        .where("userId", "=", userId)
+        .where("topicId", "=", topicId)
+        .execute();
+    },
+    async isWatching(userId, topicId) {
+      return !!(await db
+        .selectFrom("topicWatches")
+        .select("userId")
+        .where("userId", "=", userId)
+        .where("topicId", "=", topicId)
+        .executeTakeFirst());
+    },
+    async takeWatchersToNotify(topicId, except) {
+      const rows = await db
+        .selectFrom("topicWatches")
+        .select("userId")
+        .where("topicId", "=", topicId)
+        .where("notified", "=", 0)
+        .where("userId", "!=", except)
+        .execute();
+      const ids = rows.map((r) => r.userId);
+      if (ids.length)
+        await db
+          .updateTable("topicWatches")
+          .set({ notified: 1 })
+          .where("topicId", "=", topicId)
+          .where("userId", "in", ids)
+          .execute();
+      return ids;
+    },
+    async visited(userId, topicId) {
+      await db
+        .updateTable("topicWatches")
+        .set({ notified: 0 })
+        .where("userId", "=", userId)
+        .where("topicId", "=", topicId)
+        .where("notified", "=", 1)
+        .execute();
+    },
+  };
+
   const polls: Repositories["polls"] = {
     async create(p) {
       const { id } = await db
@@ -1553,6 +1706,8 @@ export function createRepositories(db: Db): Repositories {
     smilies,
     polls,
     bans,
+    messages,
+    watches,
     transaction: (fn) =>
       db.isTransaction
         ? fn(createRepositories(db))

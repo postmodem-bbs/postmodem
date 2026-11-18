@@ -641,6 +641,31 @@ tr.pm-unread .forum-title {
   padding-inline-start: var(--pm-space-3);
   border-inline-start: 4px solid var(--pm-color-danger);
 }
+.pm-folders {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pm-space-3);
+  align-items: center;
+  margin-block-end: var(--pm-space-3);
+}
+.pm-folders a[aria-current="page"] {
+  font-weight: 700;
+}
+tr.pm-unread a {
+  font-weight: 700;
+}
+.pm-actions {
+  display: flex;
+  gap: var(--pm-space-3);
+  align-items: center;
+}
+.post-signature {
+  margin-block-start: var(--pm-space-3);
+  padding-block-start: var(--pm-space-2);
+  border-block-start: 1px solid var(--pm-color-border);
+  color: var(--pm-color-text-muted);
+  font-size: 0.9rem;
+}
 .post-subject {
   font-weight: 600;
   margin-inline-start: var(--pm-space-2);

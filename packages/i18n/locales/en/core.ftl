@@ -307,3 +307,77 @@ reports-view-post = View post
 unread-new = new
 unread-mark-forum = Mark forum read
 unread-mark-all = Mark all forums read
+
+## Notifications
+mail-reply-subject = New reply in "{ $topic }"
+mail-reply-body =
+    Hello { $name },
+
+    { $author } replied in "{ $topic }" on { $board }:
+
+    { $excerpt }
+
+    Read it: { $link }
+
+    You're watching this topic. You won't get more e-mails about it until you visit it again.
+    To stop watching, open the topic and choose "Stop watching": { $unwatch }
+mail-pm-subject = New private message on { $board }
+mail-pm-body =
+    Hello { $name },
+
+    { $from } sent you a private message on { $board }.
+
+    Read it: { $link }
+
+    You can turn these e-mails off in your account settings.
+watch-start = Watch this topic
+watch-stop = Stop watching
+
+## Private messages
+pm-title = Private messages
+pm-folders = Folders
+pm-inbox = Inbox
+pm-sent = Sent
+pm-new = New message
+pm-sent-notice = Message sent.
+pm-empty = No messages here.
+pm-subject = Subject
+pm-from = From
+pm-to = To
+pm-date = Date
+pm-not-read = not read yet
+pm-reply = Reply
+pm-delete = Delete
+pm-send = Send
+pm-header = Messages
+pm-error-sign-in = Sign in to send messages.
+pm-error-forbidden = You can't send private messages.
+pm-error-recipient-unknown = There's no member with that name.
+pm-error-inbox-full = Their inbox is full. Try again later.
+pm-error-subject-missing = Give the message a subject.
+pm-error-subject-long = The subject is too long (at most 100 characters).
+pm-error-body-missing = Write a message.
+pm-error-body-long = The message is too long.
+pm-error-flood = You're sending too fast. Try again in { $seconds } s.
+reports-closed-subject = Your report was handled
+reports-closed-body = The moderators have looked at the post you reported ({ $link }).{ $outcome }
+
+## Account
+account-title = Your account
+account-link = Account
+account-intro = Signed in as { $name }
+account-profile = Profile
+account-saved = Saved.
+account-signature = Signature
+account-signature-now = Your signature now:
+account-notifications = E-mail me
+account-notify-pm = when I get a private message
+account-auto-watch = about replies in topics I start or reply to
+account-password = Change password
+account-password-current = Current password
+account-password-new = New password
+account-password-change = Change password
+account-password-saved = Password changed. Other devices have been signed out.
+account-error-website = Enter a full link, starting with https://
+account-error-signature = The signature is too long (at most { $max } characters).
+account-error-current = That's not your current password.

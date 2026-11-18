@@ -49,7 +49,8 @@ export type IssueKind =
   | "flattened-category"
   | "missing-parent"
   | "remote-avatar-dropped"
-  | "orphan-poll";
+  | "orphan-poll"
+  | "orphan-message";
 
 export interface ImportReport {
   source: { kind: "przemo"; prefix: string; tables: number };
@@ -103,6 +104,8 @@ const USED: Record<string, string[]> = {
     "user_lang",
     "user_avatar",
     "user_avatar_type",
+    "user_notify",
+    "user_notify_pm",
   ],
   groups: [
     "group_id",
@@ -155,6 +158,16 @@ const USED: Record<string, string[]> = {
   vote_desc: ["vote_id", "topic_id", "vote_text", "vote_start", "vote_length", "vote_hide"],
   vote_results: ["vote_id", "vote_option_id", "vote_option_text", "vote_result"],
   vote_voters: ["vote_id", "vote_user_id"],
+  privmsgs: [
+    "privmsgs_id",
+    "privmsgs_type",
+    "privmsgs_subject",
+    "privmsgs_from_userid",
+    "privmsgs_to_userid",
+    "privmsgs_date",
+  ],
+  privmsgs_text: ["privmsgs_text_id", "privmsgs_bbcode_uid", "privmsgs_text"],
+  topics_watch: ["topic_id", "user_id"],
   banlist: ["ban_userid"],
 };
 const CONFIG_USED = ["sitename", "site_desc", "default_lang"];
@@ -196,6 +209,30 @@ export function safeRelativePath(path: string): boolean {
     !path.startsWith("/") &&
     path.split("/").every((seg) => seg !== "" && seg !== "." && seg !== "..")
   );
+}
+
+/**
+ * Who still sees a phpBB2 private message, by privmsgs_type: 1 new and 5 unread are one row
+ * both sides see (the recipient's inbox, the sender's outbox); 0 read and 3 saved-in are the
+ * recipient's copy (phpBB2 gave the sender a separate 2 "sent" copy once it was read); 2 sent
+ * and 4 saved-out are the sender's.
+ */
+export function legacyMessageView(
+  type: number,
+): { sender: boolean; recipient: boolean; read: boolean } | null {
+  switch (type) {
+    case 1:
+    case 5:
+      return { sender: true, recipient: true, read: false };
+    case 0:
+    case 3:
+      return { sender: false, recipient: true, read: true };
+    case 2:
+    case 4:
+      return { sender: true, recipient: false, read: true };
+    default:
+      return null;
+  }
 }
 
 /** A post's own subject, or "" when it only repeats the topic title ("Re: …" included). */
@@ -373,6 +410,8 @@ export async function importPrzemo(
             signatureSource: fromPhpbb2Storage(text(row.user_sig), plain(row.user_sig_bbcode_uid)),
             locale: LOCALES[plain(row.user_lang)] ?? null,
             avatar: legacyAvatar(num(row.user_avatar_type), plain(row.user_avatar)),
+            notifyPm: num(row.user_notify_pm) !== 0,
+            autoWatch: num(row.user_notify) === 1,
           });
           if (num(row.user_avatar_type) === 2 && !legacyAvatar(2, plain(row.user_avatar)))
             issue("remote-avatar-dropped", "users", id, "remote avatar without https; not shown");
@@ -698,6 +737,86 @@ export async function importPrzemo(
           count("polls", "imported");
         }
         await setCheckpoint(tx, "polls", DONE);
+      });
+    }
+
+    // ── private messages (vanilla phpBB2), in batches ────────────────────────
+    if (has("privmsgs"))
+      for (let after = (await checkpoint("messages")) ?? 0; after !== DONE; ) {
+        const batch = await source.batch("privmsgs", "privmsgs_id", after, batchSize);
+        await r.transaction(async (tx) => {
+          const ids = batch.map((m) => num(m.privmsgs_id));
+          const texts =
+            ids.length && has("privmsgs_text")
+              ? new Map(
+                  (
+                    await source.query(
+                      `SELECT * FROM {p}privmsgs_text WHERE privmsgs_text_id IN (${ids.map(() => "?").join(",")})`,
+                      ids,
+                    )
+                  ).map((t) => [num(t.privmsgs_text_id), t] as const),
+                )
+              : new Map<number, Row>();
+          const people = await tx.users.getMany(
+            batch
+              .flatMap((m) => [num(m.privmsgs_from_userid), num(m.privmsgs_to_userid)])
+              .filter((u) => u > 0),
+          );
+          for (const m of batch) {
+            count("messages", "read");
+            const id = num(m.privmsgs_id);
+            const view = legacyMessageView(num(m.privmsgs_type));
+            const to = num(m.privmsgs_to_userid);
+            const from = num(m.privmsgs_from_userid);
+            if (!view || !people.has(to)) {
+              count("messages", "skipped");
+              issue(
+                "orphan-message",
+                "privmsgs",
+                id,
+                view ? `recipient ${to} does not exist` : "unknown message type",
+              );
+              continue;
+            }
+            const at = ms(m.privmsgs_date) ?? Date.now();
+            const t = texts.get(id);
+            await tx.messages.create({
+              id,
+              senderId: people.has(from) ? from : null,
+              recipientId: to,
+              subject: plain(m.privmsgs_subject, "privmsgs", id) || "(no subject)",
+              source: fromPhpbb2Storage(
+                text(t?.privmsgs_text, "privmsgs_text", id),
+                plain(t?.privmsgs_bbcode_uid),
+              ),
+              createdAt: at,
+              readAt: view.read ? at : null,
+              senderDeleted: !view.sender,
+              recipientDeleted: !view.recipient,
+            });
+            count("messages", "imported");
+          }
+          after = batch.length < batchSize ? DONE : num(batch.at(-1)!.privmsgs_id);
+          await setCheckpoint(tx, "messages", after);
+        });
+      }
+
+    // ── topic watching (vanilla topics_watch) ────────────────────────────────
+    if ((await checkpoint("watches")) !== DONE && has("topics_watch")) {
+      const rows = await source.all("topics_watch");
+      await r.transaction(async (tx) => {
+        const people = await tx.users.getMany(rows.map((w) => num(w.user_id)));
+        const topics = await tx.topics.getMany(rows.map((w) => num(w.topic_id)));
+        for (const w of rows) {
+          count("watches", "read");
+          if (!people.has(num(w.user_id)) || !topics.has(num(w.topic_id))) {
+            count("watches", "skipped");
+            continue;
+          }
+          await tx.watches.watch(num(w.user_id), num(w.topic_id));
+          count("watches", "imported");
+        }
+        await setCheckpoint(tx, "watches", DONE);
       });
     }
 

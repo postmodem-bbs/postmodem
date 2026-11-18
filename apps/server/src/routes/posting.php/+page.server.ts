@@ -19,7 +19,9 @@ import {
 import { error, fail, redirect } from "@sveltejs/kit";
 import { nodeRef, topicRef } from "#lib/server/board.ts";
 import { classicCategoryIds } from "#lib/server/links.ts";
+import { afterPost } from "#lib/server/notifications.ts";
 import { quoteSource } from "#lib/server/posting.ts";
+import { readerOf } from "#lib/server/reader.ts";
 import type { Actions, PageServerLoad, RequestEvent } from "./$types";
 
 type Mode = "newtopic" | "reply" | "quote" | "editpost" | "delete";
@@ -133,7 +135,7 @@ export const actions: Actions = {
       type: (String(form.get("type") ?? "normal") || "normal") as TopicType,
     };
     if (form.get("intent") === "preview")
-      return { values, preview: await ctx.renderer.preview(values.source) };
+      return { values, preview: await ctx.renderer.preview(values.source, readerOf(locals)) };
 
     const now = Date.now();
     const key = String(locals.user!.id);
@@ -185,6 +187,7 @@ export const actions: Actions = {
       mode === "newtopic" ? "topic.created" : mode === "editpost" ? "post.edited" : "post.created",
       happened,
     );
+    if (mode !== "editpost") await afterPost(ctx, locals.urls, result.topic, result.post, locals.user!);
     ctx.log.info(mode === "editpost" ? "post edited" : "post created", {
       postId: result.post.id,
       userId: locals.user!.id,

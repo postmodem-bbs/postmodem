@@ -56,6 +56,8 @@ export interface UsersTable {
   timezone: string | null;
   rulesVersion: number | null;
   rulesAcceptedAt: number | null;
+  notifyPm: Bool;
+  autoWatch: Bool;
 }
 
 export interface CredentialsTable {
@@ -219,6 +221,24 @@ export interface PollVotersTable {
   userId: number;
 }
 
+export interface PrivateMessagesTable {
+  id: Generated<number>;
+  senderId: number | null;
+  recipientId: number;
+  subject: string;
+  source: string;
+  createdAt: number;
+  readAt: number | null;
+  senderDeleted: Bool;
+  recipientDeleted: Bool;
+}
+
+export interface TopicWatchesTable {
+  userId: number;
+  topicId: number;
+  notified: Bool;
+}
+
 export interface BansTable {
   id: Generated<number>;
   kind: string;
@@ -275,6 +295,8 @@ export interface Schema {
   pollOptions: PollOptionsTable;
   pollVoters: PollVotersTable;
   bans: BansTable;
+  privateMessages: PrivateMessagesTable;
+  topicWatches: TopicWatchesTable;
   auditLog: AuditLogTable;
   legacyIds: LegacyIdsTable;
   slugHistory: SlugHistoryTable;
@@ -294,4 +316,5 @@ export const ID_TABLES = [
   "smilies",
   "audit_log",
   "polls",
+  "private_messages",
 ] as const;

@@ -7,6 +7,7 @@ export {
   type ImportReport,
   importPrzemo,
   legacyAvatar,
+  legacyMessageView,
   SOURCE,
   safeRelativePath,
   summarise,
