@@ -4,7 +4,7 @@
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { CamelCasePlugin, Kysely, SqliteDialect } from "kysely";
+import { CamelCasePlugin, CompiledQuery, type Driver, Kysely, SqliteDialect } from "kysely";
 import { PostgresJSDialect } from "kysely-postgres-js";
 import postgres from "postgres";
 import type { Dialect } from "./migrations.ts";
@@ -16,6 +16,22 @@ export interface Engine {
 }
 
 const plugins = [new CamelCasePlugin()];
+
+/**
+ * SQLite transactions that take the write lock when they start (BEGIN IMMEDIATE). A plain
+ * BEGIN only reads until the first write; if another process (the CLI next to a running
+ * board) writes in between, SQLite can't upgrade the lock and fails at once with "database
+ * is locked" instead of waiting (busy_timeout doesn't apply, to avoid a deadlock).
+ */
+class ImmediateSqliteDialect extends SqliteDialect {
+  override createDriver(): Driver {
+    const driver = super.createDriver();
+    driver.beginTransaction = async (connection) => {
+      await connection.executeQuery(CompiledQuery.raw("begin immediate"));
+    };
+    return driver;
+  }
+}
 
 /** Prepared statements kept per SQL text; queries are built from a small set of shapes. */
 const STATEMENT_CACHE_SIZE = 500;
@@ -68,7 +84,7 @@ export function sqliteEngine(path: string, opts: { onQuery?: (sql: string) => vo
   return {
     dialect: "sqlite",
     db: new Kysely<Schema>({
-      dialect: new SqliteDialect({ database: nodeSqliteAdapter(raw) }),
+      dialect: new ImmediateSqliteDialect({ database: nodeSqliteAdapter(raw) }),
       plugins,
       ...(opts.onQuery ? { log: (e) => opts.onQuery!(e.query.sql) } : {}),
     }),
