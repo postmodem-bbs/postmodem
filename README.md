@@ -5,10 +5,11 @@ batteries included, every battery removable, trivially self-hosted.
 Classic forum layout, modern internals: accessible, themeable, extensible,
 works without JavaScript, and ships as one Docker image.
 
-> **Status: M1 in progress.** Read-only board: index, forums (with Przemo-style
-> sub-forums) and topics on phpBB2's own URLs, posts rendered from BBCode, per-forum
-> permissions, registration and sign-in. No posting yet. See
-> [docs/milestones/M1.md](docs/milestones/M1.md).
+> **Status: 0.1.0, public beta.** A usable board: reading, posting, moderation, private
+> messages, notifications, search, an admin panel, spam protection, and an importer for
+> phpBB2 / Przemo boards that keeps their links working. See the
+> [0.1.0 release notes](docs/releases/0.1.0.md) for what's in it and what isn't yet, and
+> [CONTAINERS.md §4.6](docs/CONTAINERS.md#46-a-public-staging-board-m2a) to run one.
 >
 > Try it with demo content: `pnpm cli seed-demo`, then `pnpm dev`
 > (or `postmodem seed-demo` inside the container). Demo members `Łukasz Żółć`,

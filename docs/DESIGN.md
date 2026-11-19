@@ -429,7 +429,8 @@ disabled, which is how we keep feature parity with Przemo.
 2. **M1 — Readable board:** node tree, topics, posts, auth, registration,
    Classic theme, permissions engine. *Importer from Przemo* early so we can
    test against real-shaped data. Detailed plan: [milestones/M1.md](milestones/M1.md).
-3. **M2 — Usable board** ([milestones/M2.md](milestones/M2.md), draft): **M2a** is a
+3. **M2 — Usable board** ([milestones/M2.md](milestones/M2.md); **M2a done 2026-11-19, released as
+   [0.1.0](releases/0.1.0.md)**): **M2a** is a
    public beta (~13–17 days) that can run as a staging board: posting, moderation, PMs and notifications,
    search, anti-abuse, admin panel v0, backup, export and account deletion, plus the package
    runtime with its first tier A packages (`quick-reply`, `reports`, `unread-tracking`).
