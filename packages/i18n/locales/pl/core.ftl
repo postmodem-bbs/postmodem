@@ -571,3 +571,33 @@ admin-actor = Kto
 admin-action = Co
 admin-target = Czego dotyczy
 admin-system = system
+
+## Privacy and your data
+deleted-user = Usunięty użytkownik
+account-deleted-notice = Twoje konto zostało usunięte. Dziękujemy, że tu byłeś.
+account-data = Twoje dane
+account-data-intro = Pobierz wszystko, co to forum przechowuje o Tobie: profil, posty i prywatne wiadomości.
+account-export = Pobierz moje dane (JSON)
+account-delete = Usuń moje konto
+account-delete-keeps-posts = Twój profil, adres e-mail, hasło, prywatne wiadomości i ustawienia zostaną usunięte. Posty zostaną jako „Usunięty użytkownik”, żeby wątki miały sens. Tego nie da się cofnąć.
+account-delete-removes-posts = Twój profil, adres e-mail, hasło, prywatne wiadomości, ustawienia i posty zostaną usunięte. Tego nie da się cofnąć.
+account-delete-confirm = Tak, usuń moje konto na zawsze
+account-delete-confirm-required = Zaznacz pole, żeby potwierdzić.
+account-delete-submit = Usuń moje konto
+privacy-title = Prywatność
+privacy-link = Prywatność
+setting-core-board-privacy = Informacja o prywatności (puste: wbudowana)
+setting-core-accounts-deletedPosts = Posty usuniętego użytkownika (keep: jako „Usunięty użytkownik”)
+privacy-default =
+    { $board } działa na Postmodemie. Ta strona mówi, co przechowujemy o Tobie i po co.
+
+    Przy rejestracji: nazwę użytkownika, adres e-mail, skrót hasła (nigdy samo hasło), datę dołączenia i ostatniej wizyty oraz wersję zaakceptowanego regulaminu. Adres e-mail służy do jego potwierdzenia, resetu hasła i wybranych przez Ciebie powiadomień; inni użytkownicy go nie widzą.
+
+    To, co piszesz: posty, prywatne wiadomości i pola profilu. Posty są publiczne w forach, w których piszesz; prywatne wiadomości widzisz tylko Ty i druga osoba.
+
+    Ciasteczka: jedno ciasteczko sesji po zalogowaniu i dwa na język i motyw, jeśli je wybierzesz. Bez śledzenia, bez reklam, bez skryptów zewnętrznych.
+
+    Sesje zapamiętują rodzaj przeglądarki, żebyś widział, gdzie jesteś zalogowany. Moderatorzy mogą prowadzić zapis działań moderacyjnych z powodami.
+
+    W ustawieniach konta możesz pobrać wszystkie swoje dane i usunąć konto. Usunięcie kasuje profil, adres e-mail, hasło, prywatne wiadomości i ustawienia; posty zostają jako „Usunięty użytkownik”, chyba że to forum je usuwa.
+register-privacy = Co przechowujemy o Tobie i po co:

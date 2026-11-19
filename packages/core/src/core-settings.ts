@@ -143,6 +143,20 @@ export const searchesPerMinute = defineSetting({
   default: 30,
 });
 
+/** The board's privacy notice (plain text, paragraphs separated by blank lines); empty: the built-in one. */
+export const privacyNotice = defineSetting({
+  key: "core.board.privacy",
+  schema: z.string().max(50_000),
+  default: "",
+});
+
+/** What happens to a deleted member's posts: kept under "Deleted user" (phpBB2), or removed. */
+export const deletedMemberPosts = defineSetting<"keep" | "remove">({
+  key: "core.accounts.deletedPosts",
+  schema: z.enum(["keep", "remove"]),
+  default: "keep",
+});
+
 /** Whether guests may see the member list (phpBB2 showed it to everyone). */
 export const memberlistForGuests = defineSetting({
   key: "core.memberlist.guests",
@@ -170,5 +184,7 @@ export function coreSettings(): SettingsRegistry {
     enabledPackagesSetting,
     memberlistForGuests,
     searchesPerMinute,
+    deletedMemberPosts,
+    privacyNotice,
   );
 }

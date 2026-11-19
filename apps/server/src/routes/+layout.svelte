@@ -57,7 +57,8 @@
     <p>
       {t("footer-powered", { product: "Postmodem", version: data.version })} ·
       <a href={data.sourceUrl} rel="noopener">{t("footer-source")}</a> ·
-      <a href="https://www.gnu.org/licenses/agpl-3.0.html" rel="noopener license">{t("footer-licence")}</a>
+      <a href="https://www.gnu.org/licenses/agpl-3.0.html" rel="noopener license">{t("footer-licence")}</a> ·
+      <a href="/privacy">{t("privacy-link")}</a>
     </p>
 
     <form method="POST" action="/preferences" class="prefs">

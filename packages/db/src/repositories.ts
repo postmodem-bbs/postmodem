@@ -729,6 +729,29 @@ export function createRepositories(db: Db, dialect: "sqlite" | "pg"): Repositori
         .where("id", "in", postIds)
         .execute();
     },
+    async byAuthor(authorId, afterId, limit) {
+      const rows = await db
+        .selectFrom("posts")
+        .selectAll()
+        .where("authorId", "=", authorId)
+        .where("id", ">", afterId)
+        .orderBy("id")
+        .limit(limit)
+        .execute();
+      return rows.map(toPost);
+    },
+    async anonymiseAuthor(authorId, name) {
+      await db
+        .updateTable("posts")
+        .set({ authorId: null, authorName: name })
+        .where("authorId", "=", authorId)
+        .execute();
+      await db
+        .updateTable("topics")
+        .set({ authorId: null, authorName: name })
+        .where("authorId", "=", authorId)
+        .execute();
+    },
     async batchAfter(afterId, limit) {
       const rows = await db
         .selectFrom("posts")
@@ -1014,6 +1037,9 @@ export function createRepositories(db: Db, dialect: "sqlite" | "pg"): Repositori
           pending: r.pending === 1,
         }),
       );
+    },
+    async removeAllFor(userId) {
+      await db.deleteFrom("memberships").where("userId", "=", userId).execute();
     },
     async groupsOf(userId) {
       const rows = await db
@@ -1359,6 +1385,20 @@ export function createRepositories(db: Db, dialect: "sqlite" | "pg"): Repositori
         .where("readAt", "is", null)
         .execute();
     },
+    async allFor(userId) {
+      const rows = await db
+        .selectFrom("privateMessages")
+        .selectAll()
+        .where((eb) =>
+          eb.or([
+            eb.and([eb("recipientId", "=", userId), eb("recipientDeleted", "=", 0)]),
+            eb.and([eb("senderId", "=", userId), eb("senderDeleted", "=", 0)]),
+          ]),
+        )
+        .orderBy("createdAt")
+        .execute();
+      return rows.map(toMessage);
+    },
     async deleteFor(id, userId) {
       const m = await messages.get(id);
       if (!m) return;
@@ -1417,6 +1457,14 @@ export function createRepositories(db: Db, dialect: "sqlite" | "pg"): Repositori
           .where("userId", "in", ids)
           .execute();
       return ids;
+    },
+    async topicsOf(userId) {
+      return (
+        await db.selectFrom("topicWatches").select("topicId").where("userId", "=", userId).execute()
+      ).map((r) => r.topicId);
+    },
+    async removeAllFor(userId) {
+      await db.deleteFrom("topicWatches").where("userId", "=", userId).execute();
     },
     async visited(userId, topicId) {
       await db
@@ -1510,6 +1558,9 @@ export function createRepositories(db: Db, dialect: "sqlite" | "pg"): Repositori
       if (!postIds.length) return;
       if (sqlite) await sql`delete from search_fts where rowid in (${sql.join(postIds)})`.execute(db);
       await db.deleteFrom("searchMeta").where("postId", "in", postIds).execute();
+    },
+    async forgetAuthor(authorId) {
+      await db.updateTable("searchMeta").set({ authorId: null }).where("authorId", "=", authorId).execute();
     },
     async clear() {
       if (sqlite) await sql`delete from search_fts`.execute(db);

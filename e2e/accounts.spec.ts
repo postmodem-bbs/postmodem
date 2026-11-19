@@ -243,6 +243,51 @@ test("signed-in members show up as online, and see their members-only topics on 
   await expect(recent.getByRole("link", { name: "Tajny zlot użytkowników" })).toBeVisible();
 });
 
+test("a member downloads their data and deletes their account", async ({ page }) => {
+  test.skip(!MAILPIT, "needs Mailpit (PM_MAILPIT_URL)");
+  const name = unique();
+  await registerAccount(page, name);
+  await page.goto(linkIn((await latestMail(`${name}@example.org`)).text, "/verify"));
+  await page.getByRole("button", { name: "Confirm and sign in" }).click();
+  await expect(page.locator(".site-header")).toContainText(`Signed in as ${name}`);
+
+  await page.goto("/account");
+  const download = page.waitForEvent("download");
+  await page.getByRole("link", { name: "Download my data (JSON)" }).click();
+  const file = await (await download).path();
+  const data = JSON.parse(await (await import("node:fs/promises")).readFile(file, "utf8"));
+  expect(data.account).toMatchObject({ username: name, email: `${name}@example.org` });
+  expect(JSON.stringify(data)).not.toMatch(/argon2|hash/i);
+
+  const del = page.locator("form[action='?/delete']");
+  await del.getByLabel("Current password").fill("wrong password here");
+  await del.getByLabel("Yes, delete my account for good").check();
+  await del.getByRole("button", { name: "Delete my account" }).click();
+  await expect(page.locator("#delete-password-error")).toHaveText("That's not your current password.");
+  await page
+    .locator("form[action='?/delete']")
+    .getByLabel("Current password")
+    .fill("a long enough passphrase");
+  await page.locator("form[action='?/delete']").getByLabel("Yes, delete my account for good").check();
+  await page.locator("form[action='?/delete']").getByRole("button", { name: "Delete my account" }).click();
+  await expect(page.getByRole("status")).toHaveText(
+    "Your account has been deleted. Thank you for having been here.",
+  );
+  await expect(page.locator(".site-header")).toContainText("Sign in");
+  await signIn(page, name, "a long enough passphrase");
+  await expect(page.getByRole("alert")).toBeVisible();
+});
+
+test("the privacy notice is linked from every page and from registration", async ({ page }) => {
+  await page.goto("/");
+  await page.locator(".site-footer").getByRole("link", { name: "Privacy" }).click();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Privacy");
+  await expect(page.locator(".privacy")).toContainText("No tracking, no advertising");
+  await expectNoAxeViolations(page);
+  await page.goto("/register");
+  await expect(page.getByRole("link", { name: "Privacy" }).first()).toHaveAttribute("href", "/privacy");
+});
+
 test.describe("without JavaScript", () => {
   test.use({ javaScriptEnabled: false });
 

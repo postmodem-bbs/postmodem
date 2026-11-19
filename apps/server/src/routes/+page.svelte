@@ -14,6 +14,7 @@
 
 <h1 class="page-title">{t("nav-index")}</h1>
 
+{#if data.goodbye}<p class="panel notice" role="status">{t("account-deleted-notice")}</p>{/if}
 {#if data.notice}
   <p class="panel notice" role="status">
     {data.notice.kind === "welcome"

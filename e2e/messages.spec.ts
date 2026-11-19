@@ -93,8 +93,9 @@ test("account settings save the profile and refuse a wrong current password", as
   await expect(page.locator(".post-signature em").first()).toHaveText(sig);
 
   await page.goto("/account");
-  await page.getByLabel("Current password").fill("not the password");
-  await page.getByLabel("New password").fill("a brand new passphrase");
-  await page.getByRole("button", { name: "Change password" }).click();
+  const change = page.locator("form[action='?/password']");
+  await change.getByLabel("Current password").fill("not the password");
+  await change.getByLabel("New password").fill("a brand new passphrase");
+  await change.getByRole("button", { name: "Change password" }).click();
   await expect(page.locator("#current-error")).toHaveText("That's not your current password.");
 });

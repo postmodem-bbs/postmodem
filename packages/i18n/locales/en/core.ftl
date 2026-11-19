@@ -556,3 +556,33 @@ admin-actor = Who
 admin-action = What
 admin-target = On what
 admin-system = system
+
+## Privacy and your data
+deleted-user = Deleted user
+account-deleted-notice = Your account has been deleted. Thank you for having been here.
+account-data = Your data
+account-data-intro = Download everything this board holds about you: your profile, posts and private messages.
+account-export = Download my data (JSON)
+account-delete = Delete my account
+account-delete-keeps-posts = Your profile, e-mail address, password, private messages and settings are erased. Your posts stay, as "Deleted user", so threads keep making sense. This can't be undone.
+account-delete-removes-posts = Your profile, e-mail address, password, private messages, settings and posts are erased. This can't be undone.
+account-delete-confirm = Yes, delete my account for good
+account-delete-confirm-required = Tick the box to confirm.
+account-delete-submit = Delete my account
+privacy-title = Privacy
+privacy-link = Privacy
+setting-core-board-privacy = Privacy notice (empty: the built-in one)
+setting-core-accounts-deletedPosts = A deleted member's posts (keep: as "Deleted user")
+privacy-default =
+    { $board } runs Postmodem. This page says what it stores about you and why.
+
+    When you register: your username, e-mail address, a hash of your password (never the password itself), when you joined and when you last visited, and the version of the board rules you accepted. Your e-mail address is used for confirming it, resetting your password and the notifications you choose; it isn't shown to other members.
+
+    What you write: posts, private messages and your profile fields. Posts are public in the forums you post in; private messages only to you and the other member.
+
+    Cookies: one session cookie when you sign in, and two for your language and theme if you choose them. No tracking, no advertising, no third-party scripts.
+
+    Sessions remember the kind of browser you use, so you can see where you're signed in. Moderators may keep a record of moderation actions with their reasons.
+
+    You can download everything about you and delete your account in your account settings. Deleting it erases your profile, e-mail address, password, private messages and settings; your posts stay under "Deleted user" unless this board removes them.
+register-privacy = What we store about you, and why:

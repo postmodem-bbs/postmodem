@@ -19,6 +19,8 @@ const GROUPS: { label: string; fields: Field[] }[] = [
       { key: "core.board.description", type: "text" },
       { key: "core.board.defaultLocale", type: "select", options: ["en", "pl"] },
       { key: "core.urls.style", type: "select", options: ["classic", "numbered", "slug"] },
+      { key: "core.board.privacy", type: "textarea" },
+      { key: "core.accounts.deletedPosts", type: "select", options: ["keep", "remove"] },
     ],
   },
   {

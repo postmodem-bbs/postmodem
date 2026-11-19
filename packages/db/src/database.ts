@@ -23,6 +23,11 @@ export interface Database {
    */
   migratePackages(migrations: Record<string, Migration>): Promise<string[]>;
   /**
+   * A consistent copy of a SQLite database while the board runs (VACUUM INTO). Postgres has
+   * pg_dump for that; this refuses rather than pretending.
+   */
+  backupTo(file: string): Promise<void>;
+  /**
    * After inserting rows with explicit (legacy) ids, move Postgres identity sequences past them.
    * No-op on SQLite, where AUTOINCREMENT already follows the highest id.
    */
@@ -104,6 +109,11 @@ export function createDatabase(engine: Engine): Database {
       const { error, results } = await (await getMigrator()).migrateToLatest();
       if (error) throw error instanceof Error ? error : new Error(String(error));
       return (results ?? []).filter((r) => r.status === "Success").map((r) => r.migrationName);
+    },
+    async backupTo(file) {
+      if (dialect !== "sqlite")
+        throw new Error("online backup is for SQLite; on Postgres use pg_dump (docs/CONTAINERS.md)");
+      await sql`vacuum into ${file}`.execute(db);
     },
     async migratePackages(packageMigrations) {
       if (!Object.keys(packageMigrations).length) return [];

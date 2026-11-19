@@ -267,8 +267,63 @@ Rules that make this safe:
 - **Expand/contract migrations**: a release never drops/renames what the
   previous release still reads. Destructive steps land one minor version later.
   This makes rolling restarts and one-version rollback possible.
-- `postmodem migrate --dry-run` and an automatic pre-migration backup (configurable).
-- Solo mode runs the same migration step in-process at boot.
+- Back up before upgrading (§4.5). *Planned, not built yet: `postmodem migrate --dry-run`
+  and an automatic pre-migration backup.*
+- Solo mode runs the same migration step in-process at boot; the `migrate` role applies the
+  core's and every installed package's migrations.
+
+### 4.5 Backups
+
+**Solo (SQLite):** `postmodem backup` writes a consistent copy while the board runs (SQLite
+`VACUUM INTO`) plus the uploads, into `/data/backups/<time>/` (or a directory you name):
+
+```bash
+docker compose -f compose.solo.yaml exec postmodem /nodejs/bin/node /app/postmodem.js backup
+```
+
+Copy `/data/backups` somewhere else (another disk, another machine): a backup on the same
+volume doesn't survive losing the volume. To restore, stop the board, then
+
+```bash
+docker compose -f compose.solo.yaml run --rm postmodem restore /data/backups/<time>
+docker compose -f compose.solo.yaml up -d
+```
+
+The database and uploads it replaces are kept as `*.before-restore` until the next restore.
+
+**Stack (Postgres):** the runtime image has no `pg_dump`; the database container does:
+
+```bash
+docker compose exec -T db pg_dump -U postmodem -Fc postmodem > postmodem-$(date +%F).dump
+docker compose exec -T db pg_restore -U postmodem -d postmodem --clean < postmodem-<date>.dump
+```
+
+and the uploads volume is copied as files. Schedule either with cron on the host; the
+board doesn't send its backups anywhere by itself.
+
+### 4.6 A public staging board (M2a)
+
+What the 0.1 beta needs, in order:
+
+1. A host with Docker and a domain pointing at it. Copy `deploy/` there, `cp .env.example .env`,
+   set `POSTMODEM_PUBLIC_URL`, `POSTMODEM_DOMAIN` and **real SMTP** (`POSTMODEM_MAIL_URL`):
+   without mail nobody can confirm an account.
+2. `docker compose up -d` (stack: Postgres, Caddy with automatic HTTPS), then
+   `docker compose exec web /nodejs/bin/node /app/postmodem.js seed-demo` for the demo
+   content. The demo's member accounts share a published password: before going public,
+   either `postmodem user set-password` each of them or ban them
+   (`postmodem ban user …`). The demo `Admin` has no password; give it one with
+   `postmodem user set-password Admin`, or create your own administrator with `init`.
+3. Invite-only during the beta (M2.md, decision 3): set `core.registration.inviteOnly` to
+   true in /admin → Board settings (or `postmodem settings set core.registration.inviteOnly true`),
+   and hand out links from /admin → Bans and invites (or `postmodem invite create`).
+4. Edit the privacy notice (/admin → Board settings) if the built-in one doesn't fit, and
+   name who runs the board in it.
+5. Schedule backups (§4.5) and check `/readyz` from your monitoring.
+
+Spam protection is on by default: a proof-of-work check on registration, e-mail
+confirmation, new members can't post links or send messages for their first 3 posts, and
+limits on posts, searches, sign-ins and registrations per member and per IP.
 
 ## 5. Development workflow
 

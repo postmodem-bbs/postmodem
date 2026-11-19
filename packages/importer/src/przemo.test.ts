@@ -16,7 +16,7 @@ import {
 import type { Database } from "@postmodem/db";
 import { openTestDatabase, testEngines } from "@postmodem/db/testing";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { type ImportReport, importPrzemo } from "./przemo.ts";
+import { anonymise, type ImportReport, importPrzemo } from "./przemo.ts";
 import { openMysqlSource } from "./source.ts";
 
 const URL = process.env.PM_TEST_MYSQL_URL;
@@ -109,6 +109,10 @@ describe.skipIf(!URL || !MANIFEST).each(testEngines())("Przemo fixture import (%
       to: "smilies/icon_smile.gif",
     });
     expect(report.notImported.byOrigin?.unknown).toEqual({ tables: [], columns: {} });
+    // Przemo's feature switches survive anonymisation: values only "0"/"1".
+    expect(Object.keys(report.featureSwitches).length).toBeGreaterThan(20);
+    expect(Object.values(report.featureSwitches).every((v) => v === "0" || v === "1")).toBe(true);
+    expect(anonymise(report).featureSwitches).toEqual(report.featureSwitches);
   });
 
   it("signs legacy users in with their old passwords and upgrades the hash", async () => {

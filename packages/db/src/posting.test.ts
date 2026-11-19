@@ -3,6 +3,7 @@
 import {
   coreRegistry,
   createTopic,
+  deleteAccount,
   deletePost,
   editPost,
   installCorePermissions,
@@ -321,5 +322,59 @@ describe.each(testEngines())("posting on %s", (engine) => {
     expect(
       await createTopic(r, p, fresh, { nodeId: forum.id, title: "x", source: "www.example.org" }, rules),
     ).toMatchObject({ ok: true });
+  });
+
+  it("deletes an account: personal data gone, posts kept as 'Deleted user' or removed", async () => {
+    const t = await createTopic(
+      r,
+      await perms(bob),
+      bob,
+      { nodeId: forum.id, title: "x", source: "bob's topic" },
+      RULES,
+    );
+    if (!t.ok) throw new Error(t.problem);
+    const re = await reply(
+      r,
+      await perms(alice),
+      alice,
+      { topicId: t.topic.id, source: "alice replies" },
+      RULES,
+    );
+    if (!re.ok) throw new Error(re.problem);
+    await sendMessage(
+      r,
+      await perms(alice),
+      alice,
+      { to: "bob", subject: "s", source: "m" },
+      { maxLength: 1000, inboxLimit: 0 },
+    );
+    await r.watches.watch(bob.id, t.topic.id);
+    await r.credentials.set(bob.id, "argon2id", "x");
+    await r.users.update(bob.id, { email: "bob@example.org", location: "Kraków", signatureSource: "sig" });
+
+    await deleteAccount(r, (await r.users.get(bob.id))!, { posts: "keep", deletedName: "Deleted user" });
+    expect(await r.users.get(bob.id)).toMatchObject({
+      username: `deleted-${bob.id}`,
+      email: null,
+      status: "deleted",
+      location: "",
+      signatureSource: "",
+    });
+    expect(await r.credentials.get(bob.id)).toBeUndefined();
+    expect(await r.watches.topicsOf(bob.id)).toEqual([]);
+    expect(await r.messages.allFor(bob.id)).toEqual([]);
+    expect(await r.posts.get(t.post.id)).toMatchObject({
+      authorId: null,
+      authorName: "Deleted user",
+      visibility: "core:public",
+    });
+    expect((await r.messages.allFor(alice.id)).length).toBe(1); // alice keeps her sent copy
+    // The name is free again, the old one isn't reserved.
+    expect(await r.users.byUsername("bob")).toBeUndefined();
+
+    await deleteAccount(r, (await r.users.get(alice.id))!, { posts: "remove", deletedName: "Deleted user" });
+    expect((await r.posts.get(re.post.id))?.visibility).toBe("core:deleted");
+    expect(await r.topics.get(t.topic.id)).toMatchObject({ replyCount: 0, lastPostId: t.post.id });
+    expect(await r.nodes.get(forum.id)).toMatchObject({ topicCount: 1, postCount: 1 });
   });
 });

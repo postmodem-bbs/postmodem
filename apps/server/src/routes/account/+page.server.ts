@@ -2,8 +2,19 @@
 // /account — a member's own settings (phpBB2's profile.php?mode=editprofile, which redirects
 // here): profile fields, signature, notifications, and changing the password. Changing the
 // e-mail address needs a confirmation round trip and arrives later.
-import { hashPassword, maxPostLength, PASSWORD_MIN, passwordProblem, verifyPassword } from "@postmodem/core";
+import {
+  defaultLocale,
+  deleteAccount,
+  deletedMemberPosts,
+  hashPassword,
+  maxPostLength,
+  PASSWORD_MIN,
+  passwordProblem,
+  verifyPassword,
+} from "@postmodem/core";
+import { translator } from "@postmodem/i18n";
 import { fail, redirect } from "@sveltejs/kit";
+import { clearSessionCookie } from "#lib/server/auth.ts";
 import { readerOf } from "#lib/server/reader.ts";
 import type { Actions, PageServerLoad, RequestEvent } from "./$types";
 
@@ -31,6 +42,7 @@ export const load: PageServerLoad = async (event) => {
       ? await event.locals.ctx.renderer.preview(user.signatureSource, readerOf(event.locals))
       : "",
     passwordMin: PASSWORD_MIN,
+    postsKept: event.locals.ctx.settings.get(deletedMemberPosts) === "keep",
     signatureMax: Math.min(SIGNATURE_MAX, event.locals.ctx.settings.get(maxPostLength)),
   };
 };
@@ -86,5 +98,24 @@ export const actions: Actions = {
       details: {},
     });
     return { section: "password", saved: true };
+  },
+  delete: async (event) => {
+    const user = me(event);
+    const { ctx } = event.locals;
+    const form = await event.request.formData();
+    const credential = await ctx.db.repos.credentials.get(user.id);
+    if (
+      !credential ||
+      !(await verifyPassword(String(form.get("password") ?? ""), credential.scheme, credential.hash)).ok
+    )
+      return fail(400, { section: "delete", errors: { deletePassword: "wrong" } });
+    if (form.get("confirm") !== "on")
+      return fail(400, { section: "delete", errors: { confirm: "required" } });
+    // Posts are credited to "Deleted user" in the board's language, like phpBB2 stored a name.
+    const deletedName = translator(ctx.settings.get(defaultLocale))("deleted-user");
+    await deleteAccount(ctx.db.repos, user, { posts: ctx.settings.get(deletedMemberPosts), deletedName });
+    clearSessionCookie(event.cookies, ctx.config);
+    ctx.log.info("account deleted", { userId: user.id });
+    redirect(303, "/?notice=deleted");
   },
 };

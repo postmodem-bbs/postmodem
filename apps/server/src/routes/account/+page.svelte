@@ -87,3 +87,29 @@
   {#if errors.password}<p class="field-error" id="password-error">{t(`password-error-${errors.password}`)}</p>{/if}
   <div class="actions"><button type="submit">{t("account-password-change")}</button></div>
 </form>
+
+<!-- A plain block, not a <section aria-labelledby> landmark (the Firefox note in app.css). -->
+<div class="panel your-data">
+  <h2>{t("account-data")}</h2>
+  <p>{t("account-data-intro")} <a href="/privacy">{t("privacy-title")}</a></p>
+  <p><a class="button-link" href="/account/export" download>{t("account-export")}</a></p>
+</div>
+
+<form method="POST" action="?/delete" class="panel form narrow" novalidate>
+  <h2>{t("account-delete")}</h2>
+  <p>{data.postsKept ? t("account-delete-keeps-posts") : t("account-delete-removes-posts")}</p>
+  <label for="delete-password">{t("account-password-current")}</label>
+  <input
+    id="delete-password"
+    name="password"
+    type="password"
+    autocomplete="current-password"
+    required
+    aria-invalid={errors.deletePassword ? "true" : undefined}
+    aria-describedby={errors.deletePassword ? "delete-password-error" : undefined}
+  />
+  {#if errors.deletePassword}<p class="field-error" id="delete-password-error">{t("account-error-current")}</p>{/if}
+  <label class="check"><input type="checkbox" name="confirm" required aria-invalid={errors.confirm ? "true" : undefined} /> {t("account-delete-confirm")}</label>
+  {#if errors.confirm}<p class="field-error">{t("account-delete-confirm-required")}</p>{/if}
+  <div class="actions"><button type="submit" class="danger">{t("account-delete-submit")}</button></div>
+</form>

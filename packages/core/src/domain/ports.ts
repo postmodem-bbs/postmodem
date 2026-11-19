@@ -159,6 +159,10 @@ export interface PostRepository {
   setVisibility(id: Id, visibility: VisibilityState): Promise<void>;
   /** Moves posts into another topic (split, merge); counters: recount both topics. */
   moveTo(postIds: Id[], topicId: Id): Promise<void>;
+  /** A member's posts by id, after `afterId` (data export, account deletion). */
+  byAuthor(authorId: Id, afterId: Id, limit: number): Promise<Post[]>;
+  /** Posts and topics of a deleted member keep their place, credited to `name` (phpBB2). */
+  anonymiseAuthor(authorId: Id, name: string): Promise<void>;
   /** Posts by id, after `afterId` (bulk jobs such as rebuilding the search index). */
   batchAfter(afterId: Id, limit: number): Promise<Post[]>;
   /** Every post of a topic, any visibility, oldest first (moderation). */
@@ -301,6 +305,7 @@ export interface GroupRepository {
   members(groupId: Id): Promise<Membership[]>;
   /** Approved memberships only. */
   groupsOf(userId: Id): Promise<Id[]>;
+  removeAllFor(userId: Id): Promise<void>;
 }
 
 export interface RoleRepository {
@@ -384,6 +389,8 @@ export interface PrivateMessageRepository {
   markRead(id: Id, at: Millis): Promise<void>;
   /** Deletes one side's view; the row goes when both sides have deleted it. */
   deleteFor(id: Id, userId: Id): Promise<void>;
+  /** Every message the user still sees (data export, account deletion). */
+  allFor(userId: Id): Promise<PrivateMessage[]>;
 }
 
 /** phpBB2's topics_watch: who gets an e-mail on a reply, once until they visit again. */
@@ -395,6 +402,8 @@ export interface WatchRepository {
   takeWatchersToNotify(topicId: Id, except: Id): Promise<Id[]>;
   /** The member read the topic: the next reply notifies them again. */
   visited(userId: Id, topicId: Id): Promise<void>;
+  topicsOf(userId: Id): Promise<Id[]>;
+  removeAllFor(userId: Id): Promise<void>;
 }
 
 /** One post as the search index sees it (text already folded, see foldForSearch). */
@@ -414,6 +423,8 @@ export interface SearchRepository {
   index(docs: SearchDocument[]): Promise<void>;
   remove(postIds: Id[]): Promise<void>;
   clear(): Promise<void>;
+  /** The member is gone: their posts stay searchable, but no longer by author. */
+  forgetAuthor(authorId: Id): Promise<void>;
   /**
    * Public posts matching every term (prefixes too), in the given nodes, newest first.
    * Terms are folded words of [a-z0-9] only (see searchTerms).

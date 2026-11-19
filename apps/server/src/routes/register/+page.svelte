@@ -122,6 +122,7 @@
   </label>
   {#if errors.rules}<p class="field-error" id="rules-error">{t("rules-error-required")}</p>{/if}
 
+  <p class="muted">{t("register-privacy")} <a href="/privacy">{t("privacy-title")}</a></p>
   <button type="submit" aria-describedby={checking ? "captcha-status" : undefined}>{t("register-submit")}</button>
   <p id="captcha-status" class="muted" role="status">{checking ? t("register-captcha-checking") : ""}</p>
   <p class="muted">{t("register-have-account")} <a href="/login.php">{t("login-link")}</a></p>

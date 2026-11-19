@@ -17,11 +17,20 @@
       "port": 8097
     },
     {
+      "name": "postmodem-e2e-mail",
+      "runtimeExecutable": "sh",
+      "runtimeArgs": [
+        "-c",
+        "POSTMODEM_DATA_DIR=var/e2e-data POSTMODEM_REGISTRATIONS_PER_IP_HOUR=0 POSTMODEM_PORT=8098 POSTMODEM_PUBLIC_URL=http://localhost:8098 POSTMODEM_MAIL_URL=smtp://127.0.0.1:2525 node apps/server/build/postmodem.js run"
+      ],
+      "port": 8098
+    },
+    {
       "name": "postmodem-e2e",
       "runtimeExecutable": "sh",
       "runtimeArgs": [
         "-c",
-        "POSTMODEM_DATA_DIR=var/e2e-data POSTMODEM_PORT=8098 POSTMODEM_PUBLIC_URL=http://localhost:8098 node apps/server/build/postmodem.js run"
+        "POSTMODEM_DATA_DIR=var/e2e-data POSTMODEM_REGISTRATIONS_PER_IP_HOUR=0 POSTMODEM_PORT=8098 POSTMODEM_PUBLIC_URL=http://localhost:8098 node apps/server/build/postmodem.js run"
       ],
       "port": 8098
     },

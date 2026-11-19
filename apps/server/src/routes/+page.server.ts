@@ -18,6 +18,8 @@ export const load: PageServerLoad = async ({ locals, url }) => {
     ...(await loadIndex(repos, locals.perms, { classic, decorate: pkg.decorate }))!,
     tools: await pkg.slot("forum.tools"),
     // One-off confirmations after a redirect (?notice=…), only for the signed-in user they concern.
+    // After deleting their account the visitor is a guest: a goodbye that needs no account.
+    goodbye: !locals.user && url.searchParams.get("notice") === "deleted",
     notice:
       locals.user && NOTICES.includes(url.searchParams.get("notice") ?? "")
         ? { kind: url.searchParams.get("notice"), name: locals.user.username }

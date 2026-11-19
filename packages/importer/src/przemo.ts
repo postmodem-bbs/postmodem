@@ -19,6 +19,7 @@ import {
   roleName,
   roleSignature,
 } from "./permissions.ts";
+import { PRZEMO_CONFIG } from "./przemo-additions.ts";
 import type { LegacySource, Row } from "./source.ts";
 import { classifyUnread, type UnreadByOrigin } from "./unread.ts";
 
@@ -80,6 +81,12 @@ export interface ImportReport {
    * the database; the caller copies the files (postmodem import … --files <dir>).
    */
   files: { from: string; to: string }[];
+  /**
+   * Przemo's on/off feature switches as the old board had them ("0"/"1" values of the config
+   * keys its uninstaller lists): nothing personal, so the anonymised bundle keeps them, and they
+   * show which features real boards used (ADR 0019).
+   */
+  featureSwitches: Record<string, "0" | "1">;
   durationMs: number;
 }
 
@@ -263,6 +270,7 @@ export async function importPrzemo(
     notImported: { tables: [], columns: {}, config: [], authColumns: { ...PACKAGE_AUTH_FIELDS } },
     settings: {},
     files: [],
+    featureSwitches: {},
     durationMs: 0,
   };
   const count = (entity: string, field: "read" | "imported" | "skipped", n = 1) => {
@@ -310,6 +318,10 @@ export async function importPrzemo(
       defaultLocale: LOCALES[plain(config.get("default_lang"))],
     };
     report.notImported.config = [...config.keys()].filter((k) => !CONFIG_USED.includes(k)).sort();
+    for (const k of [...config.keys()].sort()) {
+      const v = plain(config.get(k));
+      if (PRZEMO_CONFIG.includes(k) && (v === "0" || v === "1")) report.featureSwitches[k] = v;
+    }
 
     const userGroups = await source.all("user_group");
     const groupRows = await source.all("groups", "group_id");

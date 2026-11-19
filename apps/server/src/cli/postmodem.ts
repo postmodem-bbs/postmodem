@@ -20,9 +20,10 @@ import {
   usernameProblem,
 } from "@postmodem/core";
 import { anonymise, importPrzemo, type LegacySource, openMysqlSource, summarise } from "@postmodem/importer";
+import { backup, restore } from "../lib/server/backup.ts";
 import { type AppContext, createContext, readConfig } from "../lib/server/bootstrap.ts";
 import { DEMO_PASSWORD, seedDemo, seedLongTopic } from "../lib/server/demo.ts";
-import { INSTALLED_PACKAGES, packagePermissions } from "../lib/server/packages.ts";
+import { INSTALLED_PACKAGES, packageMigrations, packagePermissions } from "../lib/server/packages.ts";
 import { rebuildSearch } from "../lib/server/search.ts";
 import { copyLegacyFiles, uploadsDir } from "../lib/server/uploads.ts";
 import {
@@ -75,6 +76,12 @@ ${PACKAGES_HELP}
                 show or change board settings (values are JSON, or plain text for
                 strings), e.g. settings set core.urls.style numbered; running servers
                 pick changes up within a few seconds
+  backup [<directory>]
+                a consistent copy of a SQLite board (database + uploads) while it runs,
+                by default into <data>/backups/<time>; Postgres: pg_dump (docs/CONTAINERS.md)
+  restore <directory>
+                put a backup in place (the board must be stopped); the current database
+                and uploads are kept as *.before-restore
   search rebuild
                 rebuild the search index from every post (imports do this themselves)
   healthcheck   exit 0 if the local web server answers /healthz
@@ -557,7 +564,11 @@ async function main(argv: string[]): Promise<number> {
     case "migrate": {
       const ctx = await createContext({ migrate: false });
       const ran = await ctx.db.migrate();
-      ctx.log.info(ran.length ? "migrations applied" : "database is up to date", { migrations: ran });
+      // Stack mode runs this role before the web servers: packages' tables too.
+      const pkg = await ctx.db.migratePackages(packageMigrations(INSTALLED_PACKAGES, ctx.db.dialect));
+      ctx.log.info(ran.length || pkg.length ? "migrations applied" : "database is up to date", {
+        migrations: [...ran, ...pkg],
+      });
       await ctx.db.close();
       return 0;
     }
@@ -607,6 +618,31 @@ async function main(argv: string[]): Promise<number> {
       return inviteCommand(sub, argv.slice(2));
     case "packages":
       return packagesCommand(sub, argv.slice(2));
+    case "backup": {
+      const ctx = await createContext({ migrate: false });
+      try {
+        const dir = await backup(ctx, sub);
+        console.log(`backup written to ${dir}`);
+        return 0;
+      } catch (e) {
+        console.error(`backup failed: ${(e as Error).message}`);
+        return 1;
+      } finally {
+        await ctx.db.close();
+      }
+    }
+    case "restore": {
+      if (!sub) break;
+      const { config } = readConfig();
+      try {
+        const m = await restore(config.dataDir, config.databaseUrl, sub);
+        console.log(`restored the backup of ${m.createdAt} (postmodem ${m.version}); start the board again`);
+        return 0;
+      } catch (e) {
+        console.error(`restore failed: ${(e as Error).message}`);
+        return 1;
+      }
+    }
     case "search": {
       if (sub !== "rebuild") break;
       const ctx = await createContext({ migrate: true });
