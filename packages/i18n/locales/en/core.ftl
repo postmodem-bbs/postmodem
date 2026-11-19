@@ -586,3 +586,22 @@ privacy-default =
 
     You can download everything about you and delete your account in your account settings. Deleting it erases your profile, e-mail address, password, private messages and settings; your posts stay under "Deleted user" unless this board removes them.
 register-privacy = What we store about you, and why:
+
+account-email-title = Change e-mail address
+account-email-help = Your current address stays active until you confirm the new one.
+account-email-new = New e-mail address
+account-email-send = Send confirmation link
+account-email-sent = We sent a confirmation link to your new address.
+account-email-confirm = Confirm e-mail change
+account-email-confirm-text = Change your account e-mail address to { $email }?
+account-email-changed = Your e-mail address was changed.
+email-error-throttled = Too many requests. Try again later.
+mail-change-email-subject = Confirm your e-mail change on { $board }
+mail-change-email-body =
+    Hello { $name },
+
+    Open this link and sign in to confirm your new e-mail address:
+
+    { $link }
+
+    If you did not request this change, you can ignore this message.

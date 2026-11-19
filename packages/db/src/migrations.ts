@@ -483,5 +483,10 @@ export function migrations(dialect: Dialect): Record<string, Migration> {
           .execute();
       },
     },
+    "0015_email_change": {
+      async up(db: Db) {
+        await db.schema.alterTable("email_tokens").addColumn("target_email", "text").execute();
+      },
+    },
   };
 }

@@ -1,34 +1,63 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Account e-mails, rendered in the recipient's language at the moment they're queued.
-import { boardName, type EmailTokenPurpose, issueEmailToken, type User } from "@postmodem/core";
+import {
+  boardName,
+  type EmailTokenPurpose,
+  issueEmailToken,
+  type Repositories,
+  type User,
+} from "@postmodem/core";
 import { negotiate, translator } from "@postmodem/i18n";
 import type { AppContext } from "./bootstrap.ts";
 
-const PAGES: Record<EmailTokenPurpose, { path: string; message: "verify" | "reset" }> = {
+const PAGES = {
   "verify-email": { path: "/verify", message: "verify" },
   "reset-password": { path: "/reset", message: "reset" },
-};
+  "change-email": { path: "/account", message: "change-email" },
+} as const;
 
-/** Issues a one-time link for the user and queues the e-mail carrying it. */
-export async function sendAccountMail(
+/** Queues the message in the same transaction as its token. */
+export async function queueAccountMail(
+  repos: Repositories,
   ctx: AppContext,
   user: User,
+  email: string,
   purpose: EmailTokenPurpose,
+  token: string,
   requestLocale: string,
 ): Promise<void> {
-  if (!user.email) return;
-  const token = await issueEmailToken(ctx.db.repos, user.id, purpose);
   const page = PAGES[purpose];
-  const link = new URL(`${page.path}?token=${token}`, ctx.config.publicUrl).href;
+  const url = new URL(page.path, ctx.config.publicUrl);
+  url.searchParams.set(purpose === "change-email" ? "email-token" : "token", token);
   const locale = negotiate({ requested: user.locale ?? requestLocale, boardDefault: requestLocale });
   const t = translator(locale);
-  const vars = { name: user.username, board: ctx.settings.get(boardName), link };
-  await ctx.sendMail({
-    to: user.email,
+  const vars = { name: user.username, board: ctx.settings.get(boardName), link: url.href };
+  await repos.jobs.enqueue("mail.send", {
+    to: email,
     subject: t(`mail-${page.message}-subject`, vars),
     text: t(`mail-${page.message}-body`, vars),
     locale,
   });
+}
+
+export async function sendAccountMail(
+  ctx: AppContext,
+  user: User,
+  purpose: Exclude<EmailTokenPurpose, "change-email">,
+  requestLocale: string,
+): Promise<void> {
+  await ctx.db.repos.transaction(async (repos) => {
+    const current = await repos.users.get(user.id, { forUpdate: true });
+    if (
+      !user.email ||
+      current?.email !== user.email ||
+      (current.status !== "active" && current.status !== "pending")
+    )
+      return;
+    const token = await issueEmailToken(repos, user.id, purpose);
+    await queueAccountMail(repos, ctx, current, user.email, purpose, token, requestLocale);
+  });
+  ctx.worker.nudge();
 }
 
 /**

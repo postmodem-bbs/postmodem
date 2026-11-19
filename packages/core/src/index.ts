@@ -2,6 +2,7 @@
 
 export * from "./auth/accounts.ts";
 export * from "./auth/deletion.ts";
+export * from "./auth/email-change.ts";
 export * from "./auth/email-flows.ts";
 export * from "./auth/passwords.ts";
 export * from "./auth/throttle.ts";

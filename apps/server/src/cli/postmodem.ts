@@ -374,7 +374,9 @@ function startRole(ctx: AppContext, role: "worker" | "scheduler") {
       const sessions = await ctx.db.repos.sessions.purgeExpired(now);
       const jobs = await ctx.db.repos.jobs.purgeFinished(now - 7 * 24 * 3600_000);
       const throttle = await ctx.db.repos.throttle.purge(now - 24 * 3600_000);
-      if (sessions + jobs + throttle) ctx.log.info("housekeeping", { sessions, jobs, throttle });
+      const emailTokens = await ctx.db.repos.emailTokens.purgeExpired(now);
+      if (sessions + jobs + throttle + emailTokens)
+        ctx.log.info("housekeeping", { sessions, jobs, throttle, emailTokens });
     } catch (e) {
       ctx.log.warn("housekeeping failed", { error: (e as Error).message });
     }

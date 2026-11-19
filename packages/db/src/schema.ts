@@ -72,6 +72,7 @@ export interface EmailTokensTable {
   userId: number;
   purpose: string;
   tokenHash: string;
+  targetEmail: string | null;
   expiresAt: number;
   usedAt: number | null;
   createdAt: number;
