@@ -19,6 +19,7 @@ import {
   resolveSession,
   SESSION_ABSOLUTE_MS,
   SESSION_IDLE_MS,
+  SESSION_TOUCH_MS,
   Settings,
   startSession,
   Throttle,
@@ -463,6 +464,8 @@ describe.each(testEngines())("%s", (engine) => {
       expect(session.id).not.toBe(token); // only the hash is stored
       expect((await resolveSession(r, token, t0 + 1000))?.user.id).toBe(u.id);
       expect(await resolveSession(r, "x".repeat(43), t0)).toBeNull();
+      expect(await resolveSession(r, token, t0 + SESSION_TOUCH_MS, () => false)).toBeNull();
+      expect((await r.sessions.get(session.id))?.lastSeenAt).toBe(t0);
 
       // Activity slides the idle window...
       const later = t0 + SESSION_IDLE_MS - 1;
@@ -610,8 +613,7 @@ describe.each(testEngines())("%s", (engine) => {
       const policy = { free: 2, baseMs: 1000, maxMs: 4000, windowMs: 60_000 };
       const replicaA = new Throttle(policy, r.throttle, "login");
       const replicaB = new Throttle(policy, r.throttle, "login");
-      await replicaA.fail("ola", 0);
-      await replicaB.fail("ola", 0);
+      await Promise.all([replicaA.fail("ola", 0), replicaB.fail("ola", 0)]);
       expect(await replicaA.wait("ola", 0)).toBe(1000);
       expect(await r.throttle.purge(1)).toBe(1);
       expect(await replicaB.wait("ola", 0)).toBe(0);

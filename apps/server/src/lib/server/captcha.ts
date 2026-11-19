@@ -55,7 +55,7 @@ export type CaptchaResult = "ok" | "missing" | "invalid" | "expired" | "too-fast
 export async function verifyAnswer(
   secret: string,
   raw: string | null,
-  used: ThrottleRepository,
+  used: Pick<ThrottleRepository, "get" | "put">,
   now = Date.now(),
 ): Promise<CaptchaResult> {
   if (!raw) return "missing";

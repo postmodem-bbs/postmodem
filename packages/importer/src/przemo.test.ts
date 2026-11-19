@@ -16,7 +16,7 @@ import {
 import type { Database } from "@postmodem/db";
 import { openTestDatabase, testEngines } from "@postmodem/db/testing";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { anonymise, type ImportReport, importPrzemo } from "./przemo.ts";
+import { anonymise, type ImportReport, importLoginSecuritySettings, importPrzemo } from "./przemo.ts";
 import { openMysqlSource } from "./source.ts";
 
 const URL = process.env.PM_TEST_MYSQL_URL;
@@ -158,5 +158,23 @@ describe.skipIf(!URL || !MANIFEST).each(testEngines())("Przemo fixture import (%
     } finally {
       await source.close();
     }
+  });
+});
+
+it("maps supported legacy login settings and keeps the core password floor", () => {
+  const config = new Map([
+    ["max_login_error", "8"],
+    ["block_time", "40"],
+    ["min_password_len", "3"],
+    ["force_complex_password", "1"],
+    ["password_not_login", "0"],
+  ]);
+  expect(importLoginSecuritySettings(config)).toEqual({
+    settings: { maxFailures: 8, blockMinutes: 40, minPasswordLength: 10, requireLettersAndNumbers: true },
+    used: new Set(config.keys()),
+  });
+  expect(importLoginSecuritySettings(new Map([["block_time", "unknown"]]))).toEqual({
+    settings: undefined,
+    used: new Set(),
   });
 });

@@ -3,6 +3,7 @@
 // sessions with idle and absolute expiry. Framework-free; the web layer owns cookies.
 import type { Repositories } from "../domain/ports.ts";
 import type { Id, Millis, Session, User } from "../domain/types.ts";
+import type { PackagePasswordPolicy } from "../packages.ts";
 import { hashPassword, newToken, passwordProblem, tokenHash, verifyPassword } from "./passwords.ts";
 import { cleanUsername, emailProblem, usernameProblem } from "./usernames.ts";
 
@@ -18,6 +19,7 @@ export interface RegistrationPolicy {
   rulesVersion: number;
   /** New accounts start "pending" until their e-mail address is confirmed. */
   verifyEmail: boolean;
+  passwordPolicy?: PackagePasswordPolicy;
 }
 export type RegistrationErrors = Partial<Record<"username" | "email" | "password" | "rules", string>>;
 
@@ -38,7 +40,9 @@ export async function register(
   if (emailProblem(email)) errors.email = "invalid";
   else if (await repos.users.byEmail(email)) errors.email = "taken";
 
-  const pwIssue = passwordProblem(input.password, [username, email, email.split("@")[0] ?? ""]);
+  const pwIssue =
+    passwordProblem(input.password, [username, email, email.split("@")[0] ?? ""]) ??
+    policy.passwordPolicy?.(input.password, { username, email });
   if (pwIssue) errors.password = pwIssue;
   if (!input.acceptRules) errors.rules = "required";
   if (Object.keys(errors).length) return { ok: false, errors };
@@ -150,6 +154,7 @@ export async function resolveSession(
   repos: Repositories,
   token: string,
   now: Millis = Date.now(),
+  validate?: (session: Session) => boolean,
 ): Promise<{ session: Session; user: User } | null> {
   if (!/^[A-Za-z0-9_-]{43}$/.test(token)) return null;
   const session = await repos.sessions.get(tokenHash(token));
@@ -158,6 +163,7 @@ export async function resolveSession(
     await repos.sessions.remove(session.id);
     return null;
   }
+  if (validate && !validate(session)) return null;
   const user = await repos.users.get(session.userId);
   if (user?.status !== "active") {
     await repos.sessions.remove(session.id);

@@ -1,7 +1,16 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { coreSettings, enabledPackagesSetting, type PackageDefinition, Settings } from "@postmodem/core";
+import {
+  coreSettings,
+  enabledPackagesSetting,
+  MemoryThrottleStore,
+  type PackageDefinition,
+  type Repositories,
+  type Session,
+  Settings,
+} from "@postmodem/core";
+import { loginSecuritySettings } from "@postmodem/modules";
 import { describe, expect, it } from "vitest";
-import { createPackageHost } from "./packages.ts";
+import { createPackageHost, INSTALLED_PACKAGES } from "./packages.ts";
 
 const viewer = { userId: 1, groupIds: [] };
 const quiet = { error: () => {}, warn: () => {}, info: () => {}, debug: () => {} } as never;
@@ -71,4 +80,45 @@ describe("package host", () => {
     await settings.set(enabledPackagesSetting, ["bad"]);
     expect(await host.slot("forum.tools", args)).toEqual([]);
   });
+});
+
+it("applies login-security only while enabled and preserves independent attempt keys", async () => {
+  const settings = new Settings(coreSettings().register(...Object.values(loginSecuritySettings)), {
+    loadAll: async () => new Map(),
+    save: async () => {},
+  });
+  const host = await createPackageHost({
+    installed: INSTALLED_PACKAGES.filter((pkg) => pkg.key === "login-security"),
+    repos: { throttle: new MemoryThrottleStore() } as unknown as Repositories,
+    db: null,
+    settings,
+    profile: "essentials",
+    log: quiet,
+    platform: {} as never,
+  });
+  await settings.set(loginSecuritySettings.maxFailures, 2);
+  await settings.set(loginSecuritySettings.minPasswordLength, 12);
+  await settings.set(loginSecuritySettings.requireLettersAndNumbers, true);
+  await settings.set(loginSecuritySettings.bindSessionIp, true);
+  const attempt = { identifier: "member", ip: "192.0.2.1", now: 5000 };
+  const session = { ip: attempt.ip } as Session;
+  const user = { username: "member", email: null };
+  await Promise.all([host.loginResult(attempt, false), host.loginResult(attempt, false)]);
+  expect(await host.loginWait(attempt)).toBe(60_000);
+  expect(await host.loginWait({ ...attempt, now: attempt.now + 60_000 })).toBe(0);
+  expect(await host.loginWait({ ...attempt, ip: "192.0.2.2" })).toBe(0);
+  expect(host.passwordPolicy("shorter123", user)).toBe("package-min-length");
+  expect(host.passwordPolicy("a longer password", user)).toBe("letters-and-numbers");
+  expect(host.passwordPolicy("a longer password 1", user)).toBeUndefined();
+  expect(host.validateSession(session, attempt.ip)).toBe(true);
+  expect(host.validateSession(session, "192.0.2.2")).toBe(false);
+
+  await settings.set(enabledPackagesSetting, []);
+  expect(await host.loginWait(attempt)).toBe(0);
+  expect(host.passwordPolicy("shorter123", user)).toBeUndefined();
+  expect(host.validateSession(session, "192.0.2.2")).toBe(true);
+
+  await settings.set(enabledPackagesSetting, ["login-security"]);
+  await host.loginResult(attempt, true);
+  expect(await host.loginWait(attempt)).toBe(0);
 });

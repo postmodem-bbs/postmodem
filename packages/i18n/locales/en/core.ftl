@@ -603,6 +603,9 @@ privacy-default =
     You can download everything about you and delete your account in your account settings. Deleting it erases your profile, e-mail address, password, private messages and settings; your posts stay under "Deleted user" unless this board removes them.
 register-privacy = What we store about you, and why:
 
+password-error-package-min-length = This password is shorter than the board’s minimum length.
+password-error-letters-and-numbers = Use at least one letter and one number.
+password-error-policy-unavailable = The board couldn’t check your new password. Try again later.
 account-email-title = Change e-mail address
 account-email-help = Your current address stays active until you confirm the new one.
 account-email-new = New e-mail address

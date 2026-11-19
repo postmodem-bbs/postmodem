@@ -13,14 +13,18 @@ import {
   enabledPackagesSetting,
   type Id,
   type Logger,
+  type LoginAttempt,
   type Node,
+  type PackageAuth,
   type PackageDefinition,
   type PackageKey,
+  type PackagePasswordPolicy,
   type PackageRuntime,
   type Post,
   type ProfileName,
   packageRoleGrants,
   type Repositories,
+  type Session,
   type Settings,
   type SlotArgs,
   type SlotItem,
@@ -35,6 +39,10 @@ export { INSTALLED_PACKAGES };
 
 export interface PackageHost {
   installed: PackageDefinition[];
+  loginWait(attempt: LoginAttempt): Promise<number>;
+  loginResult(attempt: LoginAttempt, succeeded: boolean): Promise<void>;
+  passwordPolicy: PackagePasswordPolicy;
+  validateSession(session: Session, ip: string): boolean;
   isEnabled(key: PackageKey): boolean;
   enabled(): PackageKey[];
   emit<E extends BoardEvent>(event: E, payload: BoardEvents[E]): Promise<void>;
@@ -137,8 +145,52 @@ export async function createPackageHost(opts: {
     }
     return out;
   };
+  function runAuthCheck<T>(key: PackageKey, check: keyof PackageAuth, run: () => T, deny: T): T {
+    try {
+      return run();
+    } catch {
+      log.error("package auth check failed", { package: key, check });
+      return deny;
+    }
+  }
   return {
     installed,
+    async loginWait(attempt) {
+      let wait = 0;
+      for (const [key, { auth }] of active()) {
+        const check = auth?.beforeLogin;
+        if (!check) continue;
+        const delay = await guarded(key, "login check", () => check(attempt), 1000);
+        if (Number.isFinite(delay)) wait = Math.max(wait, delay);
+      }
+      return wait;
+    },
+    async loginResult(attempt, succeeded) {
+      for (const [key, { auth }] of active()) {
+        const hook = succeeded ? auth?.afterLoginSuccess : auth?.afterLoginFailure;
+        if (hook) await guarded(key, "login result", () => hook(attempt), undefined);
+      }
+    },
+    passwordPolicy(password, user) {
+      for (const [key, { auth }] of active()) {
+        const check = auth?.passwordPolicy;
+        if (!check) continue;
+        const problem = runAuthCheck(
+          key,
+          "passwordPolicy",
+          () => check(password, user),
+          "policy-unavailable",
+        );
+        if (problem) return problem;
+      }
+    },
+    validateSession(session, ip) {
+      for (const [key, { auth }] of active()) {
+        const check = auth?.validateSession;
+        if (check && !runAuthCheck(key, "validateSession", () => check(session, ip), false)) return false;
+      }
+      return true;
+    },
     isEnabled,
     enabled: () => [...enabled()],
     async emit(event, payload) {

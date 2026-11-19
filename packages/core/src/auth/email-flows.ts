@@ -3,6 +3,7 @@
 // the database keeps only its hash, and each token works once.
 import type { Repositories } from "../domain/ports.ts";
 import type { EmailTokenPurpose, Id, Millis, User } from "../domain/types.ts";
+import type { PackagePasswordPolicy } from "../packages.ts";
 import { hashPassword, newToken, passwordProblem, tokenHash } from "./passwords.ts";
 
 export const TOKEN_TTL: Record<EmailTokenPurpose, Millis> = {
@@ -69,9 +70,7 @@ export async function verifyEmail(
   return user;
 }
 
-export type ResetResult =
-  | { ok: true; user: User }
-  | { ok: false; error: "invalid-link" | "too-short" | "too-long" | "same-as-name" };
+export type ResetResult = { ok: true; user: User } | { ok: false; error: string };
 
 /**
  * Sets a new password from a reset link. Every session of the user ends, and other reset
@@ -82,11 +81,13 @@ export async function resetPassword(
   token: string,
   password: string,
   now: Millis = Date.now(),
+  policy?: PackagePasswordPolicy,
 ): Promise<ResetResult> {
   const holder = await checkEmailToken(repos, token, "reset-password", now);
   if (!holder || (holder.status !== "pending" && holder.status !== "active"))
     return { ok: false, error: "invalid-link" };
-  const problem = passwordProblem(password, [holder.username, holder.email ?? ""]);
+  const problem =
+    passwordProblem(password, [holder.username, holder.email ?? ""]) ?? policy?.(password, holder);
   if (problem) return { ok: false, error: problem }; // the link stays usable for another try
   const { scheme, hash } = await hashPassword(password);
   return repos.transaction(async (r) => {

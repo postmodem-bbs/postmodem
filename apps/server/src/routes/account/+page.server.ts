@@ -95,7 +95,9 @@ export const actions: Actions = {
     const credential = await repos.credentials.get(user.id);
     if (!credential || !(await verifyPassword(current, credential.scheme, credential.hash)).ok)
       return fail(400, { section: "password", errors: { current: "wrong" } });
-    const problem = passwordProblem(next, [user.username, user.email ?? ""]);
+    const problem =
+      passwordProblem(next, [user.username, user.email ?? ""]) ??
+      event.locals.ctx.packages.passwordPolicy(next, user);
     if (problem) return fail(400, { section: "password", errors: { password: problem } });
     const { scheme, hash } = await hashPassword(next);
     const saved = await repos.transaction(async (r) => {

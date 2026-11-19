@@ -620,6 +620,9 @@ privacy-default =
     W ustawieniach konta możesz pobrać wszystkie swoje dane i usunąć konto. Usunięcie kasuje profil, adres e-mail, hasło, prywatne wiadomości i ustawienia; posty zostają jako „Usunięty użytkownik”, chyba że to forum je usuwa.
 register-privacy = Co przechowujemy o Tobie i po co:
 
+password-error-package-min-length = Hasło jest krótsze niż wymagane minimum na forum.
+password-error-letters-and-numbers = Użyj co najmniej jednej litery i jednej cyfry.
+password-error-policy-unavailable = Forum nie mogło sprawdzić nowego hasła. Spróbuj ponownie później.
 account-email-title = Zmiana adresu e-mail
 account-email-help = Obecny adres pozostanie aktywny do czasu potwierdzenia nowego.
 account-email-new = Nowy adres e-mail

@@ -2,6 +2,7 @@
 // The first-party packages installed with every image (PACKAGES.md §2.11, tier A first).
 import type { PackageDefinition } from "@postmodem/core";
 import { editPolicy } from "./edit-policy.ts";
+import { loginSecurity } from "./login-security.ts";
 import { quickReply } from "./quick-reply.ts";
 import { reports } from "./reports.ts";
 import { revisions } from "./revisions.ts";
@@ -32,4 +33,7 @@ export const INSTALLED_PACKAGES: PackageDefinition[] = [
   unreadTracking,
   revisions,
   editPolicy,
+  loginSecurity,
 ];
+
+export { loginSecuritySettings } from "./login-security.ts";
