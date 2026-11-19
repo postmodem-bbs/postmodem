@@ -48,7 +48,7 @@ change contradicts an ADR, propose a new ADR first.
 Progress is tracked in the
 [**Postmodem roadmap**](https://github.com/orgs/postmodem-bbs/projects/2)
 GitHub Project. The
-docs say *what* and *why*; the Project says *where it stands*.
+docs say _what_ and _why_; the Project says _where it stands_.
 
 - Each milestone (M0–M5) is a repository milestone with one `epic` issue. Its
   slices and packages are sub-issues of that epic.
@@ -61,3 +61,43 @@ docs say *what* and *why*; the Project says *where it stands*.
   [pull request template](.github/pull_request_template.md) asks for it.
 - Owner-only tasks carry the `owner-action` label. Open questions carry
   `decision`, and are settled in an ADR.
+
+## Branch rules
+
+`main` is always releasable: every change reaches it through a pull request
+that passed CI, and its history is never rewritten.
+
+- **Pull requests only.** No direct pushes to `main`, no force-pushes, no
+  deleting it. Merge with **squash**, so `main` stays linear and each commit
+  names its pull request (`… (#75)`).
+- **Required checks:** `Lint, typecheck, unit tests, licences`, `Build image`,
+  `E2E + accessibility (solo)`, `E2E + accessibility (stack)` and `dco`, run
+  against the latest `main` (rebase or update the branch if it moved). Review
+  threads must be resolved. While the project has one maintainer, no approving
+  review is required; raise `required_approving_review_count` in the ruleset
+  when that changes.
+- **Release tags** (`v*`) are created once and never moved or deleted.
+- **Emergencies:** an administrator may merge a pull request whose checks
+  can't pass (a broken runner, say), still through the pull request. Say why in
+  the pull request.
+
+The rules are code, in [`.github/rulesets/`](.github/rulesets/). An
+administrator applies a change to them with:
+
+```bash
+node scripts/rulesets.mjs apply
+```
+
+and `node scripts/rulesets.mjs check` compares GitHub with the files. The
+**Main guard** workflow runs that check weekly and when the files change, and on
+every push to `main` it fails if a commit got there without a merged pull
+request or if `main` was force-pushed.
+
+GitHub only enforces rulesets for public repositories or on a paid plan. Until
+then the rules above hold by convention: the Main guard workflow reports a
+breach after the fact, and the check prints a warning instead of failing. Turn
+on the local hook that refuses pushes to `main` from your clone:
+
+```bash
+git config core.hooksPath .githooks
+```
