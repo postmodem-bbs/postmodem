@@ -48,7 +48,7 @@ change contradicts an ADR, propose a new ADR first.
 Progress is tracked in the
 [**Postmodem roadmap**](https://github.com/orgs/postmodem-bbs/projects/2)
 GitHub Project. The
-docs say *what* and *why*; the Project says *where it stands*.
+docs say _what_ and _why_; the Project says _where it stands_.
 
 - Each milestone (M0–M5) is a repository milestone with one `epic` issue. Its
   slices and packages are sub-issues of that epic.
