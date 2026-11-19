@@ -5,6 +5,7 @@
 // The rules live in @postmodem/core (posting.ts); this page only collects the form and shows
 // what the core says. Plain forms; the toolbar and preview are enhancements.
 import {
+  boardAdmins,
   createTopic,
   deletePost,
   editPost,
@@ -14,9 +15,11 @@ import {
   may,
   newMemberPosts,
   type PostingProblem,
+  packageDenial,
   reply,
   type TopicType,
 } from "@postmodem/core";
+import { translator } from "@postmodem/i18n";
 import { error, fail, redirect } from "@sveltejs/kit";
 import { nodeRef, topicRef } from "#lib/server/board.ts";
 import { classicCategoryIds } from "#lib/server/links.ts";
@@ -69,6 +72,27 @@ async function context(event: Pick<RequestEvent, "url" | "locals">) {
         ? may.edit(perms, node, topic, post, userId)
         : may.delete(perms, node, topic, post, userId);
   if (!allowed) error(403, "Forbidden");
+  if (mode === "editpost" || mode === "delete") {
+    // Packages' access filters (EP-5) may refuse; the reader sees their reason.
+    const hooks = locals.ctx.packages.contentHooks();
+    const refusal = hooks.policy
+      ? packageDenial(
+          hooks,
+          {
+            action: mode === "editpost" ? "post.edit" : "post.delete",
+            perms,
+            userId,
+            node,
+            topic,
+            post,
+            now: Date.now(),
+          },
+          await boardAdmins(repos),
+        )
+      : null;
+    if (refusal)
+      error(403, translator(locals.locale)(`${refusal.package}-${refusal.code}`, refusal.params ?? {}));
+  }
   return { mode, node, topic, post };
 }
 
@@ -123,6 +147,7 @@ const STATUS: Record<PostingProblem, number> = {
   "body-long": 400,
   "not-last-post": 409,
   "new-member-links": 403,
+  refused: 403,
 };
 
 export const actions: Actions = {
@@ -147,6 +172,7 @@ export const actions: Actions = {
       newMemberPosts: ctx.settings.get(newMemberPosts),
       maxLength: ctx.settings.get(maxPostLength),
       now,
+      hooks: ctx.packages.contentHooks(),
     };
     const isNew = mode !== "editpost";
     if (isNew) {
@@ -182,6 +208,7 @@ export const actions: Actions = {
         values,
         problem: result.problem,
         waitSeconds: result.waitSeconds ?? 0,
+        refusal: result.refusal ?? null,
       });
     if (isNew) await ctx.throttles.posting.fail(key, now);
     // Render now, so the first reader doesn't pay for it.
@@ -202,8 +229,11 @@ export const actions: Actions = {
   delete: async (event) => {
     const { post } = await context(event);
     const { locals } = event;
-    const result = await deletePost(locals.ctx.db.repos, locals.perms, locals.user, post!.id);
-    if (!result.ok) return fail(STATUS[result.problem], { problem: result.problem });
+    const result = await deletePost(locals.ctx.db.repos, locals.perms, locals.user, post!.id, {
+      hooks: locals.ctx.packages.contentHooks(),
+    });
+    if (!result.ok)
+      return fail(STATUS[result.problem], { problem: result.problem, refusal: result.refusal ?? null });
     locals.ctx.log.info("post deleted", { postId: post!.id, userId: locals.user!.id });
     await locals.ctx.packages.emit("post.deleted", {
       topic: result.topic,

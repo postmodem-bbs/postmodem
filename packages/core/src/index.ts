@@ -10,6 +10,7 @@ export * from "./auth/usernames.ts";
 export * from "./config.ts";
 export * from "./core-settings.ts";
 export * from "./domain/core-permissions.ts";
+export * from "./domain/hooks.ts";
 export * from "./domain/messaging.ts";
 export * from "./domain/moderation.ts";
 export * from "./domain/names.ts";

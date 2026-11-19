@@ -474,4 +474,9 @@ export interface Repositories {
   invites: InviteRepository;
   /** Runs fn atomically; the repositories passed in are bound to the transaction. */
   transaction<T>(fn: (repos: Repositories) => Promise<T>): Promise<T>;
+  /**
+   * The query builder these repositories use (inside a transaction: bound to it), with real
+   * snake_case names. For packages' own tables in in-transaction hooks; typed by the package.
+   */
+  raw: unknown;
 }

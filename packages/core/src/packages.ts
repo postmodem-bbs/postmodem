@@ -7,9 +7,10 @@
 // SDK that third parties build on is frozen in M4, shaped by these packages.
 
 import type { Permissions } from "./domain/core-permissions.ts";
+import type { ContentHooks } from "./domain/hooks.ts";
 import type { CapabilityDef, Viewer } from "./domain/permissions.ts";
 import type { Repositories } from "./domain/ports.ts";
-import type { Effect, Id, Node, Post, Topic, User } from "./domain/types.ts";
+import type { Effect, Id, Millis, Node, Post, Topic, User } from "./domain/types.ts";
 import type { Logger } from "./log.ts";
 import type { ChannelDef, Channels } from "./platform/channels.ts";
 import type { CollectionDef, Collections } from "./platform/collections.ts";
@@ -84,10 +85,19 @@ export interface PackageContext {
 }
 
 export interface PackageRuntime {
+  /** Extension points #3 (lifecycle) and #5 (access) on the posting commands. */
+  content?: ContentHooks;
   on?: { [E in BoardEvent]?: (event: BoardEvents[E]) => Promise<void> | void };
   decorateTopics?(viewer: Viewer, topics: Topic[]): Promise<Map<Id, Decoration>>;
   decorateForums?(viewer: Viewer, nodes: Node[]): Promise<Map<Id, Decoration>>;
   slots?: { [S in SlotName]?: (args: SlotArgs) => Promise<SlotItem[]> | SlotItem[] };
+  /**
+   * The per-post slot for a whole page of posts at once (batch-first: one query per page,
+   * not per post). Items are added after the per-post `slots["post.actions"]` ones.
+   */
+  postActions?(args: Omit<SlotArgs, "post">, posts: Post[]): Promise<Map<Id, SlotItem[]>>;
+  /** Scheduled housekeeping (retention); returns how many rows it removed. */
+  housekeeping?(now: Millis): Promise<number>;
 }
 
 export interface PackageDefinition {
@@ -119,8 +129,8 @@ export interface PackageDefinition {
 /** Distribution profiles (PACKAGES.md §5, ADR 0019). */
 export const PROFILES = {
   vanilla: [] as PackageKey[],
-  essentials: ["quick-reply", "reports", "unread-tracking"] as PackageKey[],
-  przemo: ["quick-reply", "reports", "unread-tracking"] as PackageKey[],
+  essentials: ["quick-reply", "reports", "unread-tracking", "revisions", "edit-policy"] as PackageKey[],
+  przemo: ["quick-reply", "reports", "unread-tracking", "revisions", "edit-policy"] as PackageKey[],
 } as const;
 export type ProfileName = keyof typeof PROFILES;
 

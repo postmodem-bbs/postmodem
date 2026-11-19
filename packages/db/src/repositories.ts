@@ -1918,6 +1918,7 @@ export function createRepositories(db: Db, dialect: "sqlite" | "pg"): Repositori
     watches,
     search,
     invites,
+    raw: db.withoutPlugins(),
     transaction: (fn) =>
       db.isTransaction
         ? fn(createRepositories(db, dialect))
