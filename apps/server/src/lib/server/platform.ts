@@ -114,7 +114,18 @@ export function createPlatform(opts: {
   log: Logger;
 }): Platform {
   const { db, installed, log } = opts;
-  const warn = (what: string) => (e: unknown) => log.warn(what, { error: (e as Error).message });
+  // A transport that is down fails on every retry; say so once a minute, not hundreds of times.
+  const lastWarned = new Map<string, { at: number; skipped: number }>();
+  const warn = (what: string) => (e: unknown) => {
+    const now = Date.now();
+    const seen = lastWarned.get(what);
+    if (seen && now - seen.at < 60_000) {
+      seen.skipped++;
+      return;
+    }
+    lastWarned.set(what, { at: now, skipped: 0 });
+    log.warn(what, { error: (e as Error).message, ...(seen?.skipped ? { repeated: seen.skipped } : {}) });
+  };
 
   const realtime = opts.config.realtimeUrl ?? (db.pubsub ? "postgres://" : "memory://");
   if (realtime.startsWith("postgres:") && !db.pubsub)
