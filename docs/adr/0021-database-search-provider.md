@@ -1,0 +1,24 @@
+# ADR 0021 — Database-backed search provider v0
+
+- Status: accepted · records the decision shipped in 0.1.0
+
+## Context
+
+Board search must work in solo and stack deployments, and its results must respect current
+forum permissions and post visibility. Both supported databases provide full-text search.
+
+## Decision
+
+The core uses a search repository implemented with SQLite FTS5 and PostgreSQL full-text
+search. Both fold indexed text and query terms and require every term to match, with
+prefix matching. Index plain post text and omit quoted and hidden blocks. Maintain the
+index on writes and moderation moves, and support rebuilding it from board data.
+
+Apply readable-forum and visibility filters in the search query before returning results.
+Search order and result limits are part of the board's search behavior.
+
+## Consequences
+
+Each deployment can search with its existing database. Both engines need integration
+coverage to keep indexing and matching behavior aligned. Additional providers must
+preserve the same visibility and permission guarantees.
