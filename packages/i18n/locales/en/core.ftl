@@ -292,6 +292,11 @@ modcp-error-invalid = That didn't work: check the form.
 quick-reply-heading = Quick reply
 
 ## Package: reports
+edit-policy-admin-post = Only administrators can change an administrator's post.
+edit-policy-window-closed = { $minutes ->
+    [one] Posts can be changed for 1 minute after posting; ask a moderator.
+   *[other] Posts can be changed for { $minutes } minutes after posting; ask a moderator.
+}
 revisions-link = History
 revisions-title = Post history
 revisions-back = Back to the post
@@ -597,3 +602,25 @@ privacy-default =
 
     You can download everything about you and delete your account in your account settings. Deleting it erases your profile, e-mail address, password, private messages and settings; your posts stay under "Deleted user" unless this board removes them.
 register-privacy = What we store about you, and why:
+
+password-error-package-min-length = This password is shorter than the board’s minimum length.
+password-error-letters-and-numbers = Use at least one letter and one number.
+password-error-policy-unavailable = The board couldn’t check your new password. Try again later.
+account-email-title = Change e-mail address
+account-email-help = Your current address stays active until you confirm the new one.
+account-email-new = New e-mail address
+account-email-send = Send confirmation link
+account-email-sent = We sent a confirmation link to your new address.
+account-email-confirm = Confirm e-mail change
+account-email-confirm-text = Change your account e-mail address to { $email }?
+account-email-changed = Your e-mail address was changed.
+email-error-throttled = Too many requests. Try again later.
+mail-change-email-subject = Confirm your e-mail change on { $board }
+mail-change-email-body =
+    Hello { $name },
+
+    Open this link and sign in to confirm your new e-mail address:
+
+    { $link }
+
+    If you did not request this change, you can ignore this message.

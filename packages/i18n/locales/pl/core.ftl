@@ -304,6 +304,12 @@ modcp-error-invalid = Nie udało się: sprawdź formularz.
 quick-reply-heading = Szybka odpowiedź
 
 ## Package: reports
+edit-policy-admin-post = Tylko administrator może zmienić post administratora.
+edit-policy-window-closed = { $minutes ->
+    [one] Post można zmienić przez minutę od napisania; poproś moderatora.
+    [few] Post można zmienić przez { $minutes } minuty od napisania; poproś moderatora.
+   *[many] Post można zmienić przez { $minutes } minut od napisania; poproś moderatora.
+}
 revisions-link = Historia
 revisions-title = Historia postu
 revisions-back = Wróć do postu
@@ -613,3 +619,25 @@ privacy-default =
 
     W ustawieniach konta możesz pobrać wszystkie swoje dane i usunąć konto. Usunięcie kasuje profil, adres e-mail, hasło, prywatne wiadomości i ustawienia; posty zostają jako „Usunięty użytkownik”, chyba że to forum je usuwa.
 register-privacy = Co przechowujemy o Tobie i po co:
+
+password-error-package-min-length = Hasło jest krótsze niż wymagane minimum na forum.
+password-error-letters-and-numbers = Użyj co najmniej jednej litery i jednej cyfry.
+password-error-policy-unavailable = Forum nie mogło sprawdzić nowego hasła. Spróbuj ponownie później.
+account-email-title = Zmiana adresu e-mail
+account-email-help = Obecny adres pozostanie aktywny do czasu potwierdzenia nowego.
+account-email-new = Nowy adres e-mail
+account-email-send = Wyślij link potwierdzający
+account-email-sent = Wysłaliśmy link potwierdzający na nowy adres.
+account-email-confirm = Potwierdź zmianę adresu e-mail
+account-email-confirm-text = Zmienić adres e-mail konta na { $email }?
+account-email-changed = Twój adres e-mail został zmieniony.
+email-error-throttled = Zbyt wiele prób. Spróbuj ponownie później.
+mail-change-email-subject = Potwierdź zmianę adresu e-mail na forum { $board }
+mail-change-email-body =
+    Witaj, { $name },
+
+    Otwórz ten link i zaloguj się, aby potwierdzić nowy adres e-mail:
+
+    { $link }
+
+    Jeśli nie proszono o tę zmianę, zignoruj tę wiadomość.

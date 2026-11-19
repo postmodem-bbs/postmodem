@@ -6,7 +6,7 @@
   const t = $derived(translator(data.locale));
   const errors = $derived((form?.errors ?? {}) as Record<string, string>);
   const p = $derived(data.profile);
-  const v = $derived((form && "values" in form ? form.values : p) as { location: string; website: string; signature: string });
+  const v = $derived((form?.section === "profile" && "values" in form ? form.values : p) as { location: string; website: string; signature: string });
 </script>
 
 <svelte:head>
@@ -57,6 +57,51 @@
     <label class="check"><input type="checkbox" name="autoWatch" checked={p.autoWatch} /> {t("account-auto-watch")}</label>
   </fieldset>
   <div class="actions"><button type="submit">{t("posting-save")}</button></div>
+</form>
+
+{#if data.emailChanged}
+  <p class="notice" role="status">{t("account-email-changed")}</p>
+{/if}
+{#if data.emailConfirmation}
+  <div class="panel form narrow">
+    <h2>{t("account-email-confirm")}</h2>
+    {#if form?.section === "confirmEmail" && "emailError" in form}
+      <p class="form-error" role="alert">{t(form.emailError === "invalid" ? "verify-invalid" : `email-error-${form.emailError}`)}</p>
+    {:else if !data.emailConfirmation.token}
+      <p class="form-error" role="alert">{t("verify-invalid")}</p>
+    {/if}
+    {#if data.emailConfirmation.token}
+      <form method="POST" action={`?email-token=${data.emailConfirmation.token}&/confirmEmail`}>
+        <input type="hidden" name="token" value={data.emailConfirmation.token} />
+        <p>{t("account-email-confirm-text", { email: data.emailConfirmation.targetEmail ?? "" })}</p>
+        <button type="submit">{t("account-email-confirm")}</button>
+      </form>
+    {/if}
+  </div>
+{/if}
+
+<form method="POST" action="?/email" class="panel form narrow">
+  <h2>{t("account-email-title")}</h2>
+  <p>{t("account-email-help")}</p>
+  {#if form?.section === "email" && "sent" in form}
+    <p class="notice" role="status">{t("account-email-sent")}</p>
+  {/if}
+  {#if form?.section === "email" && "emailError" in form}
+    <p class="form-error" role="alert">{t(form.emailError === "wrong" ? "account-error-current" : `email-error-${form.emailError}`)}</p>
+  {/if}
+  <label for="new-email">{t("account-email-new")}</label>
+  <input
+    id="new-email"
+    name="email"
+    type="email"
+    autocomplete="email"
+    maxlength="254"
+    required
+    defaultValue={form?.emailValue ?? ""}
+  />
+  <label for="email-current">{t("account-password-current")}</label>
+  <input id="email-current" name="current" type="password" autocomplete="current-password" required />
+  <div class="actions"><button type="submit">{t("account-email-send")}</button></div>
 </form>
 
 <form method="POST" action="?/password" class="panel form narrow" novalidate>

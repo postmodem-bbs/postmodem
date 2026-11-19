@@ -13,6 +13,7 @@ export async function deleteAccount(
   opts: { posts: "keep" | "remove"; deletedName: string },
 ): Promise<{ posts: number }> {
   return repos.transaction(async (r) => {
+    await r.users.get(user.id, { forUpdate: true });
     // Posts: count, then keep (anonymised) or remove.
     const topics = new Set<Id>();
     const nodes = new Set<Id>();
@@ -48,6 +49,7 @@ export async function deleteAccount(
       if (g.subject.type === "user" && g.subject.id === user.id) await r.grants.remove(g.id);
     await r.sessions.removeForUser(user.id);
     await r.credentials.remove(user.id);
+    await r.emailTokens.revoke(user.id, "change-email", Date.now());
     await r.users.update(user.id, {
       username: `deleted-${user.id}`,
       email: null,

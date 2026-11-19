@@ -198,7 +198,7 @@ export interface NewUser {
 
 export interface UserRepository {
   create(input: NewUser): Promise<User>;
-  get(id: Id): Promise<User | undefined>;
+  get(id: Id, options?: { forUpdate: boolean }): Promise<User | undefined>;
   getMany(ids: Id[]): Promise<Map<Id, User>>;
   byUsername(username: string): Promise<User | undefined>;
   bySlug(slug: string): Promise<User | undefined>;
@@ -271,23 +271,30 @@ export interface EmailTokenRepository {
     userId: Id;
     purpose: EmailTokenPurpose;
     tokenHash: string;
+    targetEmail?: string;
     expiresAt: Millis;
     createdAt: Millis;
   }): Promise<void>;
   /** The user a live (unused, unexpired) token belongs to, without using it. */
-  peek(tokenHash: string, purpose: EmailTokenPurpose, now: Millis): Promise<Id | undefined>;
+  peek(
+    tokenHash: string,
+    purpose: EmailTokenPurpose,
+    now: Millis,
+  ): Promise<{ userId: Id; targetEmail: string | null } | undefined>;
   /** Uses a live token exactly once; concurrent attempts get undefined. */
   consume(tokenHash: string, purpose: EmailTokenPurpose, now: Millis): Promise<Id | undefined>;
   /** Invalidates every live token of this purpose for the user (e.g. after a reset). */
   revoke(userId: Id, purpose: EmailTokenPurpose, now: Millis): Promise<void>;
   /** When the user's newest token of this purpose was issued, for resend limits. */
   lastIssued(userId: Id, purpose: EmailTokenPurpose): Promise<Millis | undefined>;
+  purgeExpired(now: Millis): Promise<number>;
 }
 
 /** Shared store for core/auth Throttle, so every replica sees the same counts. */
 export interface ThrottleRepository {
   get(key: string): Promise<{ failures: number; last: Millis } | undefined>;
   put(key: string, failures: number, last: Millis): Promise<void>;
+  increment(key: string, now: Millis, windowMs: Millis): Promise<void>;
   remove(key: string): Promise<void>;
   purge(before: Millis): Promise<number>;
 }

@@ -6,15 +6,20 @@ import {
   authenticate,
   boardName,
   checkEmailToken,
+  confirmEmailChange,
   coreSettings,
   endSession,
+  hashPassword,
   issueEmailToken,
+  pendingEmailChange,
   type Repositories,
   register,
+  requestEmailChange,
   resetPassword,
   resolveSession,
   SESSION_ABSOLUTE_MS,
   SESSION_IDLE_MS,
+  SESSION_TOUCH_MS,
   Settings,
   startSession,
   Throttle,
@@ -459,6 +464,8 @@ describe.each(testEngines())("%s", (engine) => {
       expect(session.id).not.toBe(token); // only the hash is stored
       expect((await resolveSession(r, token, t0 + 1000))?.user.id).toBe(u.id);
       expect(await resolveSession(r, "x".repeat(43), t0)).toBeNull();
+      expect(await resolveSession(r, token, t0 + SESSION_TOUCH_MS, () => false)).toBeNull();
+      expect((await r.sessions.get(session.id))?.lastSeenAt).toBe(t0);
 
       // Activity slides the idle window...
       const later = t0 + SESSION_IDLE_MS - 1;
@@ -534,6 +541,44 @@ describe.each(testEngines())("%s", (engine) => {
       expect(await verifyEmail(r, late, TOKEN_TTL["verify-email"] + 1)).toBeUndefined();
     });
 
+    it("changes only to the newest verified address and revokes old mailbox links", async () => {
+      const user = await r.users.create({ username: "Ola", email: "old@example.org", status: "active" });
+      const password = "a long account passphrase";
+      const { scheme, hash } = await hashPassword(password);
+      await r.credentials.set(user.id, scheme, hash);
+      const reset = await issueEmailToken(r, user.id, "reset-password");
+      const issued: string[] = [];
+      const enqueue = async (_repos: Repositories, _user: typeof user, token: string) => {
+        issued.push(token);
+      };
+      const send = (email: string, pw = password) => requestEmailChange(r, user.id, email, pw, enqueue);
+      expect(await send("first@example.org", "wrong password")).toBe("wrong");
+      expect(await send("first@example.org")).toBeUndefined();
+      expect(await send("second@example.org")).toBeUndefined();
+      const [older, newest] = issued as [string, string];
+      expect(await pendingEmailChange(r, user.id, older)).toBeUndefined();
+      expect(
+        await pendingEmailChange(r, user.id, newest, Date.now() + TOKEN_TTL["change-email"]),
+      ).toBeUndefined();
+      expect(await pendingEmailChange(r, user.id + 1, newest)).toBeUndefined();
+      expect(await pendingEmailChange(r, user.id, newest)).toBe("second@example.org");
+      expect((await r.users.get(user.id))?.email).toBe("old@example.org");
+      const races = await Promise.all([
+        confirmEmailChange(r, user.id, newest, () => false),
+        confirmEmailChange(r, user.id, newest, () => false),
+      ]);
+      expect(races.filter((result) => result === undefined)).toHaveLength(1);
+      expect(races).toContain("invalid");
+      expect((await r.users.get(user.id))?.email).toBe("second@example.org");
+      expect(await checkEmailToken(r, reset, "reset-password")).toBeUndefined();
+      expect(await pendingEmailChange(r, user.id, newest)).toBeUndefined();
+
+      expect(await send("claimed@example.org")).toBeUndefined();
+      await r.users.create({ username: "Ewa", email: "Claimed@example.org", status: "active" });
+      expect(await confirmEmailChange(r, user.id, issued[2]!, () => false)).toBe("taken");
+      expect((await r.users.get(user.id))?.email).toBe("second@example.org");
+    });
+
     it("resets a password, ending every session, and activates a pending account", async () => {
       const u = await r.users.create({ username: "retro_fan", email: "fan@example.org", status: "pending" });
       await r.credentials.set(u.id, "argon2id", "x");
@@ -568,8 +613,7 @@ describe.each(testEngines())("%s", (engine) => {
       const policy = { free: 2, baseMs: 1000, maxMs: 4000, windowMs: 60_000 };
       const replicaA = new Throttle(policy, r.throttle, "login");
       const replicaB = new Throttle(policy, r.throttle, "login");
-      await replicaA.fail("ola", 0);
-      await replicaB.fail("ola", 0);
+      await Promise.all([replicaA.fail("ola", 0), replicaB.fail("ola", 0)]);
       expect(await replicaA.wait("ola", 0)).toBe(1000);
       expect(await r.throttle.purge(1)).toBe(1);
       expect(await replicaB.wait("ola", 0)).toBe(0);

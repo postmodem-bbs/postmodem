@@ -26,10 +26,12 @@ export const actions: Actions = {
     const now = Date.now();
     const accountKey = nameKey(login);
     const ipKey = getClientAddress();
+    const attempt = { identifier: accountKey, ip: ipKey, now };
 
     const wait = Math.max(
       await ctx.throttles.login.wait(accountKey, now),
       await ctx.throttles.loginIp.wait(ipKey, now),
+      await ctx.packages.loginWait(attempt),
     );
     if (wait > 0)
       return fail(429, { login, redirectTo, error: "throttled", seconds: Math.ceil(wait / 1000) });
@@ -42,6 +44,7 @@ export const actions: Actions = {
     if (!result.ok) {
       await ctx.throttles.login.fail(accountKey, now);
       await ctx.throttles.loginIp.fail(ipKey, now);
+      await ctx.packages.loginResult(attempt, false);
       return fail(400, { login, redirectTo, error: result.reason, seconds: 0 });
     }
     await ctx.throttles.login.reset(accountKey);
@@ -59,6 +62,7 @@ export const actions: Actions = {
       userAgent: request.headers.get("user-agent") ?? "",
       ip: ipKey,
     });
+    await ctx.packages.loginResult(attempt, true);
     setSessionCookie(cookies, ctx.config, token);
     ctx.log.info("signed in", { userId: result.user.id });
     redirect(303, redirectTo);

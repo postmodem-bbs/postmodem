@@ -4,6 +4,7 @@ import {
   coreRegistry,
   coreSettings,
   createTopic,
+  deletePost,
   editPost,
   installCorePermissions,
   loadSnapshot,
@@ -18,6 +19,7 @@ import {
 import type { Database } from "@postmodem/db";
 import { openTestDatabase, testEngines } from "@postmodem/db/testing";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { editPolicy } from "./edit-policy.ts";
 import { INSTALLED_PACKAGES, reportsFor, reportsStore, revisionsStore, unreadStore } from "./index.ts";
 import { revisions } from "./revisions.ts";
 import { unreadTracking } from "./unread-tracking.ts";
@@ -132,9 +134,9 @@ describe.each(testEngines())("first-party packages on %s", (engine) => {
     expect((await runtime.decorateForums!(bobView, [forum])).size).toBe(0);
   });
 
-  const setupOf = async (pkg: typeof revisions) => {
+  const setupOf = async (pkg: typeof revisions, values: Record<string, unknown> = {}) => {
     const settings = new Settings(coreSettings().register(...(pkg.settings ?? [])), {
-      loadAll: async () => new Map(),
+      loadAll: async () => new Map(Object.entries(values)),
       save: async () => {},
     });
     await settings.init();
@@ -202,5 +204,50 @@ describe.each(testEngines())("first-party packages on %s", (engine) => {
     expect((await actions(alice)).get(t.post.id)?.[0]).toMatchObject({ key: "revisions", count: 2 });
     expect((await actions(bob)).size).toBe(0);
     expect(await runtime.housekeeping!(Date.now())).toBe(0); // kept forever by default
+  });
+
+  it("edit-policy: a time limit on own posts, and admins' posts protected from moderators", async () => {
+    const runtime = await setupOf(editPolicy, { "edit-policy.windowMinutes": 15 });
+    const hooks = runtime.content!;
+    const mod = await r.users.create({ username: "mod", email: null });
+    const admin = await r.users.create({ username: "root", email: null });
+    const roles = new Map((await r.roles.all()).map((x) => [x.key, x.id]));
+    await r.grants.create(roles.get("core:moderator")!, { type: "user", id: mod.id }, null);
+    await r.grants.create(roles.get("core:admin")!, { type: "user", id: admin.id }, null);
+    const start = Date.UTC(2026, 10, 19, 12);
+    const post = async (u: User) => {
+      const t = await createTopic(
+        r,
+        await perms(u),
+        u,
+        { nodeId: forum.id, title: "x", source: "y" },
+        { ...RULES, now: start },
+      );
+      if (!t.ok) throw new Error(t.problem);
+      return t.post.id;
+    };
+    const edit = async (u: User, postId: number, minutes: number) =>
+      editPost(
+        r,
+        await perms(u),
+        u,
+        { postId, source: "changed" },
+        { ...RULES, hooks, now: start + minutes * 60_000 },
+      );
+
+    const mine = await post(alice);
+    expect((await edit(alice, mine, 10)).ok).toBe(true);
+    expect(await edit(alice, mine, 20)).toMatchObject({
+      problem: "refused",
+      refusal: { package: "edit-policy", code: "window-closed", params: { minutes: 15 } },
+    });
+    expect((await edit(mod, mine, 20)).ok).toBe(true); // moderators aren't bound by the window
+
+    const admins = await post(admin);
+    expect(await edit(mod, admins, 1)).toMatchObject({ refusal: { code: "admin-post" } });
+    expect((await edit(admin, admins, 1)).ok).toBe(true);
+    expect(await deletePost(r, await perms(mod), mod, admins, { hooks, now: start + 60_000 })).toMatchObject({
+      refusal: { code: "admin-post" },
+    });
   });
 });

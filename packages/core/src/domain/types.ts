@@ -142,7 +142,7 @@ export interface Job {
   finishedAt: Millis | null;
 }
 
-export type EmailTokenPurpose = "verify-email" | "reset-password";
+export type EmailTokenPurpose = "verify-email" | "reset-password" | "change-email";
 
 export type GroupKind = "open" | "closed" | "hidden" | "system";
 

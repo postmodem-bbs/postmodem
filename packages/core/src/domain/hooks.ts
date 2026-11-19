@@ -79,3 +79,31 @@ export function firstDenial(
   }
   return null;
 }
+
+/**
+ * Members who administer the whole board (the core:admin role, granted board-wide to them
+ * or to an approved group they're in). Access filters use it to protect admins' posts.
+ */
+export async function boardAdmins(repos: Repositories): Promise<Set<Id>> {
+  const [roles, grants] = await Promise.all([repos.roles.all(), repos.grants.all()]);
+  const adminRoles = new Set(roles.filter((r) => r.key === "core:admin").map((r) => r.id));
+  const out = new Set<Id>();
+  for (const g of grants) {
+    if (!adminRoles.has(g.roleId) || g.nodeId !== null) continue;
+    if (g.subject.type === "user") out.add(g.subject.id);
+    else if (g.subject.type === "group")
+      for (const m of await repos.groups.members(g.subject.id)) if (!m.pending) out.add(m.userId);
+  }
+  return out;
+}
+
+/** Asks the packages' access filters about one action (null: nobody objects). */
+export function packageDenial(
+  hooks: ContentHooks | undefined,
+  q: Omit<PolicyQuestion, "authorIsAdmin">,
+  admins: Set<Id>,
+): Refusal | null {
+  if (!hooks?.policy) return null;
+  const vote = hooks.policy({ ...q, authorIsAdmin: q.post.authorId !== null && admins.has(q.post.authorId) });
+  return vote === "abstain" ? null : vote.deny;
+}

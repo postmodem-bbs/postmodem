@@ -10,7 +10,7 @@ import type { Permissions } from "./domain/core-permissions.ts";
 import type { ContentHooks } from "./domain/hooks.ts";
 import type { CapabilityDef, Viewer } from "./domain/permissions.ts";
 import type { Repositories } from "./domain/ports.ts";
-import type { Effect, Id, Millis, Node, Post, Topic, User } from "./domain/types.ts";
+import type { Effect, Id, Millis, Node, Post, Session, Topic, User } from "./domain/types.ts";
 import type { Logger } from "./log.ts";
 import type { ChannelDef, Channels } from "./platform/channels.ts";
 import type { CollectionDef, Collections } from "./platform/collections.ts";
@@ -84,7 +84,30 @@ export interface PackageContext {
   counters: Counters;
 }
 
+export interface LoginAttempt {
+  /** Normalized identifier, including when there is no matching account. */
+  identifier: string;
+  ip: string;
+  now: number;
+}
+
+export type PackagePasswordPolicy = (
+  password: string,
+  user: Pick<User, "username" | "email">,
+) => string | undefined;
+
+export interface PackageAuth {
+  /** Milliseconds to wait before retrying. */
+  beforeLogin?(attempt: LoginAttempt): Promise<number> | number;
+  afterLoginFailure?(attempt: LoginAttempt): Promise<void> | void;
+  afterLoginSuccess?(attempt: LoginAttempt): Promise<void> | void;
+  passwordPolicy?: PackagePasswordPolicy;
+  /** Synchronous check over the existing session and request metadata. */
+  validateSession?(session: Session, ip: string): boolean;
+}
+
 export interface PackageRuntime {
+  auth?: PackageAuth;
   /** Extension points #3 (lifecycle) and #5 (access) on the posting commands. */
   content?: ContentHooks;
   on?: { [E in BoardEvent]?: (event: BoardEvents[E]) => Promise<void> | void };
@@ -129,8 +152,22 @@ export interface PackageDefinition {
 /** Distribution profiles (PACKAGES.md §5, ADR 0019). */
 export const PROFILES = {
   vanilla: [] as PackageKey[],
-  essentials: ["quick-reply", "reports", "unread-tracking", "revisions"] as PackageKey[],
-  przemo: ["quick-reply", "reports", "unread-tracking", "revisions"] as PackageKey[],
+  essentials: [
+    "quick-reply",
+    "reports",
+    "unread-tracking",
+    "revisions",
+    "edit-policy",
+    "login-security",
+  ] as PackageKey[],
+  przemo: [
+    "quick-reply",
+    "reports",
+    "unread-tracking",
+    "revisions",
+    "edit-policy",
+    "login-security",
+  ] as PackageKey[],
 } as const;
 export type ProfileName = keyof typeof PROFILES;
 
