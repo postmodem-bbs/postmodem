@@ -131,6 +131,9 @@ jobs:
 
   e2e:
     name: E2E + accessibility (${{ matrix.mode }})
+    env:
+      # Only for the throwaway CI board; the e2e admin tests sign in with it.
+      PM_ADMIN_PASSWORD: ci-admin-passphrase-not-secret
     needs: image
     runs-on: ubuntu-latest
     permissions:
@@ -176,6 +179,7 @@ jobs:
           docker compose -f compose.solo.yaml -f ci/mailpit.yaml exec -T postmodem /nodejs/bin/node /app/postmodem.js settings set core.posting.floodSeconds 0
           docker compose -f compose.solo.yaml -f ci/mailpit.yaml exec -T postmodem /nodejs/bin/node /app/postmodem.js settings set core.posting.perHour 0
           docker compose -f compose.solo.yaml -f ci/mailpit.yaml exec -T postmodem /nodejs/bin/node /app/postmodem.js settings set core.search.perMinute 0
+          printf '%s' "$PM_ADMIN_PASSWORD" | docker compose -f compose.solo.yaml -f ci/mailpit.yaml exec -T postmodem /nodejs/bin/node /app/postmodem.js user set-password Admin
       - name: Start (stack)
         if: matrix.mode == 'stack'
         working-directory: deploy
@@ -198,6 +202,7 @@ jobs:
           docker compose exec -T web /nodejs/bin/node /app/postmodem.js settings set core.posting.floodSeconds 0
           docker compose exec -T web /nodejs/bin/node /app/postmodem.js settings set core.posting.perHour 0
           docker compose exec -T web /nodejs/bin/node /app/postmodem.js settings set core.search.perMinute 0
+          printf '%s' "$PM_ADMIN_PASSWORD" | docker compose exec -T web /nodejs/bin/node /app/postmodem.js user set-password Admin
       - name: Run Playwright
         env:
           PM_BASE_URL: ${{ matrix.mode == 'solo' && 'http://localhost:8080' || 'https://localhost' }}

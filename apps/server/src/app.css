@@ -695,6 +695,24 @@ tr.pm-unread a {
   display: grid;
   gap: var(--pm-space-2);
 }
+.admin-tree .depth-1 {
+  margin-inline-start: 1.5rem;
+}
+.admin-tree .depth-2 {
+  margin-inline-start: 3rem;
+}
+.admin-tree .depth-3 {
+  margin-inline-start: 4.5rem;
+}
+.admin-tree .depth-4 {
+  margin-inline-start: 6rem;
+}
+.admin-tree .depth-5 {
+  margin-inline-start: 7.5rem;
+}
+.admin-tree .depth-6 {
+  margin-inline-start: 9rem;
+}
 .admin-actions {
   display: flex;
   flex-wrap: wrap;

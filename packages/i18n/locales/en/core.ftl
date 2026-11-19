@@ -543,7 +543,7 @@ admin-invite-uses = { $count ->
    *[other] { $count } uses left
 }
 admin-expired = expired
-admin-revoke-invite = Revoke invite { $id }
+admin-revoke-invite = Remove invite { $id }
 admin-no-invites = No invites.
 admin-invite-create = New invite link
 admin-invite-uses-field = How many registrations

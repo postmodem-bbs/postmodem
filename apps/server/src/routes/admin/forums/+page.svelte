@@ -15,7 +15,8 @@
 
 <ul class="admin-tree">
   {#each data.nodes as n (n.id)}
-    <li class="panel" style:margin-inline-start={`${n.depth * 1.5}rem`}>
+    <!-- Indent by class: the CSP forbids inline styles. -->
+    <li class={`panel depth-${Math.min(n.depth, 6)}`}>
       <details>
         <summary>
           <strong>{n.title}</strong>

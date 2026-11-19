@@ -543,7 +543,7 @@ admin-activate = Aktywuj
 admin-force-reset = Wymuś zmianę hasła
 admin-bans = Bany
 admin-until = do { $date }
-admin-remove-ban = Zdejmij bana z { $value }
+admin-remove-ban = Usuń bana z { $value }
 admin-no-bans = Brak banów.
 admin-ban-add = Zbanuj adres IP lub e-mail
 admin-ban-pattern = Adres lub wzorzec
@@ -558,7 +558,7 @@ admin-invite-uses = { $count ->
    *[other] zostało { $count } użycia
 }
 admin-expired = wygasło
-admin-revoke-invite = Unieważnij zaproszenie { $id }
+admin-revoke-invite = Usuń zaproszenie { $id }
 admin-no-invites = Brak zaproszeń.
 admin-invite-create = Nowy link z zaproszeniem
 admin-invite-uses-field = Ile rejestracji
