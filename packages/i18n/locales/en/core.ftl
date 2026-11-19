@@ -292,6 +292,13 @@ modcp-error-invalid = That didn't work: check the form.
 quick-reply-heading = Quick reply
 
 ## Package: reports
+revisions-link = History
+revisions-title = Post history
+revisions-back = Back to the post
+revisions-current = Current version
+revisions-replaced = Replaced on { $when }
+revisions-by = edited by { $name }
+core-package-error = Something went wrong while checking this. Please try again later.
 reports-report = Report
 reports-queue = Reports
 reports-title = Report a post

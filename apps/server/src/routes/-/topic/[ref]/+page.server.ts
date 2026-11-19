@@ -48,10 +48,9 @@ export const load: PageServerLoad = async ({ url, params, locals }) => {
   const node = await repos.nodes.get(topic.nodeId);
   const raw = await repos.posts.getMany(data.posts.map((p) => p.id));
   const postSlots = Object.fromEntries(
-    await Promise.all(
-      data.posts.map(
-        async (p) => [p.id, await pkg.slot("post.actions", { topic, node, post: raw.get(p.id) })] as const,
-      ),
+    await pkg.postActions(
+      { topic, ...(node ? { node } : {}) },
+      data.posts.flatMap((p) => (raw.has(p.id) ? [raw.get(p.id)!] : [])),
     ),
   );
   const afterPosts = await pkg.slot("topic.afterPosts", { topic, node });

@@ -123,6 +123,7 @@ const STATUS: Record<PostingProblem, number> = {
   "body-long": 400,
   "not-last-post": 409,
   "new-member-links": 403,
+  refused: 403,
 };
 
 export const actions: Actions = {
@@ -147,6 +148,7 @@ export const actions: Actions = {
       newMemberPosts: ctx.settings.get(newMemberPosts),
       maxLength: ctx.settings.get(maxPostLength),
       now,
+      hooks: ctx.packages.contentHooks(),
     };
     const isNew = mode !== "editpost";
     if (isNew) {
@@ -182,6 +184,7 @@ export const actions: Actions = {
         values,
         problem: result.problem,
         waitSeconds: result.waitSeconds ?? 0,
+        refusal: result.refusal ?? null,
       });
     if (isNew) await ctx.throttles.posting.fail(key, now);
     // Render now, so the first reader doesn't pay for it.
