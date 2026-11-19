@@ -63,11 +63,20 @@ export async function mailCount(to: string): Promise<number> {
   return ((await res.json()) as { messages_count: number }).messages_count;
 }
 
-/** Signs in through the header link and the plain form (works with and without JavaScript). */
+/**
+ * Signs in through the header link and the plain form (works with and without JavaScript).
+ * Returns once the board has answered: it left the sign-in page (signed in, cookie set) or it
+ * shows an error. Without the wait, a caller's next `goto` can cut the request off before the
+ * session cookie arrives (WebKit does, #84).
+ */
 export async function signIn(page: Page, login: string, password: string) {
   await page.goto("/");
   await page.getByRole("link", { name: "Sign in" }).click();
   await page.getByLabel("Username or e-mail address").fill(login);
   await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: "Sign in" }).click();
+  await expect(async () => {
+    const left = !new URL(page.url()).pathname.startsWith("/login");
+    expect(left || (await page.getByRole("alert").count()) > 0, "sign-in answered").toBe(true);
+  }).toPass();
 }
