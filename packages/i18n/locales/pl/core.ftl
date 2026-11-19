@@ -304,6 +304,12 @@ modcp-error-invalid = Nie udało się: sprawdź formularz.
 quick-reply-heading = Szybka odpowiedź
 
 ## Package: reports
+edit-policy-admin-post = Tylko administrator może zmienić post administratora.
+edit-policy-window-closed = { $minutes ->
+    [one] Post można zmienić przez minutę od napisania; poproś moderatora.
+    [few] Post można zmienić przez { $minutes } minuty od napisania; poproś moderatora.
+   *[many] Post można zmienić przez { $minutes } minut od napisania; poproś moderatora.
+}
 revisions-link = Historia
 revisions-title = Historia postu
 revisions-back = Wróć do postu

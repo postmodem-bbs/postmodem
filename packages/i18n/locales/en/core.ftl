@@ -292,6 +292,11 @@ modcp-error-invalid = That didn't work: check the form.
 quick-reply-heading = Quick reply
 
 ## Package: reports
+edit-policy-admin-post = Only administrators can change an administrator's post.
+edit-policy-window-closed = { $minutes ->
+    [one] Posts can be changed for 1 minute after posting; ask a moderator.
+   *[other] Posts can be changed for { $minutes } minutes after posting; ask a moderator.
+}
 revisions-link = History
 revisions-title = Post history
 revisions-back = Back to the post

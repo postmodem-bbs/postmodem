@@ -30,6 +30,7 @@ export const load: PageServerLoad = async ({ url, params, locals }) => {
     topic,
     requestedStart(url.searchParams, POSTS_PER_PAGE),
     urls.style === "classic" ? await classicCategoryIds(repos, await repos.nodes.tree()) : undefined,
+    locals.ctx.packages.contentHooks(),
   );
   if (!data) error(404, "Not found");
   if ("denied" in data) error(data.denied, data.denied === 403 ? "Forbidden" : "Not found");
