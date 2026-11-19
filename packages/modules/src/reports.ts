@@ -3,10 +3,19 @@
 // forum see a count in the header, work through a queue and close each report with an
 // outcome. Przemo's report.php is the URL (apps/server/src/routes/report.php). Importing
 // Przemo's report_* data arrives with importer slices (extension point #12, M2b).
-import type { Id, Millis, PackageDefinition, Permissions, Repositories } from "@postmodem/core";
+import {
+  defineChannel,
+  type Id,
+  type Millis,
+  type PackageDefinition,
+  type Permissions,
+  type Repositories,
+} from "@postmodem/core";
 import type { Kysely } from "kysely";
 
 export const REPORT_REASON_MAX = 1000;
+/** Live updates of the queue (the header count), for whoever handles reports somewhere. */
+export const REPORTS_CHANNEL = "reports.queue";
 
 interface ReportsTable {
   id: number;
@@ -131,6 +140,15 @@ export const reports: PackageDefinition = {
     },
     // Under moderate.*: every moderator role that allows moderate.* handles reports too.
     { key: "moderate.reports", scope: "node", requires: ["node.read"], description: "See and close reports" },
+  ],
+  channels: [
+    defineChannel({
+      key: REPORTS_CHANNEL,
+      scope: "board",
+      // Payloads say only "changed"; the page then reloads its own, permission-checked count.
+      subscribe: async (perms, _scope, repos) =>
+        perms.viewer.userId !== null && perms.filter("moderate.reports", await repos.nodes.tree()).length > 0,
+    }),
   ],
   migrations: (dialect) => ({
     "0001_reports": {

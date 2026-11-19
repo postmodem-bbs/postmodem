@@ -94,6 +94,10 @@ describe.each(testEngines())("first-party packages on %s", (engine) => {
       db: db.kysely.withoutPlugins(),
       settings,
       log: console as never,
+      fields: {} as never,
+      collections: {} as never,
+      channels: {} as never,
+      counters: {} as never,
       isEnabled: () => true,
     });
     const t = await createTopic(

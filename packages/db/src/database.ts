@@ -1,9 +1,17 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import type { Repositories, SettingsStore } from "@postmodem/core";
+import type {
+  CounterStore,
+  DocStore,
+  FieldStore,
+  PreferenceStore,
+  Repositories,
+  SettingsStore,
+} from "@postmodem/core";
 import { type Kysely, sql } from "kysely";
 import { type Migration, Migrator } from "kysely/migration";
 import type { Engine } from "./engines.ts";
 import { type Dialect, migrations } from "./migrations.ts";
+import { counterStore, docStore, fieldStore, preferenceStore } from "./platform.ts";
 import { createRepositories } from "./repositories.ts";
 import { ID_TABLES, type Schema } from "./schema.ts";
 
@@ -33,11 +41,21 @@ export interface Database {
    */
   syncIdSequences(): Promise<void>;
   settingsStore(): SettingsStore;
+  /** Stores behind the platform services (M2b slice 10). */
+  platform: { preferences: PreferenceStore; fields: FieldStore; docs: DocStore; counters: CounterStore };
+  /**
+   * Postgres NOTIFY/LISTEN for the realtime bus; null on SQLite (solo mode is one process,
+   * so its bus stays in memory).
+   */
+  pubsub: {
+    notify(channel: string, payload: string): Promise<void>;
+    listen(channel: string, onPayload: (payload: string) => void): Promise<() => Promise<void>>;
+  } | null;
   close(): Promise<void>;
 }
 
 export function createDatabase(engine: Engine): Database {
-  const { db, dialect } = engine;
+  const { db, dialect, listen } = engine;
   const all = migrations(dialect);
   let migratorPromise: Promise<Migrator> | undefined;
   /**
@@ -143,6 +161,21 @@ export function createDatabase(engine: Engine): Database {
       }
     },
     settingsStore: () => settings,
+    platform: {
+      preferences: preferenceStore(db),
+      fields: fieldStore(db),
+      docs: docStore(db),
+      counters: counterStore(db),
+    },
+    pubsub:
+      dialect === "pg" && listen
+        ? {
+            async notify(channel, payload) {
+              await sql`select pg_notify(${channel}, ${payload})`.execute(db);
+            },
+            listen,
+          }
+        : null,
     close: () => db.destroy(),
   };
 }

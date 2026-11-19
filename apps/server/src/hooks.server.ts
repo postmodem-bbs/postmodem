@@ -5,7 +5,8 @@ import type { Handle } from "@sveltejs/kit/hooks";
 import { clearSessionCookie, sessionCookieName } from "#lib/server/auth.ts";
 import { getContext } from "#lib/server/bootstrap.ts";
 import { urlsFor } from "#lib/server/links.ts";
-import { LANG_COOKIE, parseTheme, THEME_COOKIE } from "#lib/server/preferences.ts";
+import { colorScheme, language } from "#lib/server/platform.ts";
+import { choose, guestPreferenceCookie } from "#lib/server/preferences.ts";
 
 const SECURITY_HEADERS: Record<string, string> = {
   "x-content-type-options": "nosniff",
@@ -34,24 +35,17 @@ export const handle: Handle = async ({ event, resolve }) => {
     );
   }
 
-  // Language: ?lang= switches and remembers; otherwise cookie → Accept-Language → board default.
-  const requested = event.url.searchParams.get("lang");
-  if (requested) {
-    event.cookies.set(LANG_COOKIE, requested, {
-      path: "/",
-      httpOnly: true,
-      sameSite: "lax",
-      maxAge: 31536000,
-    });
-  }
   event.locals.ctx = ctx;
-  event.locals.locale = negotiate({
-    requested: requested ?? event.cookies.get(LANG_COOKIE),
-    acceptLanguage: event.request.headers.get("accept-language"),
-    boardDefault: ctx.settings.get(defaultLocale),
-  });
-  event.locals.theme = parseTheme(event.cookies.get(THEME_COOKIE));
   event.locals.urls = urlsFor(ctx.settings.get(urlStyle));
+  // Language: the reader's choice → Accept-Language → board default.
+  const pickLocale = (chosen: string) =>
+    negotiate({
+      requested: chosen === "auto" ? undefined : chosen,
+      acceptLanguage: event.request.headers.get("accept-language"),
+      boardDefault: ctx.settings.get(defaultLocale),
+    });
+  const guestPrefs = await ctx.platform.preferences.forReader(null, guestPreferenceCookie(event.cookies));
+  event.locals.locale = pickLocale(guestPrefs.get(language));
 
   // Bans (phpBB2's banlist): a banned IP gets nothing but this page; a banned member's
   // session ends and they browse as a guest (signing in again is refused).
@@ -78,6 +72,16 @@ export const handle: Handle = async ({ event, resolve }) => {
     event.locals.session = auth?.session ?? null;
     event.locals.perms = await ctx.permissions(auth?.user.id ?? null);
   }
+
+  // Preferences (members': stored with the account). ?lang= switches and remembers.
+  const requested = event.url.searchParams.get("lang");
+  event.locals.prefs = requested
+    ? await choose(event.locals, event.cookies, [[language, requested]])
+    : event.locals.user
+      ? await ctx.platform.preferences.forReader(event.locals.user.id, guestPreferenceCookie(event.cookies))
+      : guestPrefs;
+  event.locals.locale = pickLocale(requested ?? event.locals.prefs.get(language));
+  event.locals.theme = event.locals.prefs.get(colorScheme);
   const response = await resolve(event, {
     transformPageChunk: ({ html }) =>
       html

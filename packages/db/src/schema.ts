@@ -291,6 +291,41 @@ export interface SlugHistoryTable {
   createdAt: number;
 }
 
+export interface UserPreferencesTable {
+  userId: number;
+  key: string;
+  value: string;
+}
+
+export interface FieldValuesTable {
+  entityId: number;
+  field: string;
+  vText: string | null;
+  vInt: number | null;
+  vNum: number | null;
+  vBool: number | null;
+  vJson: string;
+}
+
+export interface ExtDocsTable {
+  collection: string;
+  id: string;
+  scope: number | null;
+  author: number | null;
+  created: number;
+  updated: number;
+  state: string;
+  data: string;
+}
+
+export interface ExtCountersTable {
+  counter: string;
+  key: string;
+  period: string;
+  bucket: string;
+  value: Generated<number>;
+}
+
 export interface Schema {
   settings: SettingsTable;
   nodes: NodesTable;
@@ -320,6 +355,13 @@ export interface Schema {
   auditLog: AuditLogTable;
   legacyIds: LegacyIdsTable;
   slugHistory: SlugHistoryTable;
+  userPreferences: UserPreferencesTable;
+  fieldValuesUser: FieldValuesTable;
+  fieldValuesForum: FieldValuesTable;
+  fieldValuesTopic: FieldValuesTable;
+  fieldValuesPost: FieldValuesTable;
+  extDocs: ExtDocsTable;
+  extCounters: ExtCountersTable;
 }
 
 /** Tables whose ids may be set explicitly (legacy ids) and need sequence sync on Postgres. */

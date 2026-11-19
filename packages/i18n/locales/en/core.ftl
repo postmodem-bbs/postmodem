@@ -252,6 +252,10 @@ post-edited = { $count ->
    *[other] Edited { $count } times, last
 }
 topic-locked-hint = This topic is locked: no new replies.
+topic-new-replies = { $count ->
+    [one] 1 new reply since you opened this page: show it
+   *[other] { $count } new replies since you opened this page: show them
+}
 
 ## Bans
 banned-title = You have been banned from this board.

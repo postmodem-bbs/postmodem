@@ -3,11 +3,23 @@
   import Slot from "#lib/components/Slot.svelte";
   import "../app.css";
   import { SUPPORTED, translator } from "@postmodem/i18n";
+  import { invalidate } from "$app/navigation";
   import { page } from "$app/state";
+  import { follow } from "#lib/live.ts";
 
   let { data, children } = $props();
   const t = $derived(translator(data.locale));
   const LANGUAGE_NAMES: Record<string, string> = { en: "English", pl: "Polski" };
+
+  // Live header counts: a new private message, or a change in the reports queue (the server
+  // drops subscriptions this reader may not have, so asking for the queue is harmless).
+  $effect(() => {
+    const id = data.user?.id;
+    if (!id) return;
+    const refresh = () => invalidate("pm:header");
+    const stops = [follow("core.user", id, refresh), follow("reports.queue", null, refresh)];
+    return () => stops.forEach((stop) => stop());
+  });
 </script>
 
 <a class="skip-link" href="#main">{t("skip-to-content")}</a>
