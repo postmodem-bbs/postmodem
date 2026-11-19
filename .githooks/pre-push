@@ -1,0 +1,16 @@
+#!/bin/sh
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Refuses pushes to main from this clone (CONTRIBUTING.md, Branch rules): changes reach main
+# only through a merged pull request. Turn on with: git config core.hooksPath .githooks
+# Release tags (v*) are still pushed from main as before.
+while read -r local_ref _local_sha remote_ref _remote_sha; do
+  case "$remote_ref" in
+    refs/heads/main)
+      echo "pre-push: main only changes through a pull request (CONTRIBUTING.md, Branch rules)." >&2
+      echo "pre-push: push a branch and open a PR instead: git switch -c <branch> && git push -u origin <branch>" >&2
+      exit 1
+      ;;
+  esac
+  : "$local_ref"
+done
+exit 0

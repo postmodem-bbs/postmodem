@@ -1,0 +1,65 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Guards main (CONTRIBUTING.md, Branch rules). The rules themselves live in .github/rulesets
+# and GitHub enforces them where the plan allows; this workflow works on any plan:
+# - every commit that reaches main must come from a merged pull request, and main is never
+#   force-pushed (a red run here means something skipped review and CI);
+# - the rulesets on GitHub must match the files (checked weekly and when they change).
+name: Main guard
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  via-pull-request:
+    name: Pushed through a pull request
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Every pushed commit belongs to a merged pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          FORCED: ${{ github.event.forced }}
+          COMMITS: ${{ toJSON(github.event.commits.*.id) }}
+        run: |
+          if [ "$FORCED" = "true" ]; then
+            echo "::error::main was force-pushed. History on main is never rewritten; restore it and open a pull request."
+            exit 1
+          fi
+          bad=0
+          for sha in $(echo "$COMMITS" | jq -r '.[]'); do
+            prs=$(gh api "repos/$REPO/commits/$sha/pulls" --jq '[.[] | select(.merged_at != null and .base.ref == "main") | .number] | join(",")')
+            if [ -z "$prs" ]; then
+              echo "::error::$(echo "$sha" | cut -c1-7) reached main without a merged pull request (CONTRIBUTING.md, Branch rules)."
+              bad=1
+            else
+              echo "$(echo "$sha" | cut -c1-7): merged in #$prs"
+            fi
+          done
+          exit $bad
+
+  rulesets:
+    name: Rulesets in force
+    if: github.event_name != 'push' || contains(join(github.event.commits.*.modified, ' '), '.github/rulesets/') || contains(join(github.event.commits.*.added, ' '), '.github/rulesets/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: GitHub enforces .github/rulesets as written
+        env:
+          GH_TOKEN: ${{ github.token }}
+        # Exit 3: the plan has no rulesets (a private repository on a free plan). That is a
+        # warning on every run, not a failure, until the repository is public or on a paid plan.
+        run: |
+          set +e
+          node scripts/rulesets.mjs check
+          code=$?
+          [ "$code" -eq 3 ] && exit 0
+          exit $code
