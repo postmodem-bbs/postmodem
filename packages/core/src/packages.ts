@@ -129,8 +129,8 @@ export interface PackageDefinition {
 /** Distribution profiles (PACKAGES.md §5, ADR 0019). */
 export const PROFILES = {
   vanilla: [] as PackageKey[],
-  essentials: ["quick-reply", "reports", "unread-tracking", "revisions"] as PackageKey[],
-  przemo: ["quick-reply", "reports", "unread-tracking", "revisions"] as PackageKey[],
+  essentials: ["quick-reply", "reports", "unread-tracking", "revisions", "edit-policy"] as PackageKey[],
+  przemo: ["quick-reply", "reports", "unread-tracking", "revisions", "edit-policy"] as PackageKey[],
 } as const;
 export type ProfileName = keyof typeof PROFILES;
 
