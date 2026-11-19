@@ -56,5 +56,8 @@ docs say *what* and *why*; the Project says *where it stands*.
   update the doc and its issues in the same change.
 - Status flows Backlog → Ready → In progress → In review → Done. Reference the
   issue in your commit or pull request (`Closes #31`) so it closes on merge.
+- Pull requests list their scope as the Project lays it out (milestone, epic,
+  issues closed or advanced, dependencies). The
+  [pull request template](.github/pull_request_template.md) asks for it.
 - Owner-only tasks carry the `owner-action` label. Open questions carry
   `decision`, and are settled in an ADR.
