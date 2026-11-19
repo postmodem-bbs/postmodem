@@ -42,3 +42,19 @@ pnpm e2e       # end-to-end and accessibility tests (needs a running board)
 
 Design decisions live in [`docs/`](docs/) and [`docs/adr/`](docs/adr/). If a
 change contradicts an ADR, propose a new ADR first.
+
+## Tracking work
+
+Progress is tracked in the
+[**Postmodem roadmap**](https://github.com/orgs/postmodem-bbs/projects/2)
+GitHub Project. The
+docs say *what* and *why*; the Project says *where it stands*.
+
+- Each milestone (M0–M5) is a repository milestone with one `epic` issue. Its
+  slices and packages are sub-issues of that epic.
+- Plans come from [`docs/milestones/`](docs/milestones/). When a plan changes,
+  update the doc and its issues in the same change.
+- Status flows Backlog → Ready → In progress → In review → Done. Reference the
+  issue in your commit or pull request (`Closes #31`) so it closes on merge.
+- Owner-only tasks carry the `owner-action` label. Open questions carry
+  `decision`, and are settled in an ADR.
