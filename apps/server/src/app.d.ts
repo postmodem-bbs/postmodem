@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import type { Permissions, Session, User } from "@postmodem/core";
+import type { Permissions, PreferenceView, Session, User } from "@postmodem/core";
 import type { SupportedLocale } from "@postmodem/i18n";
 import type { AppContext } from "#lib/server/bootstrap.ts";
 import type { Urls } from "#lib/urls.ts";
@@ -15,6 +15,8 @@ declare global {
       perms: Permissions;
       locale: SupportedLocale;
       theme: "light" | "dark" | "system";
+      /** The reader's preferences (platform service): stored for members, a cookie for guests. */
+      prefs: PreferenceView;
       /** Link builder in the board's URL style (ADR 0012). */
       urls: Urls;
     }

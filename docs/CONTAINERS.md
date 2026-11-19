@@ -127,8 +127,8 @@ are never editable from the browser).
 | `POSTMODEM_MAIL_URL` | `log://` | `smtp://user:pass@mail.example.org:587`, `smtps://…:465` |
 | `POSTMODEM_MAIL_FROM` | `"<board name>" <noreply@<public host>>` | `"Forum" <forum@example.org>` |
 | `POSTMODEM_REGISTRATIONS_PER_IP_HOUR` | `10` | `0` (unlimited: LAN parties, schools, CI) |
-| `POSTMODEM_REALTIME_URL` | `memory://` | `postgres://` (LISTEN/NOTIFY, default in stack) or `redis://valkey:6379` |
-| `POSTMODEM_COUNTERS_URL` | `memory://` (flush every 10 s) | `redis://valkey:6379` |
+| `POSTMODEM_REALTIME_URL` | `memory://` | `postgres://` (LISTEN/NOTIFY, default in stack) or `valkey://valkey:6379` |
+| `POSTMODEM_COUNTERS_URL` | `memory://` (flush every 10 s) | `valkey://valkey:6379` (shared by every replica) |
 | `POSTMODEM_AV_URL` | — (scanning off) | `clamd://clamav:3310` |
 | `POSTMODEM_PROFILE` | `essentials` | `vanilla` · `essentials` · `przemo` (first boot only; see PACKAGES.md §5) |
 | `POSTMODEM_SECRET_KEY(_FILE)` | generated into `/data/secrets` | Compose secret |
@@ -181,7 +181,7 @@ x-postmodem: &Postmodem
   environment:
     POSTMODEM_DATABASE_URL: postgres://postmodem@db/postmodem
     POSTMODEM_DATABASE_PASSWORD_FILE: /run/secrets/db_password
-    # with --profile scale, set in .env:  POSTMODEM_CACHE_URL=redis://valkey:6379
+    # with --profile scale, set in .env:  POSTMODEM_COUNTERS_URL / POSTMODEM_REALTIME_URL=valkey://valkey:6379
     # with --profile av,    set in .env:  POSTMODEM_AV_URL=clamd://clamav:3310
   secrets: [db_password, secret_key]
   volumes: ["postmodem-data:/data"]
