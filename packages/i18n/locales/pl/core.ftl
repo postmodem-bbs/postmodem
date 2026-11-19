@@ -619,3 +619,22 @@ privacy-default =
 
     W ustawieniach konta możesz pobrać wszystkie swoje dane i usunąć konto. Usunięcie kasuje profil, adres e-mail, hasło, prywatne wiadomości i ustawienia; posty zostają jako „Usunięty użytkownik”, chyba że to forum je usuwa.
 register-privacy = Co przechowujemy o Tobie i po co:
+
+account-email-title = Zmiana adresu e-mail
+account-email-help = Obecny adres pozostanie aktywny do czasu potwierdzenia nowego.
+account-email-new = Nowy adres e-mail
+account-email-send = Wyślij link potwierdzający
+account-email-sent = Wysłaliśmy link potwierdzający na nowy adres.
+account-email-confirm = Potwierdź zmianę adresu e-mail
+account-email-confirm-text = Zmienić adres e-mail konta na { $email }?
+account-email-changed = Twój adres e-mail został zmieniony.
+email-error-throttled = Zbyt wiele prób. Spróbuj ponownie później.
+mail-change-email-subject = Potwierdź zmianę adresu e-mail na forum { $board }
+mail-change-email-body =
+    Witaj, { $name },
+
+    Otwórz ten link i zaloguj się, aby potwierdzić nowy adres e-mail:
+
+    { $link }
+
+    Jeśli nie proszono o tę zmianę, zignoruj tę wiadomość.

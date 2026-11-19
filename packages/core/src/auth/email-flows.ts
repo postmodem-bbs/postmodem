@@ -8,6 +8,7 @@ import { hashPassword, newToken, passwordProblem, tokenHash } from "./passwords.
 export const TOKEN_TTL: Record<EmailTokenPurpose, Millis> = {
   "verify-email": 7 * 24 * 3600_000,
   "reset-password": 3600_000,
+  "change-email": 3600_000,
 };
 
 /** Issues a fresh token, invalidating older ones of the same purpose. Returns the raw token. */
@@ -16,6 +17,7 @@ export async function issueEmailToken(
   userId: Id,
   purpose: EmailTokenPurpose,
   now: Millis = Date.now(),
+  targetEmail?: string,
 ): Promise<string> {
   const token = newToken();
   await repos.emailTokens.revoke(userId, purpose, now);
@@ -23,6 +25,7 @@ export async function issueEmailToken(
     userId,
     purpose,
     tokenHash: tokenHash(token),
+    targetEmail,
     expiresAt: now + TOKEN_TTL[purpose],
     createdAt: now,
   });
@@ -39,8 +42,8 @@ export async function checkEmailToken(
   now: Millis = Date.now(),
 ): Promise<User | undefined> {
   if (!wellFormed(token)) return undefined;
-  const userId = await repos.emailTokens.peek(tokenHash(token), purpose, now);
-  return userId === undefined ? undefined : repos.users.get(userId);
+  const entry = await repos.emailTokens.peek(tokenHash(token), purpose, now);
+  return entry && repos.users.get(entry.userId);
 }
 
 /** Confirms the address: a pending account becomes active. */
@@ -85,20 +88,25 @@ export async function resetPassword(
     return { ok: false, error: "invalid-link" };
   const problem = passwordProblem(password, [holder.username, holder.email ?? ""]);
   if (problem) return { ok: false, error: problem }; // the link stays usable for another try
-  const userId = await repos.emailTokens.consume(tokenHash(token), "reset-password", now);
-  if (userId !== holder.id) return { ok: false, error: "invalid-link" };
-
   const { scheme, hash } = await hashPassword(password);
-  await repos.credentials.set(userId, scheme, hash);
-  await repos.emailTokens.revoke(userId, "reset-password", now);
-  await repos.sessions.removeForUser(userId);
-  const user = holder.status === "pending" ? await repos.users.update(userId, { status: "active" }) : holder;
-  await repos.audit.append({
-    actorId: userId,
-    action: "user.password-reset",
-    targetType: "user",
-    targetId: String(userId),
-    details: {},
+  return repos.transaction(async (r) => {
+    const user = await r.users.get(holder.id, { forUpdate: true });
+    if (!user || (user.status !== "active" && user.status !== "pending"))
+      return { ok: false, error: "invalid-link" };
+    const userId = await r.emailTokens.consume(tokenHash(token), "reset-password", now);
+    if (userId !== user.id) return { ok: false, error: "invalid-link" };
+    await r.credentials.set(userId, scheme, hash);
+    await r.emailTokens.revoke(userId, "reset-password", now);
+    await r.emailTokens.revoke(userId, "change-email", now);
+    await r.sessions.removeForUser(userId);
+    const active = user.status === "pending" ? await r.users.update(userId, { status: "active" }) : user;
+    await r.audit.append({
+      actorId: userId,
+      action: "user.password-reset",
+      targetType: "user",
+      targetId: String(userId),
+      details: {},
+    });
+    return { ok: true, user: active };
   });
-  return { ok: true, user };
 }

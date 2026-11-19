@@ -6,11 +6,15 @@ import {
   authenticate,
   boardName,
   checkEmailToken,
+  confirmEmailChange,
   coreSettings,
   endSession,
+  hashPassword,
   issueEmailToken,
+  pendingEmailChange,
   type Repositories,
   register,
+  requestEmailChange,
   resetPassword,
   resolveSession,
   SESSION_ABSOLUTE_MS,
@@ -532,6 +536,44 @@ describe.each(testEngines())("%s", (engine) => {
       expect(await verifyEmail(r, second, 3000)).toBeUndefined(); // single use
       const late = await issueEmailToken(r, u.id, "verify-email", 0);
       expect(await verifyEmail(r, late, TOKEN_TTL["verify-email"] + 1)).toBeUndefined();
+    });
+
+    it("changes only to the newest verified address and revokes old mailbox links", async () => {
+      const user = await r.users.create({ username: "Ola", email: "old@example.org", status: "active" });
+      const password = "a long account passphrase";
+      const { scheme, hash } = await hashPassword(password);
+      await r.credentials.set(user.id, scheme, hash);
+      const reset = await issueEmailToken(r, user.id, "reset-password");
+      const issued: string[] = [];
+      const enqueue = async (_repos: Repositories, _user: typeof user, token: string) => {
+        issued.push(token);
+      };
+      const send = (email: string, pw = password) => requestEmailChange(r, user.id, email, pw, enqueue);
+      expect(await send("first@example.org", "wrong password")).toBe("wrong");
+      expect(await send("first@example.org")).toBeUndefined();
+      expect(await send("second@example.org")).toBeUndefined();
+      const [older, newest] = issued as [string, string];
+      expect(await pendingEmailChange(r, user.id, older)).toBeUndefined();
+      expect(
+        await pendingEmailChange(r, user.id, newest, Date.now() + TOKEN_TTL["change-email"]),
+      ).toBeUndefined();
+      expect(await pendingEmailChange(r, user.id + 1, newest)).toBeUndefined();
+      expect(await pendingEmailChange(r, user.id, newest)).toBe("second@example.org");
+      expect((await r.users.get(user.id))?.email).toBe("old@example.org");
+      const races = await Promise.all([
+        confirmEmailChange(r, user.id, newest, () => false),
+        confirmEmailChange(r, user.id, newest, () => false),
+      ]);
+      expect(races.filter((result) => result === undefined)).toHaveLength(1);
+      expect(races).toContain("invalid");
+      expect((await r.users.get(user.id))?.email).toBe("second@example.org");
+      expect(await checkEmailToken(r, reset, "reset-password")).toBeUndefined();
+      expect(await pendingEmailChange(r, user.id, newest)).toBeUndefined();
+
+      expect(await send("claimed@example.org")).toBeUndefined();
+      await r.users.create({ username: "Ewa", email: "Claimed@example.org", status: "active" });
+      expect(await confirmEmailChange(r, user.id, issued[2]!, () => false)).toBe("taken");
+      expect((await r.users.get(user.id))?.email).toBe("second@example.org");
     });
 
     it("resets a password, ending every session, and activates a pending account", async () => {

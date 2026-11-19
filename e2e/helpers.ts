@@ -48,10 +48,10 @@ export async function latestMail(to: string, opts: { after?: string; timeoutMs?:
 }
 
 /** The first link in an e-mail that points at `path` on any host, as a path + query. */
-export function linkIn(text: string, path: string): string {
-  const m = new RegExp(`https?://[^\\s/]+(${path.replace(/[.?]/g, "\\$&")}\\?token=[A-Za-z0-9_-]+)`).exec(
-    text,
-  );
+export function linkIn(text: string, path: string, tokenParam = "token"): string {
+  const m = new RegExp(
+    `https?://[^\\s/]+(${path.replace(/[.?]/g, "\\$&")}\\?${tokenParam}=[A-Za-z0-9_-]+)`,
+  ).exec(text);
   if (!m) throw new Error(`no ${path} link in:\n${text}`);
   return m[1]!;
 }
