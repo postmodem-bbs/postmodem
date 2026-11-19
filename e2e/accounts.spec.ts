@@ -297,4 +297,27 @@ test.describe("without JavaScript", () => {
     await page.getByRole("button", { name: "Sign out" }).click();
     await expect(page.locator(".site-header")).toContainText("Sign in");
   });
+
+  test("confirm a new e-mail address while signed in", async ({ page }) => {
+    test.skip(!MAILPIT, "needs Mailpit (PM_MAILPIT_URL)");
+    const next = `${unique()}@example.org`;
+    await signIn(page, "retro_fan", DEMO_PASSWORD);
+    await page.goto("/account");
+
+    const form = page.locator('form[action="?/email"]');
+    await form.getByLabel("New e-mail address").fill(next);
+    await form.getByLabel("Current password").fill(DEMO_PASSWORD);
+    await form.getByRole("button", { name: "Send confirmation link" }).click();
+    await expect(form.getByRole("status")).toContainText("We sent a confirmation link");
+    await expect(page.locator("main")).not.toContainText(next);
+
+    const link = linkIn((await latestMail(next)).text, "/account", "email-token");
+    await page.goto(link);
+    await expect(page.getByText(`Change your account e-mail address to ${next}?`)).toBeVisible();
+    await page.getByRole("button", { name: "Confirm e-mail change" }).click();
+    await expect(page.getByRole("status")).toHaveText("Your e-mail address was changed.");
+    await expect(page.locator("main")).toContainText(next);
+    await page.goto(link);
+    await expect(page.getByRole("alert")).toContainText("expired or has already been used");
+  });
 });

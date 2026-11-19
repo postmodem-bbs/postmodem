@@ -818,8 +818,9 @@ export function createRepositories(db: Db, dialect: "sqlite" | "pg"): Repositori
       await db.updateTable("users").set({ slug }).where("id", "=", id).execute();
       return (await users.get(id))!;
     },
-    async get(id) {
-      const r = await db.selectFrom("users").selectAll().where("id", "=", id).executeTakeFirst();
+    async get(id, options) {
+      const query = db.selectFrom("users").selectAll().where("id", "=", id);
+      const r = await (options?.forUpdate && dialect === "pg" ? query.forUpdate() : query).executeTakeFirst();
       return r && toUser(r);
     },
     async getMany(ids) {
@@ -1729,37 +1730,36 @@ export function createRepositories(db: Db, dialect: "sqlite" | "pg"): Repositori
     async create(t) {
       await db
         .insertInto("emailTokens")
-        .values({ ...t, usedAt: null })
+        .values({ ...t, usedAt: null, targetEmail: t.targetEmail ?? null })
         .execute();
     },
     async peek(tokenHash, purpose, now) {
       const r = await db
         .selectFrom("emailTokens")
-        .select("userId")
+        .select(["userId", "targetEmail"])
         .where("tokenHash", "=", tokenHash)
         .where("purpose", "=", purpose)
         .where("usedAt", "is", null)
         .where("expiresAt", ">", now)
         .executeTakeFirst();
-      return r && n(r.userId);
+      return r && { userId: n(r.userId), targetEmail: r.targetEmail };
     },
     async consume(tokenHash, purpose, now) {
-      const userId = await emailTokens.peek(tokenHash, purpose, now);
-      if (userId === undefined) return undefined;
-      // The used_at guard makes this single-use even when two requests race.
-      const r = await db
+      const row = await db
         .updateTable("emailTokens")
-        .set({ usedAt: now })
+        .set({ usedAt: now, targetEmail: null })
         .where("tokenHash", "=", tokenHash)
         .where("purpose", "=", purpose)
         .where("usedAt", "is", null)
+        .where("expiresAt", ">", now)
+        .returning("userId")
         .executeTakeFirst();
-      return Number(r.numUpdatedRows) === 1 ? userId : undefined;
+      return row && n(row.userId);
     },
     async revoke(userId, purpose, now) {
       await db
         .updateTable("emailTokens")
-        .set({ usedAt: now })
+        .set({ usedAt: now, targetEmail: null })
         .where("userId", "=", userId)
         .where("purpose", "=", purpose)
         .where("usedAt", "is", null)
@@ -1773,6 +1773,10 @@ export function createRepositories(db: Db, dialect: "sqlite" | "pg"): Repositori
         .where("purpose", "=", purpose)
         .executeTakeFirst();
       return r?.at == null ? undefined : n(r.at);
+    },
+    async purgeExpired(now) {
+      const result = await db.deleteFrom("emailTokens").where("expiresAt", "<=", now).executeTakeFirst();
+      return Number(result.numDeletedRows);
     },
   };
 
