@@ -23,6 +23,10 @@ x-postmodem: &postmodem
     POSTMODEM_MAIL_URL: ${POSTMODEM_MAIL_URL:-log://}
     POSTMODEM_MAIL_FROM: ${POSTMODEM_MAIL_FROM:-}
     POSTMODEM_REGISTRATIONS_PER_IP_HOUR: ${POSTMODEM_REGISTRATIONS_PER_IP_HOUR:-10}
+    # --profile scale: counters and live updates on Valkey (see .env.example). Unset, live
+    # updates go over Postgres LISTEN/NOTIFY and each replica flushes its own counters.
+    POSTMODEM_COUNTERS_URL: ${POSTMODEM_COUNTERS_URL:-}
+    POSTMODEM_REALTIME_URL: ${POSTMODEM_REALTIME_URL:-}
   secrets: [db_password, secret_key]
   volumes: ["postmodem-data:/data"]
   read_only: true

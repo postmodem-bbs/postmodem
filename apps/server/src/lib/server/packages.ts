@@ -27,6 +27,7 @@ import {
   type Viewer,
 } from "@postmodem/core";
 import { INSTALLED_PACKAGES } from "@postmodem/modules";
+import type { Platform } from "./platform.ts";
 
 export { INSTALLED_PACKAGES };
 
@@ -62,6 +63,7 @@ export async function createPackageHost(opts: {
   settings: Settings;
   profile: ProfileName;
   log: Logger;
+  platform: Platform;
 }): Promise<PackageHost> {
   const { installed, settings, log } = opts;
   const enabled = () => enabledPackages(installed, settings.get(enabledPackagesSetting), opts.profile);
@@ -71,7 +73,17 @@ export async function createPackageHost(opts: {
     try {
       runtimes.set(
         p.key,
-        (await p.setup?.({ repos: opts.repos, db: opts.db, settings, log, isEnabled })) ?? {},
+        (await p.setup?.({
+          repos: opts.repos,
+          db: opts.db,
+          settings,
+          log,
+          isEnabled,
+          fields: opts.platform.fields,
+          collections: opts.platform.collections,
+          channels: opts.platform.channels,
+          counters: opts.platform.counters,
+        })) ?? {},
       );
     } catch (e) {
       log.error("package failed to start; it stays off", { package: p.key, error: (e as Error).message });

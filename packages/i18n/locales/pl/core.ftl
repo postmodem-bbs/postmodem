@@ -263,6 +263,11 @@ post-edited = { $count ->
    *[other] Edytowany { $count } razy, ostatnio
 }
 topic-locked-hint = Ten temat jest zamknięty: nie można w nim odpowiadać.
+topic-new-replies = { $count ->
+    [one] 1 nowa odpowiedź od otwarcia strony: pokaż ją
+    [few] { $count } nowe odpowiedzi od otwarcia strony: pokaż je
+   *[many] { $count } nowych odpowiedzi od otwarcia strony: pokaż je
+}
 
 ## Bans
 banned-title = Masz zakaz korzystania z tego forum.

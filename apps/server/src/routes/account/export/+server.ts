@@ -58,6 +58,15 @@ export const GET: RequestHandler = async ({ locals }) => {
       editedAt: iso(p.editedAt),
       deleted: p.visibility !== "core:public",
     })),
+    preferences: (await locals.ctx.platform.preferences.forReader(user.id, undefined)).chosen(),
+    // Packages' data (M2b slice 10 services): personal user fields and documents written.
+    fields: await locals.ctx.platform.fields.personal(user.id),
+    documents: (await locals.ctx.db.platform.docs.byAuthor(user.id)).map((d) => ({
+      collection: d.collection,
+      id: d.id,
+      createdAt: iso(d.created),
+      data: d.data,
+    })),
     privateMessages: messages.map((m) => ({
       id: m.id,
       direction: m.recipientId === user.id ? "received" : "sent",

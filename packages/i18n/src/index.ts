@@ -5,8 +5,10 @@ import { negotiateLanguages } from "@fluent/langneg";
 import en from "../locales/en/core.ftl?raw";
 import pl from "../locales/pl/core.ftl?raw";
 
-export const SUPPORTED = ["en", "pl"] as const;
-export type SupportedLocale = (typeof SUPPORTED)[number];
+import { SUPPORTED, type SupportedLocale } from "./locales.ts";
+
+export { SUPPORTED, type SupportedLocale };
+
 const FALLBACK: SupportedLocale = "en";
 
 const SOURCES: Record<SupportedLocale, string> = { en, pl };

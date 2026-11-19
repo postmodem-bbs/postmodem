@@ -352,7 +352,7 @@ async function startWeb(ctx: AppContext): Promise<Server> {
   }
   globalThis.__postmodem = Promise.resolve(ctx);
   ctx.watchSettings();
-  ctx.views.start();
+  ctx.platform.counters.start();
   const handlerUrl = pathToFileURL(join(import.meta.dirname, "handler.js")).href;
   const { handler } = (await import(handlerUrl)) as { handler: (req: unknown, res: unknown) => void };
   const server = createServer(handler as never);
@@ -374,9 +374,10 @@ function startRole(ctx: AppContext, role: "worker" | "scheduler") {
       const sessions = await ctx.db.repos.sessions.purgeExpired(now);
       const jobs = await ctx.db.repos.jobs.purgeFinished(now - 7 * 24 * 3600_000);
       const throttle = await ctx.db.repos.throttle.purge(now - 24 * 3600_000);
+      const documents = await ctx.platform.collections.applyRetention(now);
       const emailTokens = await ctx.db.repos.emailTokens.purgeExpired(now);
-      if (sessions + jobs + throttle + emailTokens)
-        ctx.log.info("housekeeping", { sessions, jobs, throttle, emailTokens });
+      if (sessions + jobs + throttle + documents + emailTokens)
+        ctx.log.info("housekeeping", { sessions, jobs, throttle, documents, emailTokens });
     } catch (e) {
       ctx.log.warn("housekeeping failed", { error: (e as Error).message });
     }
@@ -453,8 +454,9 @@ function onShutdown(ctx: AppContext, servers: Server[]) {
       for (const s of servers) s.closeAllConnections();
     }, SHUTDOWN_GRACE_MS);
     force.unref();
+    ctx.platform.endStreams(); // live streams would otherwise hold the server open
     await Promise.all([...servers.map((s) => new Promise((r) => s.close(r))), ctx.worker.stop()]);
-    await ctx.views.flush();
+    await ctx.platform.close();
     await ctx.db.close();
     ctx.log.info("bye");
     process.exit(0);
@@ -540,7 +542,7 @@ async function main(argv: string[]): Promise<number> {
   const [cmd = "run", sub] = argv;
   switch (cmd) {
     case "run": {
-      const ctx = await createContext({ migrate: true });
+      const ctx = await createContext({ migrate: true, live: true });
       const web = await startWeb(ctx);
       startRole(ctx, "worker");
       startRole(ctx, "scheduler");
@@ -548,7 +550,7 @@ async function main(argv: string[]): Promise<number> {
       return -1; // keep running
     }
     case "web": {
-      const ctx = await createContext({ migrate: false });
+      const ctx = await createContext({ migrate: false, live: true });
       const r = await ctx.readiness();
       if (!r.ready)
         ctx.log.warn("not ready yet; /readyz will report 503 until resolved", { reason: r.reason });

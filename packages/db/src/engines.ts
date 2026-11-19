@@ -13,6 +13,8 @@ import type { Schema } from "./schema.ts";
 export interface Engine {
   dialect: Dialect;
   db: Kysely<Schema>;
+  /** Postgres LISTEN on its own connection (the realtime bus); absent on SQLite. */
+  listen?(channel: string, onPayload: (payload: string) => void): Promise<() => Promise<void>>;
 }
 
 const plugins = [new CamelCasePlugin()];
@@ -104,5 +106,11 @@ export function postgresEngine(url: string, password?: string): Engine {
   return {
     dialect: "pg",
     db: new Kysely<Schema>({ dialect: new PostgresJSDialect({ postgres: client }), plugins }),
+    // postgres.js keeps one dedicated connection for every listener and re-listens after it
+    // reconnects, so a database restart doesn't silently end live updates.
+    async listen(channel, onPayload) {
+      const { unlisten } = await client.listen(channel, onPayload);
+      return unlisten;
+    },
   };
 }

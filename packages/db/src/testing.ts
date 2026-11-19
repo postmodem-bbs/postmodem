@@ -35,7 +35,13 @@ export async function openTestDatabase(
     case "pglite": {
       const client = new PGlite({ parsers: { 20: (v: string) => Number(v) } });
       const db = new Kysely<Schema>({ dialect: new PGliteDialect(client), plugins: [new CamelCasePlugin()] });
-      return createDatabase({ dialect: "pg", db });
+      return createDatabase({
+        dialect: "pg",
+        db,
+        async listen(channel, onPayload) {
+          return client.listen(channel, onPayload);
+        },
+      });
     }
     case "postgres": {
       // One throwaway schema per test database, so tests can run in parallel on one server.

@@ -3,7 +3,9 @@ import { boardName, registrationOpen, urlStyle } from "@postmodem/core";
 import { forRequest } from "#lib/server/packages.ts";
 import type { LayoutServerLoad } from "./$types";
 
-export const load: LayoutServerLoad = async ({ locals, url }) => {
+export const load: LayoutServerLoad = async ({ locals, url, depends }) => {
+  // Live updates (lib/live.ts) reload only this: the header's counts.
+  depends("pm:header");
   const { config, settings } = locals.ctx;
   return {
     locale: locals.locale,

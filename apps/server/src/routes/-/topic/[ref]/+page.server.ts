@@ -8,6 +8,7 @@ import { jsonLdTag } from "#lib/server/jsonld.ts";
 import { absoluteUrl, classicCategoryIds, ensureCanonical, resolveTopic } from "#lib/server/links.ts";
 import { topicVisited } from "#lib/server/notifications.ts";
 import { forRequest } from "#lib/server/packages.ts";
+import { TOPIC_VIEWS } from "#lib/server/platform.ts";
 import { readerOf } from "#lib/server/reader.ts";
 import { requestedStart } from "#lib/urls.ts";
 import type { PageServerLoad } from "./$types";
@@ -21,7 +22,11 @@ export const load: PageServerLoad = async ({ url, params, locals }) => {
     repos,
     locals.perms,
     (posts) => locals.ctx.renderer.render(posts),
-    locals.ctx.views,
+    {
+      add: (id) => locals.ctx.platform.counters.hit(TOPIC_VIEWS, id),
+      pending: async (id) =>
+        (await locals.ctx.platform.counters.pending(TOPIC_VIEWS, [id])).get(String(id)) ?? 0,
+    },
     topic,
     requestedStart(url.searchParams, POSTS_PER_PAGE),
     urls.style === "classic" ? await classicCategoryIds(repos, await repos.nodes.tree()) : undefined,

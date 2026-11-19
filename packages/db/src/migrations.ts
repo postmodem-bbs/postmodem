@@ -483,6 +483,65 @@ export function migrations(dialect: Dialect): Record<string, Migration> {
           .execute();
       },
     },
+    "0014_platform_services": {
+      async up(db: Db) {
+        // Platform services v0 (M2b slice 10, PLATFORM-SERVICES.md). JSON is stored as text on
+        // both engines; expression indexes on document fields come with the tier-1 manifest.
+        await db.schema
+          .createTable("user_preferences")
+          .addColumn("user_id", "bigint", notNull)
+          .addColumn("key", "text", notNull)
+          .addColumn("value", "text", notNull)
+          .addPrimaryKeyConstraint("user_preferences_pk", ["user_id", "key"])
+          .execute();
+        // Entity fields: one typed side table per target. Scalars are mirrored into a typed
+        // column so filterable/sortable fields can be indexed later without a data migration.
+        for (const target of ["user", "forum", "topic", "post"]) {
+          await db.schema
+            .createTable(`field_values_${target}`)
+            .addColumn("entity_id", "bigint", notNull)
+            .addColumn("field", "text", notNull)
+            .addColumn("v_text", "text")
+            .addColumn("v_int", "bigint")
+            .addColumn("v_num", dialect === "sqlite" ? "real" : "double precision")
+            .addColumn("v_bool", "integer")
+            .addColumn("v_json", "text", notNull)
+            .addPrimaryKeyConstraint(`field_values_${target}_pk`, ["entity_id", "field"])
+            .execute();
+        }
+        await db.schema
+          .createTable("ext_docs")
+          .addColumn("collection", "text", notNull)
+          .addColumn("id", "text", notNull)
+          .addColumn("scope", "bigint")
+          .addColumn("author", "bigint")
+          .addColumn("created", "bigint", notNull)
+          .addColumn("updated", "bigint", notNull)
+          .addColumn("state", "text", notNull)
+          .addColumn("data", "text", notNull)
+          .addPrimaryKeyConstraint("ext_docs_pk", ["collection", "id"])
+          .execute();
+        await db.schema
+          .createIndex("ext_docs_scope")
+          .on("ext_docs")
+          .columns(["collection", "scope", "id"])
+          .execute();
+        await db.schema
+          .createIndex("ext_docs_author")
+          .on("ext_docs")
+          .columns(["author", "collection", "created"])
+          .execute();
+        await db.schema
+          .createTable("ext_counters")
+          .addColumn("counter", "text", notNull)
+          .addColumn("key", "text", notNull)
+          .addColumn("period", "text", notNull)
+          .addColumn("bucket", "text", notNull)
+          .addColumn("value", "bigint", zero)
+          .addPrimaryKeyConstraint("ext_counters_pk", ["counter", "key", "period", "bucket"])
+          .execute();
+      },
+    },
     "0015_email_change": {
       async up(db: Db) {
         await db.schema.alterTable("email_tokens").addColumn("target_email", "text").execute();

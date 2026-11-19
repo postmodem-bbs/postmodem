@@ -51,6 +51,7 @@ describe("package host", () => {
       settings,
       profile: "vanilla",
       log,
+      platform: {} as never,
     });
 
     // The vanilla profile enables nothing.
