@@ -90,3 +90,29 @@ test("unread topics are marked until read, and 'mark all read' clears them", asy
   await reader.goto("/viewforum.php?f=6");
   await expect(row.locator(".pkg-unread")).toHaveCount(0);
 });
+
+test("revisions: an edited post keeps its earlier text, for the author and moderators", async ({ page }) => {
+  await signIn(page, "retro_fan", PASSWORD);
+  await page.goto("/viewforum.php?f=6");
+  await page.getByRole("link", { name: "New topic" }).first().click();
+  await page.getByLabel("Topic title").fill(`Historia ${unique()}`);
+  await page.getByLabel("Message").fill("Pierwsza wersja.");
+  await page.getByRole("button", { name: "Post" }).click();
+  await page.waitForURL(/#p\d+$|[?&]p=\d+/);
+  const post = page.locator("article.post").first();
+  await post.getByRole("link", { name: "Edit" }).click();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Edit post");
+  await page.getByLabel("Message").fill("Druga wersja.");
+  await page.getByRole("button", { name: "Save" }).click();
+  await expect(page.locator("article.post").first()).toContainText("Druga wersja.");
+
+  await page
+    .locator("article.post")
+    .first()
+    .getByRole("link", { name: /^History/ })
+    .click();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Post history");
+  await expect(page.locator(".revision").first()).toContainText("Druga wersja.");
+  await expect(page.locator(".revision").nth(1)).toContainText("Pierwsza wersja.");
+  await expectNoAxeViolations(page);
+});

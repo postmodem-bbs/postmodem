@@ -7,6 +7,7 @@ import {
   type BoardEvent,
   type BoardEvents,
   type CapabilityDef,
+  type ContentHooks,
   type Decoration,
   enabledPackages,
   enabledPackagesSetting,
@@ -19,6 +20,7 @@ import {
   type PackageKey,
   type PackagePasswordPolicy,
   type PackageRuntime,
+  type Post,
   type ProfileName,
   packageRoleGrants,
   type Repositories,
@@ -31,6 +33,7 @@ import {
   type Viewer,
 } from "@postmodem/core";
 import { INSTALLED_PACKAGES } from "@postmodem/modules";
+import type { Platform } from "./platform.ts";
 
 export { INSTALLED_PACKAGES };
 
@@ -46,6 +49,16 @@ export interface PackageHost {
   decorateTopics(viewer: Viewer, topics: Topic[]): Promise<Map<Id, Decoration[]>>;
   decorateForums(viewer: Viewer, nodes: Node[]): Promise<Map<Id, Decoration[]>>;
   slot(name: SlotName, args: SlotArgs): Promise<SlotItem[]>;
+  /** "post.actions" for a page of posts: per-post slots plus packages' batched ones. */
+  postActions(args: Omit<SlotArgs, "post">, posts: Post[]): Promise<Map<Id, SlotItem[]>>;
+  /** Every enabled package's housekeeping (scheduler). */
+  housekeeping(now: number): Promise<number>;
+  /**
+   * Every enabled package's content hooks as one (EP-3, EP-5). Policy and filters are
+   * security-relevant, so a failing package denies (fails closed); in-transaction hooks abort
+   * the command by throwing.
+   */
+  contentHooks(): ContentHooks;
 }
 
 /** What packages add to the permission model, for coreRegistry() and installCorePermissions(). */
@@ -70,6 +83,7 @@ export async function createPackageHost(opts: {
   settings: Settings;
   profile: ProfileName;
   log: Logger;
+  platform: Platform;
 }): Promise<PackageHost> {
   const { installed, settings, log } = opts;
   const enabled = () => enabledPackages(installed, settings.get(enabledPackagesSetting), opts.profile);
@@ -79,7 +93,17 @@ export async function createPackageHost(opts: {
     try {
       runtimes.set(
         p.key,
-        (await p.setup?.({ repos: opts.repos, db: opts.db, settings, log, isEnabled })) ?? {},
+        (await p.setup?.({
+          repos: opts.repos,
+          db: opts.db,
+          settings,
+          log,
+          isEnabled,
+          fields: opts.platform.fields,
+          collections: opts.platform.collections,
+          channels: opts.platform.channels,
+          counters: opts.platform.counters,
+        })) ?? {},
       );
     } catch (e) {
       log.error("package failed to start; it stays off", { package: p.key, error: (e as Error).message });
@@ -177,6 +201,72 @@ export async function createPackageHost(opts: {
     },
     decorateTopics: (viewer, topics) => decorate(topics, (r) => r.decorateTopics, viewer),
     decorateForums: (viewer, nodes) => decorate(nodes, (r) => r.decorateForums, viewer),
+    async postActions(args, posts) {
+      const out = new Map<Id, SlotItem[]>(posts.map((p) => [p.id, []]));
+      for (const [key, r] of active()) {
+        const one = r.slots?.["post.actions"];
+        if (one)
+          for (const post of posts)
+            out
+              .get(post.id)!
+              .push(
+                ...(await guarded(key, "slot post.actions", () => one({ ...args, post }), [] as SlotItem[])),
+              );
+        if (r.postActions) {
+          const batch = await guarded(
+            key,
+            "post actions",
+            () => r.postActions!(args, posts),
+            new Map<Id, SlotItem[]>(),
+          );
+          for (const [id, items] of batch) out.get(id)?.push(...items);
+        }
+      }
+      return out;
+    },
+    async housekeeping(now) {
+      let removed = 0;
+      for (const [key, r] of active())
+        if (r.housekeeping) removed += await guarded(key, "housekeeping", () => r.housekeeping!(now), 0);
+      return removed;
+    },
+    contentHooks() {
+      const withHooks = active().flatMap(([key, r]) => (r.content ? [[key, r.content] as const] : []));
+      if (!withHooks.length) return {};
+      return {
+        policy(q) {
+          for (const [key, h] of withHooks) {
+            if (!h.policy) continue;
+            try {
+              const vote = h.policy(q);
+              if (vote !== "abstain") return vote;
+            } catch (e) {
+              log.error("package policy failed; denying", { package: key, error: (e as Error).message });
+              return { deny: { package: "core", code: "package-error" } };
+            }
+          }
+          return "abstain";
+        },
+        async beforeUpdate(e) {
+          let draft = e.draft;
+          for (const [key, h] of withHooks) {
+            if (!h.beforeUpdate) continue;
+            try {
+              const r = await h.beforeUpdate({ ...e, draft });
+              if ("veto" in r) return r;
+              draft = r.draft;
+            } catch (err) {
+              log.error("package filter failed; refusing", { package: key, error: (err as Error).message });
+              return { veto: { package: "core", code: "package-error" } };
+            }
+          }
+          return { draft };
+        },
+        async postUpdated(e, tx) {
+          for (const [, h] of withHooks) await h.postUpdated?.(e, tx);
+        },
+      };
+    },
     async slot(name, args) {
       const items: SlotItem[] = [];
       for (const [key, r] of active()) {
@@ -199,5 +289,7 @@ export function forRequest(locals: App.Locals) {
     },
     slot: (name: SlotName, args: Omit<SlotArgs, "viewer" | "perms" | "user"> = {}) =>
       packages.slot(name, { viewer, perms: locals.perms, user: locals.user, ...args }),
+    postActions: (args: Omit<SlotArgs, "viewer" | "perms" | "user" | "post">, posts: Post[]) =>
+      packages.postActions({ viewer, perms: locals.perms, user: locals.user, ...args }, posts),
   };
 }

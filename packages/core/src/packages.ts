@@ -7,10 +7,16 @@
 // SDK that third parties build on is frozen in M4, shaped by these packages.
 
 import type { Permissions } from "./domain/core-permissions.ts";
+import type { ContentHooks } from "./domain/hooks.ts";
 import type { CapabilityDef, Viewer } from "./domain/permissions.ts";
 import type { Repositories } from "./domain/ports.ts";
-import type { Effect, Id, Node, Post, Session, Topic, User } from "./domain/types.ts";
+import type { Effect, Id, Millis, Node, Post, Session, Topic, User } from "./domain/types.ts";
 import type { Logger } from "./log.ts";
+import type { ChannelDef, Channels } from "./platform/channels.ts";
+import type { CollectionDef, Collections } from "./platform/collections.ts";
+import type { CounterDef, Counters } from "./platform/counters.ts";
+import type { FieldDef, Fields } from "./platform/fields.ts";
+import type { PreferenceDef } from "./platform/preferences.ts";
 import type { SettingDef, Settings } from "./settings.ts";
 
 export type PackageKey = string;
@@ -71,6 +77,11 @@ export interface PackageContext {
   settings: Settings;
   log: Logger;
   isEnabled(key: PackageKey): boolean;
+  /** Platform services (PLATFORM-SERVICES.md): the package's own declarations live here. */
+  fields: Fields;
+  collections: Collections;
+  channels: Channels;
+  counters: Counters;
 }
 
 export interface LoginAttempt {
@@ -97,10 +108,19 @@ export interface PackageAuth {
 
 export interface PackageRuntime {
   auth?: PackageAuth;
+  /** Extension points #3 (lifecycle) and #5 (access) on the posting commands. */
+  content?: ContentHooks;
   on?: { [E in BoardEvent]?: (event: BoardEvents[E]) => Promise<void> | void };
   decorateTopics?(viewer: Viewer, topics: Topic[]): Promise<Map<Id, Decoration>>;
   decorateForums?(viewer: Viewer, nodes: Node[]): Promise<Map<Id, Decoration>>;
   slots?: { [S in SlotName]?: (args: SlotArgs) => Promise<SlotItem[]> | SlotItem[] };
+  /**
+   * The per-post slot for a whole page of posts at once (batch-first: one query per page,
+   * not per post). Items are added after the per-post `slots["post.actions"]` ones.
+   */
+  postActions?(args: Omit<SlotArgs, "post">, posts: Post[]): Promise<Map<Id, SlotItem[]>>;
+  /** Scheduled housekeeping (retention); returns how many rows it removed. */
+  housekeeping?(now: Millis): Promise<number>;
 }
 
 export interface PackageDefinition {
@@ -114,6 +134,13 @@ export interface PackageDefinition {
   /** Capabilities with their default effect per built-in role (merged into those roles). */
   capabilities?: (CapabilityDef & { roles?: Record<string, Effect> })[];
   settings?: SettingDef<unknown>[];
+  /** Platform services (M2b slice 10), keys prefixed with the package key. */
+  preferences?: PreferenceDef<unknown>[];
+  fields?: FieldDef<unknown>[];
+  // biome-ignore lint/suspicious/noExplicitAny: each collection has its own document type
+  collections?: CollectionDef<any>[];
+  channels?: ChannelDef[];
+  counters?: CounterDef[];
   /**
    * Kysely migrations (real snake_case names, table names prefixed `pm_`), run for every
    * installed package, enabled or not, so enabling one later needs no migration step.
@@ -125,8 +152,22 @@ export interface PackageDefinition {
 /** Distribution profiles (PACKAGES.md §5, ADR 0019). */
 export const PROFILES = {
   vanilla: [] as PackageKey[],
-  essentials: ["quick-reply", "reports", "unread-tracking", "login-security"] as PackageKey[],
-  przemo: ["quick-reply", "reports", "unread-tracking", "login-security"] as PackageKey[],
+  essentials: [
+    "quick-reply",
+    "reports",
+    "unread-tracking",
+    "revisions",
+    "edit-policy",
+    "login-security",
+  ] as PackageKey[],
+  przemo: [
+    "quick-reply",
+    "reports",
+    "unread-tracking",
+    "revisions",
+    "edit-policy",
+    "login-security",
+  ] as PackageKey[],
 } as const;
 export type ProfileName = keyof typeof PROFILES;
 

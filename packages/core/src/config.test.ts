@@ -50,6 +50,21 @@ describe("loadConfig", () => {
     expect(() => loadConfig(io({ POSTMODEM_DATABASE_URL: "mysql://x" }))).toThrowError(ConfigError);
   });
 
+  it("accepts Valkey URLs for counters and live updates, and nothing else", () => {
+    const { config } = loadConfig(
+      io({ POSTMODEM_COUNTERS_URL: "valkey://valkey:6379", POSTMODEM_REALTIME_URL: "redis://:pw@valkey/1" }),
+    );
+    expect(config.countersUrl).toBe("valkey://valkey:6379");
+    expect(
+      describeConfig(loadConfig(io({ POSTMODEM_REALTIME_URL: "redis://:pw@valkey/1" }))).realtimeUrl?.value,
+    ).toBe("redis://:••••••@valkey/1");
+    expect(() => loadConfig(io({ POSTMODEM_COUNTERS_URL: "http://x" }))).toThrowError(
+      /POSTMODEM_COUNTERS_URL/,
+    );
+    expect(() => loadConfig(io({ POSTMODEM_COUNTERS_URL: "postgres://" }))).toThrowError(/COUNTERS_URL/);
+    expect(loadConfig(io({ POSTMODEM_REALTIME_URL: "postgres://" })).config.realtimeUrl).toBe("postgres://");
+  });
+
   it("fails clearly when a *_FILE can't be read", () => {
     expect(() => loadConfig(io({ POSTMODEM_SECRET_KEY_FILE: "/nope" }))).toThrowError(/can't be read/);
   });

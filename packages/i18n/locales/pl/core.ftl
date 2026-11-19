@@ -263,6 +263,11 @@ post-edited = { $count ->
    *[other] Edytowany { $count } razy, ostatnio
 }
 topic-locked-hint = Ten temat jest zamknięty: nie można w nim odpowiadać.
+topic-new-replies = { $count ->
+    [one] 1 nowa odpowiedź od otwarcia strony: pokaż ją
+    [few] { $count } nowe odpowiedzi od otwarcia strony: pokaż je
+   *[many] { $count } nowych odpowiedzi od otwarcia strony: pokaż je
+}
 
 ## Bans
 banned-title = Masz zakaz korzystania z tego forum.
@@ -299,6 +304,19 @@ modcp-error-invalid = Nie udało się: sprawdź formularz.
 quick-reply-heading = Szybka odpowiedź
 
 ## Package: reports
+edit-policy-admin-post = Tylko administrator może zmienić post administratora.
+edit-policy-window-closed = { $minutes ->
+    [one] Post można zmienić przez minutę od napisania; poproś moderatora.
+    [few] Post można zmienić przez { $minutes } minuty od napisania; poproś moderatora.
+   *[many] Post można zmienić przez { $minutes } minut od napisania; poproś moderatora.
+}
+revisions-link = Historia
+revisions-title = Historia postu
+revisions-back = Wróć do postu
+revisions-current = Obecna wersja
+revisions-replaced = Zastąpiona { $when }
+revisions-by = edytował(a) { $name }
+core-package-error = Coś poszło nie tak przy sprawdzaniu. Spróbuj ponownie później.
 reports-report = Zgłoś
 reports-queue = Zgłoszenia
 reports-title = Zgłoś post

@@ -4,6 +4,8 @@
 // node.view but not node.read are listed but closed (403), and nothing from an unreadable
 // forum (last-post titles, counts) leaks through a readable one.
 import {
+  boardAdmins,
+  type ContentHooks,
   type Decoration,
   type Id,
   may,
@@ -12,6 +14,7 @@ import {
   type Permissions,
   type Poll,
   type Post,
+  packageDenial,
   type Repositories,
   type Topic,
 } from "@postmodem/core";
@@ -403,10 +406,12 @@ export async function loadTopic(
   repos: Repositories,
   perms: Permissions,
   render: (posts: Post[]) => Promise<Map<Id, string>>,
-  views: { add(id: Id): void; pending(id: Id): number },
+  views: { add(id: Id): void; pending(id: Id): number | Promise<number> },
   topic: Topic,
   startParam: unknown,
   classic?: ClassicIds,
+  /** Packages' access filters (EP-5): they may hide Edit and Delete the core would offer. */
+  hooks?: ContentHooks,
 ) {
   if (topic.visibility !== "core:public") return null;
   const node = await repos.nodes.get(topic.nodeId);
@@ -426,6 +431,10 @@ export async function loadTopic(
   const html = await render(page.items);
   const users = await repos.users.getMany(page.items.flatMap((p) => (p.authorId ? [p.authorId] : [])));
   views.add(topic.id);
+  const admins = hooks?.policy ? await boardAdmins(repos) : new Set<Id>();
+  const now = Date.now();
+  const packagesAllow = (action: "post.edit" | "post.delete", p: Post) =>
+    !packageDenial(hooks, { action, perms, userId: perms.viewer.userId, node, topic, post: p, now }, admins);
   const posts: PostView[] = page.items.map((p) => {
     const u = p.authorId ? users.get(p.authorId) : undefined;
     return {
@@ -440,8 +449,8 @@ export async function loadTopic(
       authorLocation: u?.location ?? "",
       authorAvatar: avatarUrl(u?.avatar ?? null),
       subject: p.subject,
-      canEdit: may.edit(perms, node, topic, p, perms.viewer.userId),
-      canDelete: may.delete(perms, node, topic, p, perms.viewer.userId),
+      canEdit: may.edit(perms, node, topic, p, perms.viewer.userId) && packagesAllow("post.edit", p),
+      canDelete: may.delete(perms, node, topic, p, perms.viewer.userId) && packagesAllow("post.delete", p),
       html: html.get(p.id) ?? "",
     };
   });
@@ -463,7 +472,7 @@ export async function loadTopic(
       replies: topic.replyCount,
       canReply: may.reply(perms, node, topic),
       canModerate: moderates(perms, node),
-      viewCount: topic.viewCount + views.pending(topic.id),
+      viewCount: topic.viewCount + (await views.pending(topic.id)),
     },
     breadcrumbs: await crumbs(repos, node, classic),
     posts,

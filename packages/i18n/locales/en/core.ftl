@@ -252,6 +252,10 @@ post-edited = { $count ->
    *[other] Edited { $count } times, last
 }
 topic-locked-hint = This topic is locked: no new replies.
+topic-new-replies = { $count ->
+    [one] 1 new reply since you opened this page: show it
+   *[other] { $count } new replies since you opened this page: show them
+}
 
 ## Bans
 banned-title = You have been banned from this board.
@@ -288,6 +292,18 @@ modcp-error-invalid = That didn't work: check the form.
 quick-reply-heading = Quick reply
 
 ## Package: reports
+edit-policy-admin-post = Only administrators can change an administrator's post.
+edit-policy-window-closed = { $minutes ->
+    [one] Posts can be changed for 1 minute after posting; ask a moderator.
+   *[other] Posts can be changed for { $minutes } minutes after posting; ask a moderator.
+}
+revisions-link = History
+revisions-title = Post history
+revisions-back = Back to the post
+revisions-current = Current version
+revisions-replaced = Replaced on { $when }
+revisions-by = edited by { $name }
+core-package-error = Something went wrong while checking this. Please try again later.
 reports-report = Report
 reports-queue = Reports
 reports-title = Report a post

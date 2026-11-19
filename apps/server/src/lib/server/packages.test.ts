@@ -60,6 +60,7 @@ describe("package host", () => {
       settings,
       profile: "vanilla",
       log,
+      platform: {} as never,
     });
 
     // The vanilla profile enables nothing.
@@ -93,6 +94,7 @@ it("applies login-security only while enabled and preserves independent attempt 
     settings,
     profile: "essentials",
     log: quiet,
+    platform: {} as never,
   });
   await settings.set(loginSecuritySettings.maxFailures, 2);
   await settings.set(loginSecuritySettings.minPasswordLength, 12);

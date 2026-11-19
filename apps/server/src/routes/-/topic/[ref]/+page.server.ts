@@ -8,6 +8,7 @@ import { jsonLdTag } from "#lib/server/jsonld.ts";
 import { absoluteUrl, classicCategoryIds, ensureCanonical, resolveTopic } from "#lib/server/links.ts";
 import { topicVisited } from "#lib/server/notifications.ts";
 import { forRequest } from "#lib/server/packages.ts";
+import { TOPIC_VIEWS } from "#lib/server/platform.ts";
 import { readerOf } from "#lib/server/reader.ts";
 import { requestedStart } from "#lib/urls.ts";
 import type { PageServerLoad } from "./$types";
@@ -21,10 +22,15 @@ export const load: PageServerLoad = async ({ url, params, locals }) => {
     repos,
     locals.perms,
     (posts) => locals.ctx.renderer.render(posts),
-    locals.ctx.views,
+    {
+      add: (id) => locals.ctx.platform.counters.hit(TOPIC_VIEWS, id),
+      pending: async (id) =>
+        (await locals.ctx.platform.counters.pending(TOPIC_VIEWS, [id])).get(String(id)) ?? 0,
+    },
     topic,
     requestedStart(url.searchParams, POSTS_PER_PAGE),
     urls.style === "classic" ? await classicCategoryIds(repos, await repos.nodes.tree()) : undefined,
+    locals.ctx.packages.contentHooks(),
   );
   if (!data) error(404, "Not found");
   if ("denied" in data) error(data.denied, data.denied === 403 ? "Forbidden" : "Not found");
@@ -43,10 +49,9 @@ export const load: PageServerLoad = async ({ url, params, locals }) => {
   const node = await repos.nodes.get(topic.nodeId);
   const raw = await repos.posts.getMany(data.posts.map((p) => p.id));
   const postSlots = Object.fromEntries(
-    await Promise.all(
-      data.posts.map(
-        async (p) => [p.id, await pkg.slot("post.actions", { topic, node, post: raw.get(p.id) })] as const,
-      ),
+    await pkg.postActions(
+      { topic, ...(node ? { node } : {}) },
+      data.posts.flatMap((p) => (raw.has(p.id) ? [raw.get(p.id)!] : [])),
     ),
   );
   const afterPosts = await pkg.slot("topic.afterPosts", { topic, node });

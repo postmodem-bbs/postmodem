@@ -3,6 +3,14 @@
 Status: **draft** · 2026-11-17 · builds on [DESIGN.md §6](DESIGN.md),
 [EXTENSION-POINTS.md](EXTENSION-POINTS.md), [PACKAGES.md](PACKAGES.md)
 
+> **v0 implemented (M2b slice 10, 2026-11-19)** for first-party packages: preferences (§4),
+> entity fields (§5), collections (§6), channels (§7) and counters (§8), declared in a
+> package's TypeScript definition (`@postmodem/core` `platform/`). Rules are TypeScript
+> functions for now; the JSON manifest, CEL rules, slots with templates, islands and the
+> client API arrive with the tier-1 SDK (M4). Not yet: field forms and indexes, collection
+> expression indexes, presence, WebSocket, counters' `beacon`/`redirect` sources and unique
+> counts.
+
 Platform services are what a tier-1 add-on can do **without server code**.
 Each one is a core feature with a declarative surface (the manifest), a
 server-side enforcement point, and a small client API. Tier-2 modules can use

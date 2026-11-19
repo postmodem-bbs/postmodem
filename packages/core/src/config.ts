@@ -27,6 +27,9 @@ const FIELDS = {
     secret: false,
   },
   profile: { env: "PROFILE", toml: "profile", secret: false },
+  // Valkey for counters and live updates (the `scale` profile); passwords shown redacted.
+  countersUrl: { env: "COUNTERS_URL", toml: "counters_url", secret: false },
+  realtimeUrl: { env: "REALTIME_URL", toml: "realtime_url", secret: false },
 } as const;
 type FieldName = keyof typeof FIELDS;
 
@@ -36,8 +39,6 @@ const RESERVED = new Set([
   "VERSION",
   "REVISION",
   "CACHE_URL",
-  "COUNTERS_URL",
-  "REALTIME_URL",
   "QUEUE",
   "STORAGE_URL",
   "SEARCH_URL",
@@ -66,6 +67,22 @@ const ConfigSchema = z.object({
   /** Registrations one IP address can make per hour before delays start; 0 = unlimited. */
   registrationsPerIpHour: z.coerce.number().int().min(0),
   profile: z.enum(["vanilla", "essentials", "przemo"]),
+  /** Counters' buffer: memory:// (each process, the default) or a shared Valkey. */
+  countersUrl: z
+    .string()
+    .regex(/^(memory:\/\/|(valkeys?|rediss?):\/\/)/, "must be memory:// or start with valkey:// or redis://")
+    .optional(),
+  /**
+   * Live updates between processes: memory:// (one process), postgres:// (LISTEN/NOTIFY on the
+   * board's database) or Valkey. Unset: postgres:// on Postgres, memory:// on SQLite.
+   */
+  realtimeUrl: z
+    .string()
+    .regex(
+      /^(memory:\/\/|postgres:\/\/|(valkeys?|rediss?):\/\/)/,
+      "must be memory://, postgres://, or start with valkey:// or redis://",
+    )
+    .optional(),
   version: z.string(),
   revision: z.string(),
 });
@@ -189,7 +206,7 @@ export function describeConfig(
 
 function redactUrl(value: unknown): unknown {
   if (typeof value !== "string") return value;
-  return value.replace(/(\/\/[^:/@]+:)[^@]+@/, "$1••••••@");
+  return value.replace(/(\/\/[^:/@]*:)[^@]+@/, "$1••••••@");
 }
 
 function splitList(s: string): string[] {
