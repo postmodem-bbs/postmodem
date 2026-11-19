@@ -9,7 +9,7 @@
 import type { Permissions } from "./domain/core-permissions.ts";
 import type { CapabilityDef, Viewer } from "./domain/permissions.ts";
 import type { Repositories } from "./domain/ports.ts";
-import type { Effect, Id, Node, Post, Topic, User } from "./domain/types.ts";
+import type { Effect, Id, Node, Post, Session, Topic, User } from "./domain/types.ts";
 import type { Logger } from "./log.ts";
 import type { SettingDef, Settings } from "./settings.ts";
 
@@ -73,7 +73,30 @@ export interface PackageContext {
   isEnabled(key: PackageKey): boolean;
 }
 
+export interface LoginAttempt {
+  /** Normalized identifier, including when there is no matching account. */
+  identifier: string;
+  ip: string;
+  now: number;
+}
+
+export type PackagePasswordPolicy = (
+  password: string,
+  user: Pick<User, "username" | "email">,
+) => string | undefined;
+
+export interface PackageAuth {
+  /** Milliseconds to wait before retrying. */
+  beforeLogin?(attempt: LoginAttempt): Promise<number> | number;
+  afterLoginFailure?(attempt: LoginAttempt): Promise<void> | void;
+  afterLoginSuccess?(attempt: LoginAttempt): Promise<void> | void;
+  passwordPolicy?: PackagePasswordPolicy;
+  /** Synchronous check over the existing session and request metadata. */
+  validateSession?(session: Session, ip: string): boolean;
+}
+
 export interface PackageRuntime {
+  auth?: PackageAuth;
   on?: { [E in BoardEvent]?: (event: BoardEvents[E]) => Promise<void> | void };
   decorateTopics?(viewer: Viewer, topics: Topic[]): Promise<Map<Id, Decoration>>;
   decorateForums?(viewer: Viewer, nodes: Node[]): Promise<Map<Id, Decoration>>;
@@ -102,8 +125,8 @@ export interface PackageDefinition {
 /** Distribution profiles (PACKAGES.md §5, ADR 0019). */
 export const PROFILES = {
   vanilla: [] as PackageKey[],
-  essentials: ["quick-reply", "reports", "unread-tracking"] as PackageKey[],
-  przemo: ["quick-reply", "reports", "unread-tracking"] as PackageKey[],
+  essentials: ["quick-reply", "reports", "unread-tracking", "login-security"] as PackageKey[],
+  przemo: ["quick-reply", "reports", "unread-tracking", "login-security"] as PackageKey[],
 } as const;
 export type ProfileName = keyof typeof PROFILES;
 

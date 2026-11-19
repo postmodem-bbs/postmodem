@@ -288,6 +288,7 @@ export interface EmailTokenRepository {
 export interface ThrottleRepository {
   get(key: string): Promise<{ failures: number; last: Millis } | undefined>;
   put(key: string, failures: number, last: Millis): Promise<void>;
+  increment(key: string, now: Millis, windowMs: Millis): Promise<void>;
   remove(key: string): Promise<void>;
   purge(before: Millis): Promise<number>;
 }

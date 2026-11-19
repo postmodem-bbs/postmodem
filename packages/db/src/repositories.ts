@@ -1881,6 +1881,23 @@ export function createRepositories(db: Db, dialect: "sqlite" | "pg"): Repositori
         .onConflict((oc) => oc.column("key").doUpdateSet({ failures, last }))
         .execute();
     },
+    async increment(key, now, windowMs) {
+      await db
+        .insertInto("throttle")
+        .values({ key, failures: 1, last: now })
+        .onConflict((oc) =>
+          oc.column("key").doUpdateSet((eb) => ({
+            failures: eb
+              .case()
+              .when("throttle.last", "<", now - windowMs)
+              .then(1)
+              .else(eb("throttle.failures", "+", 1))
+              .end(),
+            last: eb.case().when("throttle.last", "<", now).then(now).else(eb.ref("throttle.last")).end(),
+          })),
+        )
+        .execute();
+    },
     async remove(key) {
       await db.deleteFrom("throttle").where("key", "=", key).execute();
     },

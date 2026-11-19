@@ -79,6 +79,7 @@ export const actions: Actions = {
         disallowedUsernames: ctx.settings.get(disallowedUsernames),
         rulesVersion: ctx.settings.get(rulesVersion),
         verifyEmail: ctx.settings.get(verifyEmailOnRegistration),
+        passwordPolicy: ctx.packages.passwordPolicy,
       },
       {
         ...values,

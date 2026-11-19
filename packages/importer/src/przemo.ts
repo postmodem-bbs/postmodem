@@ -7,7 +7,14 @@
 // it stopped. Only the core is imported; everything Przemo added is listed in the report as
 // "not imported" for its package to take over (PACKAGES §0).
 import { createHash } from "node:crypto";
-import { type GroupKind, type Id, legacyScheme, type Repositories, type UserStatus } from "@postmodem/core";
+import {
+  type GroupKind,
+  type Id,
+  legacyScheme,
+  PASSWORD_MIN,
+  type Repositories,
+  type UserStatus,
+} from "@postmodem/core";
 import { decodeEntities, fromPhpbb2SmileyCode, fromPhpbb2Storage } from "@postmodem/markup";
 import { decodeLegacy, type LegacyCharset } from "./charset.ts";
 import {
@@ -74,7 +81,17 @@ export interface ImportReport {
     byOrigin?: UnreadByOrigin;
   };
   /** Board settings to apply (the caller owns the settings service). */
-  settings: { boardName?: string; boardDescription?: string; defaultLocale?: "en" | "pl" };
+  settings: {
+    boardName?: string;
+    boardDescription?: string;
+    defaultLocale?: "en" | "pl";
+    loginSecurity?: {
+      maxFailures?: number;
+      blockMinutes?: number;
+      minPasswordLength?: number;
+      requireLettersAndNumbers?: boolean;
+    };
+  };
   /**
    * Image files the board needs from the old installation, as paths relative to its root,
    * each with where it goes under the new board's uploads directory. The importer reads only
@@ -178,6 +195,32 @@ const USED: Record<string, string[]> = {
   banlist: ["ban_userid"],
 };
 const CONFIG_USED = ["sitename", "site_desc", "default_lang"];
+
+/** Map only board configuration. Historical lockouts and per-user IP choices stay in the report. */
+export function importLoginSecuritySettings(config: ReadonlyMap<string, unknown>) {
+  const settings: NonNullable<ImportReport["settings"]["loginSecurity"]> = {};
+  const used = new Set<string>();
+  const keys = [
+    ["max_login_error", "maxFailures", 0, 100],
+    ["block_time", "blockMinutes", 0, 1440],
+    ["min_password_len", "minPasswordLength", PASSWORD_MIN, 128],
+  ] as const;
+  for (const [source, target, min, max] of keys) {
+    const value = String(config.get(source) ?? "").trim();
+    if (!/^\d+$/.test(value)) continue;
+    const number = Number(value);
+    if (!Number.isSafeInteger(number) || number > max) continue;
+    settings[target] = Math.max(min, number);
+    used.add(source);
+  }
+  const mixed = String(config.get("force_complex_password") ?? "");
+  if (mixed === "0" || mixed === "1") {
+    settings.requireLettersAndNumbers = mixed === "1";
+    used.add("force_complex_password");
+  }
+  if (["0", "1"].includes(String(config.get("password_not_login") ?? ""))) used.add("password_not_login"); // Always enforced by the core password floor.
+  return { settings: Object.keys(settings).length ? settings : undefined, used };
+}
 
 const num = (v: unknown) => (typeof v === "number" ? v : Number(v ?? 0) || 0);
 const bytes = (v: unknown) => (Buffer.isBuffer(v) ? v : v == null ? null : Buffer.from(String(v), "latin1"));
@@ -312,12 +355,18 @@ export async function importPrzemo(
     // ── small reference tables, read once ────────────────────────────────────
     const configRows = has("config") ? await source.all("config") : [];
     const config = new Map(configRows.map((row) => [plain(row.config_name), row.config_value]));
+    const loginSecurity = importLoginSecuritySettings(
+      new Map([...config].map(([key, value]) => [key, plain(value)])),
+    );
     report.settings = {
+      loginSecurity: loginSecurity.settings,
       boardName: config.has("sitename") ? plain(config.get("sitename")) || undefined : undefined,
       boardDescription: config.has("site_desc") ? plain(config.get("site_desc")) : undefined,
       defaultLocale: LOCALES[plain(config.get("default_lang"))],
     };
-    report.notImported.config = [...config.keys()].filter((k) => !CONFIG_USED.includes(k)).sort();
+    report.notImported.config = [...config.keys()]
+      .filter((k) => !CONFIG_USED.includes(k) && !loginSecurity.used.has(k))
+      .sort();
     for (const k of [...config.keys()].sort()) {
       const v = plain(config.get(k));
       if (PRZEMO_CONFIG.includes(k) && (v === "0" || v === "1")) report.featureSwitches[k] = v;

@@ -20,6 +20,7 @@ import {
   usernameProblem,
 } from "@postmodem/core";
 import { anonymise, importPrzemo, type LegacySource, openMysqlSource, summarise } from "@postmodem/importer";
+import { loginSecuritySettings } from "@postmodem/modules";
 import { backup, restore } from "../lib/server/backup.ts";
 import { type AppContext, createContext, readConfig } from "../lib/server/bootstrap.ts";
 import { DEMO_PASSWORD, seedDemo, seedLongTopic } from "../lib/server/demo.ts";
@@ -234,7 +235,9 @@ async function setPassword(args: string[]): Promise<number> {
         return 2;
       }
     }
-    const problem = passwordProblem(password, [user.username, user.email ?? ""]);
+    const problem =
+      passwordProblem(password, [user.username, user.email ?? ""]) ??
+      ctx.packages.passwordPolicy(password, user);
     if (problem) {
       console.error(`password rejected: ${problem} (at least ${PASSWORD_MIN} characters)`);
       return 2;
@@ -291,6 +294,18 @@ async function importBoard(args: string[]): Promise<number> {
       if (s.boardDescription !== undefined)
         await ctx.settings.set(boardDescription, s.boardDescription.slice(0, 300));
       if (s.defaultLocale) await ctx.settings.set(defaultLocale, s.defaultLocale);
+      if (s.loginSecurity) {
+        for (const key of [
+          "maxFailures",
+          "blockMinutes",
+          "minPasswordLength",
+          "requireLettersAndNumbers",
+        ] as const) {
+          const value = s.loginSecurity[key];
+          if (value !== undefined)
+            await ctx.settings.set<number | boolean>(loginSecuritySettings[key], value);
+        }
+      }
       const indexed = await rebuildSearch(
         ctx.db.repos,
         (n) => n % 20_000 === 0 && ctx.log.info("search index", { posts: n }),

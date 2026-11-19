@@ -36,7 +36,13 @@ export const actions: Actions = {
     const { ctx } = locals;
     const form = await request.formData();
     const token = String(form.get("token") ?? "");
-    const result = await resetPassword(ctx.db.repos, token, String(form.get("password") ?? ""));
+    const result = await resetPassword(
+      ctx.db.repos,
+      token,
+      String(form.get("password") ?? ""),
+      Date.now(),
+      ctx.packages.passwordPolicy,
+    );
     if (!result.ok) return fail(400, { error: result.error });
     const { token: session } = await startSession(ctx.db.repos, result.user.id, {
       userAgent: request.headers.get("user-agent") ?? "",

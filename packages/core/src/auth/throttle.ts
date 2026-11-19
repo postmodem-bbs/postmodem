@@ -2,7 +2,7 @@
 // Progressive delays for repeated failures (sign-in per account and per IP, registration and
 // e-mail sending per IP and address). No lockouts: an attacker can't lock a real user out,
 // they only get slowed down. Counts live in a store shared by every replica (the database in
-// production). Full lockout policy is the login-security module (M3).
+// production). The login-security package can add its own cooldown.
 import type { ThrottleRepository } from "../domain/ports.ts";
 
 export interface ThrottlePolicy {
@@ -90,9 +90,7 @@ export class Throttle {
   }
 
   async fail(key: string, now: number): Promise<void> {
-    const e = await this.#store.get(this.#prefix + key);
-    const fresh = !e || now - e.last > this.policy.windowMs;
-    await this.#store.put(this.#prefix + key, fresh ? 1 : e.failures + 1, now);
+    await this.#store.increment(this.#prefix + key, now, this.policy.windowMs);
   }
 
   async reset(key: string): Promise<void> {
@@ -114,6 +112,11 @@ export class MemoryThrottleStore implements ThrottleStore {
     this.#entries.delete(key); // re-insert so Map order tracks recency
     this.#entries.set(key, { failures, last });
     if (this.#entries.size > this.#maxKeys) this.#entries.delete(this.#entries.keys().next().value!);
+  }
+  async increment(key: string, now: number, windowMs: number) {
+    const current = this.#entries.get(key);
+    const failures = !current || now - current.last > windowMs ? 1 : current.failures + 1;
+    await this.put(key, failures, Math.max(now, current?.last ?? now));
   }
   async remove(key: string) {
     this.#entries.delete(key);

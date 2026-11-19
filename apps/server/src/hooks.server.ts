@@ -56,16 +56,21 @@ export const handle: Handle = async ({ event, resolve }) => {
   // Bans (phpBB2's banlist): a banned IP gets nothing but this page; a banned member's
   // session ends and they browse as a guest (signing in again is refused).
   const bans = await ctx.activeBans();
+  const ip = event.getClientAddress();
   const ipBan = findBan(
     bans.filter((b) => b.kind === "ip"),
-    { ip: event.getClientAddress() },
+    { ip },
   );
   if (ipBan) return bannedPage(event.locals.locale, ipBan.reason);
 
   // Session: an opaque cookie whose hash names a server-side session (core accounts.ts).
   const cookieName = sessionCookieName(ctx.config);
   const token = event.cookies.get(cookieName);
-  const auth = token ? await resolveSession(ctx.db.repos, token) : null;
+  const auth = token
+    ? await resolveSession(ctx.db.repos, token, Date.now(), (session) =>
+        ctx.packages.validateSession(session, ip),
+      )
+    : null;
   if (token && !auth) clearSessionCookie(event.cookies, ctx.config);
   if (auth && token && findBan(bans, { userId: auth.user.id, email: auth.user.email })) {
     await endSession(ctx.db.repos, token);
