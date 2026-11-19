@@ -4,20 +4,13 @@
     {
       "name": "postmodem-live-demo",
       "runtimeExecutable": "sh",
-      "runtimeArgs": [
-        "-c",
-        "POSTMODEM_DATA_DIR=var/live-demo node apps/server/build/postmodem.js run"
-      ],
+      "runtimeArgs": ["-c", "POSTMODEM_DATA_DIR=var/live-demo node apps/server/build/postmodem.js run"],
       "port": 8080
     },
     {
       "name": "postmodem-dev",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": [
-        "--filter",
-        "@postmodem/server",
-        "dev"
-      ],
+      "runtimeArgs": ["--filter", "@postmodem/server", "dev"],
       "port": 5173
     },
     {
@@ -59,9 +52,7 @@
     {
       "name": "island-spike",
       "runtimeExecutable": "node",
-      "runtimeArgs": [
-        "tools/spikes/island-origin/server.mjs"
-      ],
+      "runtimeArgs": ["tools/spikes/island-origin/server.mjs"],
       "port": 8090
     }
   ]
