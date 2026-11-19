@@ -26,6 +26,21 @@ const localeOf = (ctx: AppContext, user: User) =>
 const t = (ctx: AppContext, user: User) => translator(localeOf(ctx, user));
 
 /** After a new topic or reply: watch it (if the author wants that), and tell the watchers. */
+/** Publishes a live update; a failure costs only the update, never the request. */
+export async function live(
+  ctx: AppContext,
+  channel: string,
+  scope: number | null,
+  event: string,
+  data: Record<string, unknown> = {},
+) {
+  try {
+    await ctx.platform.channels.publish(channel, scope, event, data);
+  } catch (e) {
+    ctx.log.warn("could not publish a live update", { channel, error: (e as Error).message });
+  }
+}
+
 export async function afterPost(
   ctx: AppContext,
   urls: ReturnType<typeof urlsFor>,
@@ -34,6 +49,9 @@ export async function afterPost(
   author: User,
 ) {
   const { repos } = ctx.db;
+  // Open pages of this topic hear about the new post (live updates, M2b slice 10).
+  if (topic.visibility === "core:public")
+    await live(ctx, "core.topic", topic.id, "post.created", { postId: post.id, authorId: author.id });
   if (author.autoWatch) await repos.watches.watch(author.id, topic.id);
   const watchers = await repos.watches.takeWatchersToNotify(topic.id, author.id);
   if (!watchers.length) return;
@@ -77,6 +95,7 @@ export async function afterMessage(
   recipient: User,
   sender: User | null,
 ) {
+  await live(ctx, "core.user", recipient.id, "message.received", { messageId: message.id });
   if (!recipient.notifyPm || !recipient.email || recipient.status !== "active") return;
   const tr = t(ctx, recipient);
   const vars = {

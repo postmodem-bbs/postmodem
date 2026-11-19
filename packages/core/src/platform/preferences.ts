@@ -83,16 +83,23 @@ export class Preferences {
     return [...this.#defs.values()];
   }
 
-  /** A member's stored values, or a guest's cookie (only `guest: "cookie"` preferences count). */
+  /**
+   * A guest's cookie, or a member's stored values over it: what a member chose for their
+   * account wins, and the device's own choice (the cookie) fills in the rest, so signing in
+   * never switches the language or colours the reader already picked on this device.
+   */
   async forReader(userId: Id | null, cookie: string | undefined): Promise<PreferenceView> {
-    const raw = userId === null ? parsePreferenceCookie(cookie) : await this.#store.load(userId);
     const values = new Map<string, unknown>();
-    for (const [key, value] of Object.entries(raw)) {
-      const def = this.#defs.get(key);
-      if (!def || (userId === null && def.guest !== "cookie")) continue;
-      const parsed = def.schema.safeParse(value);
-      if (parsed.success) values.set(key, parsed.data);
-    }
+    const take = (raw: Record<string, unknown>, guestOnly: boolean) => {
+      for (const [key, value] of Object.entries(raw)) {
+        const def = this.#defs.get(key);
+        if (!def || (guestOnly && def.guest !== "cookie")) continue;
+        const parsed = def.schema.safeParse(value);
+        if (parsed.success) values.set(key, parsed.data);
+      }
+    };
+    take(parsePreferenceCookie(cookie), true);
+    if (userId !== null) take(await this.#store.load(userId), false);
     return {
       get: <T>(def: PreferenceDef<T>) => (values.has(def.key) ? values.get(def.key) : def.default) as T,
       chosen: () => Object.fromEntries(values),

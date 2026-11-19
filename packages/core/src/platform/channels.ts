@@ -5,6 +5,7 @@
 // Valkey pub/sub for stack); every web process keeps a short replay buffer so a stream that
 // reconnects (Last-Event-ID) misses nothing, whichever replica it lands on.
 import type { Permissions } from "../domain/core-permissions.ts";
+import type { Repositories } from "../domain/ports.ts";
 import type { Id, Millis } from "../domain/types.ts";
 
 export interface ChannelDef {
@@ -13,7 +14,7 @@ export interface ChannelDef {
   /** What a subscription names: nothing (board-wide), or a topic, forum or user id. */
   scope: "board" | "node" | "topic" | "user";
   /** May this reader follow the channel (at this scope)? Checked when the stream opens. */
-  subscribe(perms: Permissions, scope: Id | null): boolean | Promise<boolean>;
+  subscribe(perms: Permissions, scope: Id | null, repos: Repositories): boolean | Promise<boolean>;
 }
 
 const KEY = /^[a-z][a-z0-9-]*\.[a-zA-Z][a-zA-Z0-9]*$/;
@@ -97,9 +98,11 @@ export class Channels {
   readonly #bus: Bus;
   readonly #unsubscribe: () => void;
   readonly #now: () => Millis;
+  readonly #repos: Repositories;
 
-  constructor(bus: Bus, now: () => Millis = Date.now) {
+  constructor(bus: Bus, repos: Repositories, now: () => Millis = Date.now) {
     this.#bus = bus;
+    this.#repos = repos;
     this.#now = now;
     this.#unsubscribe = bus.subscribe((m) => this.#deliver(m));
   }
@@ -140,7 +143,7 @@ export class Channels {
       if (!def || seen.has(subKey(s))) continue;
       const scope = def.scope === "board" ? null : s.scope;
       if (def.scope !== "board" && scope === null) continue;
-      if (await def.subscribe(perms, scope)) {
+      if (await def.subscribe(perms, scope, this.#repos)) {
         out.push({ channel: s.channel, scope });
         seen.add(subKey(s));
       }

@@ -6,10 +6,25 @@
   import Slot from "#lib/components/Slot.svelte";
   import { formatDate, formatDateTime, isoDate } from "#lib/format.ts";
   import { links } from "#lib/links.ts";
+  import { follow } from "#lib/live.ts";
 
   let { data } = $props();
   const t = $derived(translator(data.locale));
   const urls = $derived(links());
+
+  // Live updates: replies others post while this page is open. Shown as a link, never
+  // inserted into the page, so nothing moves under the reader.
+  let fresh = $state<{ count: number; first: number } | null>(null);
+  $effect(() => {
+    const topicId = data.topic.id;
+    const me = data.user?.id ?? null;
+    fresh = null;
+    return follow("core.topic", topicId, (m) => {
+      const postId = Number(m.data.postId);
+      if (m.event !== "post.created" || m.data.authorId === me || data.posts.some((p) => p.id === postId)) return;
+      fresh = fresh ? { count: fresh.count + 1, first: fresh.first } : { count: 1, first: postId };
+    });
+  });
 </script>
 
 <svelte:head>
@@ -114,6 +129,10 @@
     </article>
   {/each}
 </div>
+
+<p class="live-notice" role="status">
+  {#if fresh}<a href={urls.post(fresh.first)} data-sveltekit-reload>{t("topic-new-replies", { count: fresh.count })}</a>{/if}
+</p>
 
 <Pagination total={data.total} perPage={data.perPage} start={data.start} href={(s) => urls.topic(data.topic, s)} {t} />
 {#if data.afterPosts.length}<Slot items={data.afterPosts} {t} />{/if}

@@ -35,7 +35,6 @@ import {
 } from "@postmodem/core";
 import { type Database, openDatabase } from "@postmodem/db";
 import { createRenderer, type Renderer } from "./content.ts";
-import { ViewCounter } from "./counters.ts";
 import { Worker } from "./jobs.ts";
 import { createMailer, defaultSender, type Mailer, type MailMessage } from "./mail.ts";
 import {
@@ -45,6 +44,7 @@ import {
   packageMigrations,
   packagePermissions,
 } from "./packages.ts";
+import { createPlatform, type Platform } from "./platform.ts";
 
 export interface AppContext {
   config: Config;
@@ -74,8 +74,11 @@ export interface AppContext {
   invalidateBans(): void;
   /** Installed packages and which are enabled (M2 slice 3). */
   packages: PackageHost;
-  /** Topic views, written in batches (started by roles that serve pages, flushed at shutdown). */
-  views: ViewCounter;
+  /**
+   * Platform services (M2b slice 10): preferences, fields, collections, live channels and
+   * counters (topic views among them; started by roles that serve pages, flushed at shutdown).
+   */
+  platform: Platform;
   /** Permission view for one request (null = guest). Loads a fresh snapshot each call. */
   permissions(userId: Id | null): Promise<Permissions>;
   /**
@@ -116,7 +119,16 @@ function ensureSecretKey(config: Config, log: Logger): string {
   return readFileSync(file, "utf8").trim();
 }
 
-export async function createContext(opts: { migrate: boolean; loaded?: LoadedConfig }): Promise<AppContext> {
+export async function createContext(opts: {
+  migrate: boolean;
+  loaded?: LoadedConfig;
+  /**
+   * Roles that serve pages (run, web, dev): live updates and counters use the configured
+   * transports. Other roles and one-off commands keep them in memory, so they open no
+   * listening connections and exit when done.
+   */
+  live?: boolean;
+}): Promise<AppContext> {
   const loaded = opts.loaded ?? readConfig();
   const { config } = loaded;
   const log = createLogger({
@@ -152,7 +164,14 @@ export async function createContext(opts: { migrate: boolean; loaded?: LoadedCon
   };
   await tryLoadSettings();
   const capabilities = coreRegistry(pkgPerms.capabilities);
+  const platform = createPlatform({
+    config: opts.live ? config : {},
+    db,
+    installed: INSTALLED_PACKAGES,
+    log,
+  });
   const packages = await createPackageHost({
+    platform,
     installed: INSTALLED_PACKAGES,
     repos: db.repos,
     db: db.kysely.withoutPlugins(),
@@ -200,10 +219,7 @@ export async function createContext(opts: { migrate: boolean; loaded?: LoadedCon
     worker,
     ...banCache(db),
     packages,
-    views: new ViewCounter(
-      (id, by) => db.repos.topics.addViews(id, by),
-      (e) => log.warn("could not save topic views", { error: (e as Error).message }),
-    ),
+    platform,
     async sendMail(message) {
       await db.repos.jobs.enqueue("mail.send", message);
       worker.nudge();
@@ -271,10 +287,10 @@ declare global {
  * the job worker in-process, like solo mode.
  */
 export function getContext(): Promise<AppContext> {
-  globalThis.__postmodem ??= createContext({ migrate: true }).then((ctx) => {
+  globalThis.__postmodem ??= createContext({ migrate: true, live: true }).then((ctx) => {
     ctx.worker.start();
     ctx.watchSettings();
-    ctx.views.start();
+    ctx.platform.counters.start();
     return ctx;
   });
   return globalThis.__postmodem;

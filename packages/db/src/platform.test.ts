@@ -77,6 +77,14 @@ describe.each(testEngines())("platform services on %s", (engine) => {
     );
     expect(view.chosen()).toEqual({});
     await expect(prefs.set(7, "core.colorScheme", "pink")).rejects.toThrow(/core.colorScheme/);
+    // Signed in: the account's choices win, this device's cookie fills in the rest.
+    await prefs.set(8, "core.showSignatures", false);
+    view = await prefs.forReader(
+      8,
+      JSON.stringify({ "core.colorScheme": "dark", "core.showSignatures": true }),
+    );
+    expect(view.get(colorScheme)).toBe("dark");
+    expect(view.get(signature)).toBe(false);
   });
 
   it("entity fields: one query per target, read and write rules, typed storage", async () => {

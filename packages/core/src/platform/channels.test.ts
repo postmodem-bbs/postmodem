@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, expect, it } from "vitest";
 import type { Permissions } from "../domain/core-permissions.ts";
+import type { Repositories } from "../domain/ports.ts";
 import {
   type ChannelMessage,
   Channels,
@@ -15,11 +16,12 @@ const perms = (userId: number | null): Permissions =>
 
 const topic = defineChannel({ key: "core.topic", scope: "topic", subscribe: (_p, scope) => scope !== 13 });
 const queue = defineChannel({ key: "reports.queue", scope: "board", subscribe: (p) => p.can("x", null) });
+const repos = {} as Repositories;
 const tick = () => new Promise((r) => setTimeout(r, 0));
 
 describe("channels", () => {
   it("only authorized subscriptions survive, deduplicated and capped", async () => {
-    const ch = new Channels(new MemoryBus()).register(topic, queue);
+    const ch = new Channels(new MemoryBus(), repos).register(topic, queue);
     expect(
       await ch.authorize(perms(null), [
         { channel: "core.topic", scope: 1 },
@@ -39,7 +41,7 @@ describe("channels", () => {
 
   it("delivers by channel and scope, replays what a reconnecting stream missed", async () => {
     let now = 1_000_000;
-    const ch = new Channels(new MemoryBus(), () => now).register(topic, queue);
+    const ch = new Channels(new MemoryBus(), repos, () => now).register(topic, queue);
     const got: ChannelMessage[] = [];
     const close = ch.open([{ channel: "core.topic", scope: 1 }], (m) => got.push(m));
     await ch.publish("core.topic", 1, "post", { postId: 10 });
@@ -67,7 +69,7 @@ describe("channels", () => {
   });
 
   it("refuses unknown channels and oversized payloads", async () => {
-    const ch = new Channels(new MemoryBus()).register(topic);
+    const ch = new Channels(new MemoryBus(), repos).register(topic);
     await expect(ch.publish("nope.nope", null, "x")).rejects.toThrow(/unknown channel/);
     await expect(ch.publish("core.topic", 1, "x", { big: "x".repeat(5000) })).rejects.toThrow(/bytes/);
     expect(() => defineChannel({ key: "Bad", scope: "board", subscribe: () => true })).toThrow();

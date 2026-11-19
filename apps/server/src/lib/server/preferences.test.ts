@@ -1,12 +1,17 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, expect, it } from "vitest";
-import { parseTheme, safeReturnPath } from "./preferences.ts";
+import { guestPreferenceCookie, safeReturnPath } from "./preferences.ts";
+
+const jar = (values: Record<string, string>) => ({ get: (name: string) => values[name] });
 
 describe("preferences", () => {
-  it("accepts only known themes", () => {
-    expect(parseTheme("dark")).toBe("dark");
-    expect(parseTheme("hotdog")).toBe("system");
-    expect(parseTheme(undefined)).toBe("system");
+  it("reads 0.1.0's theme and language cookies until the new cookie exists", () => {
+    expect(JSON.parse(guestPreferenceCookie(jar({ pm_theme: "dark", pm_lang: "pl" }))!)).toEqual({
+      "core.colorScheme": "dark",
+      "core.language": "pl",
+    });
+    expect(guestPreferenceCookie(jar({ pm_prefs: "{}", pm_theme: "dark" }))).toBe("{}");
+    expect(guestPreferenceCookie(jar({}))).toBeUndefined();
   });
 
   it("never redirects off-site", () => {
