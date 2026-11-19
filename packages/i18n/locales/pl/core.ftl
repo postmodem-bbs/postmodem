@@ -304,6 +304,13 @@ modcp-error-invalid = Nie udało się: sprawdź formularz.
 quick-reply-heading = Szybka odpowiedź
 
 ## Package: reports
+revisions-link = Historia
+revisions-title = Historia postu
+revisions-back = Wróć do postu
+revisions-current = Obecna wersja
+revisions-replaced = Zastąpiona { $when }
+revisions-by = edytował(a) { $name }
+core-package-error = Coś poszło nie tak przy sprawdzaniu. Spróbuj ponownie później.
 reports-report = Zgłoś
 reports-queue = Zgłoszenia
 reports-title = Zgłoś post

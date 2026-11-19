@@ -1,5 +1,6 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
+  import type { Refusal } from "@postmodem/core";
   import { translator } from "@postmodem/i18n";
   import { onMount } from "svelte";
   import { page } from "$app/state";
@@ -7,6 +8,8 @@
   import { links } from "#lib/links.ts";
 
   let { data, form } = $props();
+  // A package's refusal (EP-3 veto, EP-5 denial), shown in its own words.
+  const refusal = $derived((form as { refusal?: Refusal | null } | null)?.refusal ?? null);
   const t = $derived(translator(data.locale));
   const urls = $derived(links());
   const values = $derived(form?.values ?? data.values);
@@ -63,7 +66,11 @@
 
 {#if form?.problem}
   <p class="form-error" role="alert" id="posting-error">
-    {t(`posting-error-${form.problem}`, { seconds: form.waitSeconds ?? 0 })}
+    {#if form.problem === "refused" && refusal}
+      {t(`${refusal.package}-${refusal.code}`, refusal.params ?? {})}
+    {:else}
+      {t(`posting-error-${form.problem}`, { seconds: form.waitSeconds ?? 0 })}
+    {/if}
   </p>
 {/if}
 

@@ -3,6 +3,7 @@
 import type { PackageDefinition } from "@postmodem/core";
 import { quickReply } from "./quick-reply.ts";
 import { reports } from "./reports.ts";
+import { revisions } from "./revisions.ts";
 import { unreadTracking } from "./unread-tracking.ts";
 
 export {
@@ -13,6 +14,14 @@ export {
   reportsFor,
   reportsStore,
 } from "./reports.ts";
+export {
+  maySeeRevisions,
+  type Revision,
+  type RevisionsStore,
+  revisionsAuthorsSee,
+  revisionsKeepDays,
+  revisionsStore,
+} from "./revisions.ts";
 export { type UnreadStore, unreadDays, unreadStore } from "./unread-tracking.ts";
 
-export const INSTALLED_PACKAGES: PackageDefinition[] = [quickReply, reports, unreadTracking];
+export const INSTALLED_PACKAGES: PackageDefinition[] = [quickReply, reports, unreadTracking, revisions];

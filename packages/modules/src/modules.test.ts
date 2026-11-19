@@ -4,6 +4,7 @@ import {
   coreRegistry,
   coreSettings,
   createTopic,
+  editPost,
   installCorePermissions,
   loadSnapshot,
   packageRoleGrants,
@@ -17,7 +18,8 @@ import {
 import type { Database } from "@postmodem/db";
 import { openTestDatabase, testEngines } from "@postmodem/db/testing";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { INSTALLED_PACKAGES, reportsFor, reportsStore, unreadStore } from "./index.ts";
+import { INSTALLED_PACKAGES, reportsFor, reportsStore, revisionsStore, unreadStore } from "./index.ts";
+import { revisions } from "./revisions.ts";
 import { unreadTracking } from "./unread-tracking.ts";
 
 const RULES = { floodSeconds: 0, maxLength: 1000 };
@@ -128,5 +130,77 @@ describe.each(testEngines())("first-party packages on %s", (engine) => {
     await unreadStore(db.kysely.withoutPlugins()).markNode(bob.id, 0, Date.now());
     expect((await runtime.decorateTopics!(bobView, await topics())).size).toBe(0);
     expect((await runtime.decorateForums!(bobView, [forum])).size).toBe(0);
+  });
+
+  const setupOf = async (pkg: typeof revisions) => {
+    const settings = new Settings(coreSettings().register(...(pkg.settings ?? [])), {
+      loadAll: async () => new Map(),
+      save: async () => {},
+    });
+    await settings.init();
+    return pkg.setup!({
+      repos: r,
+      db: db.kysely.withoutPlugins(),
+      settings,
+      log: console as never,
+      fields: {} as never,
+      collections: {} as never,
+      channels: {} as never,
+      counters: {} as never,
+      isEnabled: () => true,
+    });
+  };
+
+  it("revisions: every edit keeps the replaced text, in the edit's transaction", async () => {
+    const runtime = await setupOf(revisions);
+    const hooks = runtime.content!;
+    const t = await createTopic(
+      r,
+      await perms(alice),
+      alice,
+      { nodeId: forum.id, title: "x", source: "one" },
+      RULES,
+    );
+    if (!t.ok) throw new Error(t.problem);
+    const edit = (source: string, extra: object = {}) =>
+      editPost(
+        r,
+        perms_alice,
+        alice,
+        { postId: t.post.id, source },
+        { ...RULES, hooks: { ...hooks, ...extra } },
+      );
+    const perms_alice = await perms(alice);
+    expect((await edit("two")).ok).toBe(true);
+    expect((await edit("two")).ok).toBe(true); // unchanged text: nothing to keep
+    expect((await edit("three")).ok).toBe(true);
+    const store = revisionsStore(db.kysely.withoutPlugins());
+    expect((await store.forPost(t.post.id)).map((v) => v.body)).toEqual(["two", "one"]);
+    expect((await store.forPost(t.post.id))[0]!.editedBy).toBe(alice.id);
+
+    // A veto stops the edit; a hook that throws rolls the whole edit back.
+    const vetoed = await edit("four", {
+      beforeUpdate: async () => ({ veto: { package: "x", code: "no" } }),
+    });
+    expect(vetoed).toMatchObject({ ok: false, problem: "refused", refusal: { package: "x", code: "no" } });
+    await expect(
+      edit("five", {
+        postUpdated: async (e: Parameters<NonNullable<typeof hooks.postUpdated>>[0], tx: Repositories) => {
+          await hooks.postUpdated!(e, tx);
+          throw new Error("boom");
+        },
+      }),
+    ).rejects.toThrow("boom");
+    expect((await r.posts.get(t.post.id))!.source).toBe("three");
+    expect(await store.forPost(t.post.id)).toHaveLength(2);
+
+    // Who sees the history: moderators; the author while the board allows it; not others.
+    const actions = (u: User | null) =>
+      perms(u).then((p) =>
+        runtime.postActions!({ viewer: p.viewer, perms: p, user: u, node: forum }, [t.post]),
+      );
+    expect((await actions(alice)).get(t.post.id)?.[0]).toMatchObject({ key: "revisions", count: 2 });
+    expect((await actions(bob)).size).toBe(0);
+    expect(await runtime.housekeeping!(Date.now())).toBe(0); // kept forever by default
   });
 });

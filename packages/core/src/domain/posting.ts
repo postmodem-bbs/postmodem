@@ -11,6 +11,7 @@
 // - The flood interval doesn't apply to moderators.
 
 import type { Permissions } from "./core-permissions.ts";
+import type { ContentHooks, Refusal } from "./hooks.ts";
 import type { Repositories } from "./ports.ts";
 import type { Id, Millis, Node, Post, Topic, TopicType, User } from "./types.ts";
 
@@ -27,11 +28,13 @@ export type PostingProblem =
   | "body-missing"
   | "body-long"
   | "not-last-post"
-  | "new-member-links";
+  | "new-member-links"
+  /** A package said no (EP-3 veto or EP-5 denial); `refusal` says which and why. */
+  | "refused";
 
 export type PostingResult =
   | { ok: true; topic: Topic; post: Post }
-  | { ok: false; problem: PostingProblem; waitSeconds?: number };
+  | { ok: false; problem: PostingProblem; waitSeconds?: number; refusal?: Refusal };
 
 export interface PostingRules {
   floodSeconds: number;
@@ -39,6 +42,8 @@ export interface PostingRules {
   /** Until a member has this many posts, their posts may not contain links (spam). */
   newMemberPosts?: number;
   now?: Millis;
+  /** Packages' contributions (EP-3, EP-5); none by default. */
+  hooks?: ContentHooks;
 }
 
 const fail = (problem: PostingProblem, waitSeconds?: number): PostingResult => ({
@@ -268,16 +273,24 @@ export async function editPost(
   if (newMemberLinks(perms, found.node, user!, input.source, rules)) return fail("new-member-links");
 
   const now = rules.now ?? Date.now();
+  const hooks = rules.hooks ?? {};
+  let draft = { source: input.source, subject, title };
+  if (hooks.beforeUpdate) {
+    const filtered = await hooks.beforeUpdate({ post, topic, node: found.node, actor: user!, draft });
+    if ("veto" in filtered) return { ok: false, problem: "refused", refusal: filtered.veto };
+    draft = filtered.draft;
+  }
   // phpBB2: an edit only shows once someone has replied after the post.
   const replied = topic.lastPostId !== post.id;
   return repos.transaction(async (r) => {
     const edited = await r.posts.edit(post.id, {
-      source: input.source,
-      subject,
+      source: draft.source,
+      subject: draft.subject,
       editedAt: replied ? now : post.editedAt,
       editCount: replied ? post.editCount + 1 : post.editCount,
     });
-    if (title !== null && title !== topic.title) await r.topics.rename(topic.id, title);
+    if (draft.title !== null && draft.title !== topic.title) await r.topics.rename(topic.id, draft.title);
+    await hooks.postUpdated?.({ before: post, after: edited, topic, actor: user!, now }, r);
     return { ok: true as const, topic: (await r.topics.get(topic.id))!, post: edited };
   });
 }
