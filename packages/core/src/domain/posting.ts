@@ -11,6 +11,7 @@
 // - The flood interval doesn't apply to moderators.
 
 import type { Permissions } from "./core-permissions.ts";
+import { boardAdmins, type ContentHooks, packageDenial, type Refusal } from "./hooks.ts";
 import type { Repositories } from "./ports.ts";
 import type { Id, Millis, Node, Post, Topic, TopicType, User } from "./types.ts";
 
@@ -27,11 +28,13 @@ export type PostingProblem =
   | "body-missing"
   | "body-long"
   | "not-last-post"
-  | "new-member-links";
+  | "new-member-links"
+  /** A package said no (EP-3 veto or EP-5 denial); `refusal` says which and why. */
+  | "refused";
 
 export type PostingResult =
   | { ok: true; topic: Topic; post: Post }
-  | { ok: false; problem: PostingProblem; waitSeconds?: number };
+  | { ok: false; problem: PostingProblem; waitSeconds?: number; refusal?: Refusal };
 
 export interface PostingRules {
   floodSeconds: number;
@@ -39,6 +42,8 @@ export interface PostingRules {
   /** Until a member has this many posts, their posts may not contain links (spam). */
   newMemberPosts?: number;
   now?: Millis;
+  /** Packages' contributions (EP-3, EP-5); none by default. */
+  hooks?: ContentHooks;
 }
 
 const fail = (problem: PostingProblem, waitSeconds?: number): PostingResult => ({
@@ -46,6 +51,9 @@ const fail = (problem: PostingProblem, waitSeconds?: number): PostingResult => (
   problem,
   ...(waitSeconds ? { waitSeconds } : {}),
 });
+
+const refused = (f: { problem?: PostingProblem; refusal?: Refusal }): PostingResult =>
+  f.refusal ? { ok: false, problem: "refused", refusal: f.refusal } : fail(f.problem!);
 
 export function cleanTitle(raw: string): string {
   const visible = [...raw]
@@ -232,6 +240,7 @@ async function ownPost(
   postId: Id,
   own: "post.edit.own" | "post.delete.own",
   moderate: "moderate.edit" | "moderate.delete",
+  rules?: Pick<PostingRules, "hooks" | "now">,
 ) {
   const who = poster(user);
   if (who) return { problem: who };
@@ -244,6 +253,23 @@ async function ownPost(
   if (!moderator && !(post.authorId === user!.id && perms.can(own, node)))
     return { problem: "forbidden" as const };
   if (!moderator && lockedFor(perms, node, topic)) return { problem: "locked" as const };
+  // Extension point #5: packages may refuse what the core's grants allow (never the reverse).
+  if (rules?.hooks?.policy) {
+    const refusal = packageDenial(
+      rules.hooks,
+      {
+        action: own === "post.edit.own" ? "post.edit" : "post.delete",
+        perms,
+        userId: user!.id,
+        node,
+        topic,
+        post,
+        now: rules.now ?? Date.now(),
+      },
+      await boardAdmins(repos),
+    );
+    if (refusal) return { problem: "refused" as const, refusal };
+  }
   return { post, topic, node, moderator };
 }
 
@@ -254,8 +280,8 @@ export async function editPost(
   input: { postId: Id; source: string; subject?: string; title?: string },
   rules: PostingRules,
 ): Promise<PostingResult> {
-  const found = await ownPost(repos, perms, user, input.postId, "post.edit.own", "moderate.edit");
-  if ("problem" in found) return fail(found.problem!);
+  const found = await ownPost(repos, perms, user, input.postId, "post.edit.own", "moderate.edit", rules);
+  if ("problem" in found) return refused(found);
   const { post, topic } = found;
   const first = topic.firstPostId === post.id;
   const title = first && input.title !== undefined ? cleanTitle(input.title) : null;
@@ -268,16 +294,24 @@ export async function editPost(
   if (newMemberLinks(perms, found.node, user!, input.source, rules)) return fail("new-member-links");
 
   const now = rules.now ?? Date.now();
+  const hooks = rules.hooks ?? {};
+  let draft = { source: input.source, subject, title };
+  if (hooks.beforeUpdate) {
+    const filtered = await hooks.beforeUpdate({ post, topic, node: found.node, actor: user!, draft });
+    if ("veto" in filtered) return { ok: false, problem: "refused", refusal: filtered.veto };
+    draft = filtered.draft;
+  }
   // phpBB2: an edit only shows once someone has replied after the post.
   const replied = topic.lastPostId !== post.id;
   return repos.transaction(async (r) => {
     const edited = await r.posts.edit(post.id, {
-      source: input.source,
-      subject,
+      source: draft.source,
+      subject: draft.subject,
       editedAt: replied ? now : post.editedAt,
       editCount: replied ? post.editCount + 1 : post.editCount,
     });
-    if (title !== null && title !== topic.title) await r.topics.rename(topic.id, title);
+    if (draft.title !== null && draft.title !== topic.title) await r.topics.rename(topic.id, draft.title);
+    await hooks.postUpdated?.({ before: post, after: edited, topic, actor: user!, now }, r);
     return { ok: true as const, topic: (await r.topics.get(topic.id))!, post: edited };
   });
 }
@@ -287,9 +321,10 @@ export async function deletePost(
   perms: Permissions,
   user: User | null,
   postId: Id,
+  rules?: Pick<PostingRules, "hooks" | "now">,
 ): Promise<PostingResult & { topicDeleted?: boolean }> {
-  const found = await ownPost(repos, perms, user, postId, "post.delete.own", "moderate.delete");
-  if ("problem" in found) return fail(found.problem!);
+  const found = await ownPost(repos, perms, user, postId, "post.delete.own", "moderate.delete", rules);
+  if ("problem" in found) return refused(found);
   const { post, topic, node, moderator } = found;
   if (!moderator && topic.lastPostId !== post.id) return fail("not-last-post");
   const only = topic.firstPostId === post.id && topic.lastPostId === post.id;
