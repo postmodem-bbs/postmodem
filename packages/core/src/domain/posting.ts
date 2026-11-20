@@ -327,54 +327,64 @@ export async function deletePost(
   postId: Id,
   rules?: Pick<PostingRules, "hooks" | "now">,
 ): Promise<PostingResult & { topicDeleted?: boolean; firstPostChanged?: boolean }> {
-  return repos.transaction(async (r) => {
-    const candidate = await r.posts.get(postId);
-    if (candidate) await r.topics.get(candidate.topicId, { forUpdate: true });
-    const found = await ownPost(r, perms, user, postId, "post.delete.own", "moderate.delete", rules);
-    if ("problem" in found) return refused(found);
-    const { post, topic, node, moderator } = found;
-    if (!moderator && topic.lastPostId !== post.id) return fail("not-last-post");
-    const only = topic.firstPostId === post.id && topic.lastPostId === post.id;
-    const redirect = moderator
-      ? await rules?.hooks?.beforeDelete?.({ topic, node, actor: user!, post }, r)
-      : undefined;
-    if (redirect) {
-      if (only) {
-        await r.topics.moveTo(topic.id, redirect.nodeId);
-        await r.topics.setVisibility(topic.id, redirect.visibility);
-      } else {
-        const trash = await r.topics.create({
-          nodeId: redirect.nodeId,
-          title: topic.title,
-          authorId: post.authorId,
-          authorName: post.authorName,
-          createdAt: post.createdAt,
-          visibility: redirect.visibility,
+  const who = poster(user);
+  if (who) return fail(who);
+  const moved = Symbol("post moved while locking its topic");
+  for (;;) {
+    const result = await repos.transaction(async (r) => {
+      const candidate = await r.posts.get(postId);
+      if (!candidate) return fail("not-found");
+      await r.topics.get(candidate.topicId, { forUpdate: true });
+      const current = await r.posts.get(postId);
+      // Release the old topic lock before trying again in the new topic.
+      if (current && current.topicId !== candidate.topicId) return moved;
+      const found = await ownPost(r, perms, user, postId, "post.delete.own", "moderate.delete", rules);
+      if ("problem" in found) return refused(found);
+      const { post, topic, node, moderator } = found;
+      if (!moderator && topic.lastPostId !== post.id) return fail("not-last-post");
+      const only = topic.firstPostId === post.id && topic.lastPostId === post.id;
+      const redirect = moderator
+        ? await rules?.hooks?.beforeDelete?.({ topic, node, actor: user!, post }, r)
+        : undefined;
+      if (redirect) {
+        if (only) {
+          await r.topics.moveTo(topic.id, redirect.nodeId);
+          await r.topics.setVisibility(topic.id, redirect.visibility);
+        } else {
+          const trash = await r.topics.create({
+            nodeId: redirect.nodeId,
+            title: topic.title,
+            authorId: post.authorId,
+            authorName: post.authorName,
+            createdAt: post.createdAt,
+            visibility: redirect.visibility,
+          });
+          await r.posts.moveTo([post.id], trash.id);
+          await r.topics.recount(trash.id);
+        }
+        await r.audit.append({
+          actorId: user!.id,
+          action: "moderation.post-trashed",
+          targetType: "post",
+          targetId: String(post.id),
+          details: { from: node.id, to: redirect.nodeId },
         });
-        await r.posts.moveTo([post.id], trash.id);
-        await r.topics.recount(trash.id);
+      } else {
+        await r.posts.setVisibility(post.id, "core:deleted");
+        if (only) await r.topics.setVisibility(topic.id, "core:deleted");
       }
-      await r.audit.append({
-        actorId: user!.id,
-        action: "moderation.post-trashed",
-        targetType: "post",
-        targetId: String(post.id),
-        details: { from: node.id, to: redirect.nodeId },
-      });
-    } else {
-      await r.posts.setVisibility(post.id, "core:deleted");
-      if (only) await r.topics.setVisibility(topic.id, "core:deleted");
-    }
-    if (!only) await r.topics.recount(topic.id);
-    await r.nodes.recount(node.id);
-    await r.search.remove([post.id]);
-    if (post.authorId) await r.users.adjustPostCount(post.authorId, -1);
-    return {
-      ok: true as const,
-      topic: (await r.topics.get(topic.id))!,
-      post,
-      topicDeleted: only,
-      firstPostChanged: !only && topic.firstPostId === post.id,
-    };
-  });
+      if (!only) await r.topics.recount(topic.id);
+      await r.nodes.recount(node.id);
+      await r.search.remove([post.id]);
+      if (post.authorId) await r.users.adjustPostCount(post.authorId, -1);
+      return {
+        ok: true as const,
+        topic: (await r.topics.get(topic.id))!,
+        post,
+        topicDeleted: only,
+        firstPostChanged: !only && topic.firstPostId === post.id,
+      };
+    });
+    if (result !== moved) return result;
+  }
 }
