@@ -106,12 +106,26 @@ export interface PackageAuth {
   validateSession?(session: Session, ip: string): boolean;
 }
 
+export interface RenderReader {
+  topic: Topic;
+  node: Node;
+  perms: Permissions;
+}
+
+export interface RenderHole {
+  tag: string;
+  key: string;
+  /** Evaluate reader facts once for all occurrences of the hole on the topic page. */
+  reveal(reader: RenderReader): boolean | Promise<boolean>;
+}
+
 export interface PackageRuntime {
   /** EP #13: account export and erasure, including while the package is disabled. */
   privacy?: {
     export(userId: Id): Promise<unknown>;
     erase(userId: Id, tx: Repositories): Promise<void>;
   };
+  renderHoles?: readonly RenderHole[];
   auth?: PackageAuth;
   /** Extension points #3 (lifecycle) and #5 (access) on the posting commands. */
   content?: ContentHooks;
@@ -167,6 +181,7 @@ export const PROFILES = {
     "revisions",
     "edit-policy",
     "login-security",
+    "hide-until-reply",
   ] as PackageKey[],
   przemo: [
     "quick-reply",
@@ -176,6 +191,7 @@ export const PROFILES = {
     "edit-policy",
     "login-security",
     "trash-bin",
+    "hide-until-reply",
   ] as PackageKey[],
 } as const;
 export type ProfileName = keyof typeof PROFILES;

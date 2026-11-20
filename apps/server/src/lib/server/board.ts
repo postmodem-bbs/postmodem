@@ -407,7 +407,7 @@ export async function locatePost(repos: Repositories, perms: Permissions, postId
 export async function loadTopic(
   repos: Repositories,
   perms: Permissions,
-  render: (posts: Post[]) => Promise<Map<Id, string>>,
+  render: (posts: Post[], node: Node) => Promise<Map<Id, string>>,
   views: { add(id: Id): void; pending(id: Id): number | Promise<number> },
   topic: Topic,
   startParam: unknown,
@@ -434,7 +434,7 @@ export async function loadTopic(
     page: start / POSTS_PER_PAGE + 1,
     perPage: POSTS_PER_PAGE,
   });
-  const html = await render(page.items);
+  const html = await render(page.items, node);
   const users = await repos.users.getMany(page.items.flatMap((p) => (p.authorId ? [p.authorId] : [])));
   views.add(topic.id);
   const admins = hooks?.policy ? await boardAdmins(repos) : new Set<Id>();

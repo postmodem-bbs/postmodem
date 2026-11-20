@@ -152,7 +152,8 @@ export interface PostRepository {
   positionInTopic(postId: Id): Promise<number | undefined>;
   /** Public posts in a topic from `since` on, not by `exceptAuthor`: the first one and how many. */
   newSince(topicId: Id, since: Millis, exceptAuthor: Id): Promise<{ first: Id | null; count: number }>;
-  setRendered(id: Id, html: string, renderVersion: number): Promise<void>;
+  setRendered(id: Id, html: string, renderVersion: number, source?: string): Promise<void>;
+  hasReply(topicId: Id, authorId: Id, firstPostId: Id): Promise<boolean>;
   /** New text (and subject); the cached HTML is dropped so the next read renders it again. */
   edit(
     id: Id,

@@ -67,6 +67,38 @@ test("a member starts a topic, previews and posts a reply, quotes, edits and del
   await expect(page.locator("article.post")).toHaveCount(1);
 });
 
+test("hide blocks unlock for the reader who replied and stay private for guests", async ({
+  page,
+  browser,
+}) => {
+  await signIn(page, "retro_fan", PASSWORD);
+  const marker = `Protected ${unique()}`;
+  await newTopic(page, `Hidden content ${unique()}`, `Public introduction. [hide][b]${marker}[/b][/hide]`);
+  const topicUrl = page.url();
+  const first = page.locator("article.post").first();
+  await expect(first).toContainText("This content is hidden.");
+  expect(await page.content()).not.toContain(marker);
+
+  await first.getByRole("link", { name: "Quote" }).click();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Reply");
+  await expect(page.getByLabel("Message")).not.toHaveValue(new RegExp(marker));
+  await page.getByLabel("Message").fill("A public reply.");
+  await page.getByRole("button", { name: "Post" }).click();
+  await expect(first.locator("strong", { hasText: marker })).toBeVisible();
+
+  const guest = await browser.newContext({ javaScriptEnabled: false, locale: "en-US" });
+  try {
+    const guestPage = await guest.newPage();
+    const response = await guestPage.goto(topicUrl);
+    expect(await response?.text()).not.toContain(marker);
+    await expect(guestPage.locator("article.post").first()).toContainText("This content is hidden.");
+    await guestPage.goto(new URL(`/search.php?search_keywords=${encodeURIComponent(marker)}`, topicUrl).href);
+    await expect(guestPage.getByRole("status")).toHaveText("Nothing found.");
+  } finally {
+    await guest.close();
+  }
+});
+
 test("members can't edit someone else's post", async ({ page, request }) => {
   await signIn(page, "retro_fan", PASSWORD);
   // Post 1 is the admin's welcome post.

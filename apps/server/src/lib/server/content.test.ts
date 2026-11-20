@@ -38,4 +38,37 @@ describe("post renderer", () => {
     );
     await db.close();
   });
+  it("resolves nested hide fragments only for permitted topic readers", async () => {
+    const db = await openTestDatabase("sqlite");
+    try {
+      await db.migrate();
+      const r = db.repos;
+      const forum = await r.nodes.create({ parentId: null, kind: "forum", title: "F" });
+      const topic = await r.topics.create({ nodeId: forum.id, title: "T", authorId: null });
+      const create = (source: string) =>
+        r.posts.create({ topicId: topic.id, authorId: null, format: "bbcode-phpbb2", source });
+      const first = await create("outside [hide]secret [hide][b]nested[/b][/hide] tail[/hide]");
+      const second = await create("[hide]another secret[/hide]");
+      const key = "hide-until-reply:hidden";
+      const renderer = createRenderer(r, new Map([["hide", key]]));
+      let resolutions = 0;
+      const unlocked = await renderer.render([first, second], async (keys) => {
+        resolutions++;
+        expect([...keys]).toEqual([key]);
+        return keys;
+      });
+      expect(resolutions).toBe(1);
+      expect(unlocked.get(first.id)).toContain("secret <strong>nested</strong> tail");
+      expect(unlocked.get(second.id)).toContain("another secret");
+
+      const cached = (await r.posts.get(first.id))!;
+      expect(cached.renderVersion).toBe(RENDER_VERSION);
+      const locked = (await renderer.render([cached])).get(first.id)!;
+      expect(locked).toBe("outside <!--pm-hole:hide-->");
+      expect((await createRenderer(r).render([cached])).get(first.id)).toBe(locked);
+      expect(await renderer.preview(first.source)).toBe(locked);
+    } finally {
+      await db.close();
+    }
+  });
 });

@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // A topic, in any URL style (ADR 0012): /viewtopic.php?t=ID&start=N, /t/ID-slug?page=N or
 // /topic/slug?page=N all land here (hooks.ts) and are redirected to the canonical one.
-import { translator } from "@postmodem/i18n";
 import { error, redirect } from "@sveltejs/kit";
 import { loadTopic, POSTS_PER_PAGE } from "#lib/server/board.ts";
 import { jsonLdTag } from "#lib/server/jsonld.ts";
@@ -21,7 +20,10 @@ export const load: PageServerLoad = async ({ url, params, locals }) => {
   const data = await loadTopic(
     repos,
     locals.perms,
-    (posts) => locals.ctx.renderer.render(posts),
+    (posts, node) =>
+      locals.ctx.renderer.render(posts, (keys) =>
+        locals.ctx.packages.visibleRenderHoles({ topic, node, perms: locals.perms }, keys),
+      ),
     {
       add: (id) => locals.ctx.platform.counters.hit(TOPIC_VIEWS, id),
       pending: async (id) =>
@@ -63,9 +65,8 @@ export const load: PageServerLoad = async ({ url, params, locals }) => {
     if (u.signatureSource.trim())
       signatures.set(id, await locals.ctx.renderer.preview(u.signatureSource, reader));
 
-  // Reader-dependent parts of the cached HTML ([you], [hide]).
-  const t = translator(locals.locale);
-  const messages = { guest: t("post-guest"), hiddenContent: t("bb-hidden-content") };
+  // The renderer has already resolved private fragments for this topic reader.
+  const { messages } = reader;
   const site = locals.ctx.config.publicUrl;
   return {
     ...data,

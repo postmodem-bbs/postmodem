@@ -4,8 +4,11 @@ import type { Id, Post, Repositories } from "@postmodem/core";
 import { escapeHtml, RENDER_VERSION, renderHtml, resolveHoles, type Smiley } from "@postmodem/markup";
 
 export interface Renderer {
-  /** Cached HTML for each post (holes unresolved): renders and stores whatever is stale. */
-  render(posts: Post[]): Promise<Map<Id, string>>;
+  /** Render stale posts, then include only the private fragments this reader may see. */
+  render(
+    posts: Post[],
+    visibleHoles?: (keys: ReadonlySet<string>) => Promise<ReadonlySet<string>>,
+  ): Promise<Map<Id, string>>;
   /** Fill reader-dependent holes. */
   forReader(
     html: string,
@@ -24,35 +27,85 @@ export interface Renderer {
   invalidateSmilies(): void;
 }
 
-export function createRenderer(repos: Repositories): Renderer {
+interface Fragment {
+  key: string;
+  html: string;
+}
+
+interface CachedPost {
+  html: string;
+  fragments: Fragment[];
+}
+
+const cacheMarker = "<!--pm-render-cache-->";
+const fragmentMarker = /<!--pm-render-fragment:(\d+)-->/g;
+
+export function createRenderer(repos: Repositories, tags: ReadonlyMap<string, string> = new Map()): Renderer {
   let smilies: Promise<Smiley[]> | undefined;
   const loadSmilies = () => (smilies ??= repos.smilies.all());
+  const prefix = tags.size ? `${cacheMarker}${JSON.stringify([...tags].sort())}\n` : "";
 
-  const toHtml = (post: Post, sm: Smiley[]) => {
-    switch (post.format) {
-      case "bbcode-phpbb2":
-        return renderHtml(post.source, { smilies: sm });
-      default:
-        // Unknown formats (e.g. from a package that's no longer installed) show as text.
-        return escapeHtml(post.source).replace(/\n/g, "<br>");
+  const prepare = (post: Post, sm: Smiley[]): CachedPost => {
+    const fragments: Fragment[] = [];
+    const html =
+      post.format === "bbcode-phpbb2"
+        ? renderHtml(post.source, {
+            smilies: sm,
+            captureHole(tag, render) {
+              const key = tags.get(tag);
+              if (!key) return;
+              const html = render();
+              const index = fragments.push({ key, html }) - 1;
+              return `<!--pm-render-fragment:${index}-->`;
+            },
+          })
+        : escapeHtml(post.source).replace(/\n/g, "<br>");
+    return { html, fragments };
+  };
+
+  const readCache = (post: Post): CachedPost | undefined => {
+    const cached = post.rendered;
+    if (post.renderVersion !== RENDER_VERSION || cached === null) return;
+    if (!prefix) {
+      if (!cached.startsWith(cacheMarker)) return { html: cached, fragments: [] };
+      return;
+    }
+    if (!cached.startsWith(prefix)) return;
+    try {
+      const parsed: CachedPost = JSON.parse(cached.slice(prefix.length));
+      if (typeof parsed.html === "string" && Array.isArray(parsed.fragments)) return parsed;
+    } catch {
+      // A stale or unreadable cache can always be rebuilt from the post.
     }
   };
 
   return {
-    async render(posts) {
-      const out = new Map<Id, string>();
-      const stale = posts.filter((p) => p.renderVersion !== RENDER_VERSION || p.rendered === null);
-      const sm = stale.length ? await loadSmilies() : [];
+    async render(posts, visibleHoles) {
+      const prepared = new Map<Id, CachedPost>();
+      const keys = new Set<string>();
       for (const post of posts) {
-        if (post.renderVersion === RENDER_VERSION && post.rendered !== null) {
-          out.set(post.id, post.rendered);
-          continue;
+        let entry = readCache(post);
+        if (!entry) {
+          entry = prepare(post, await loadSmilies());
+          const stored = prefix ? prefix + JSON.stringify(entry) : entry.html;
+          await repos.posts.setRendered(post.id, stored, RENDER_VERSION, post.source);
         }
-        const html = toHtml(post, sm);
-        out.set(post.id, html);
-        await repos.posts.setRendered(post.id, html, RENDER_VERSION);
+        for (const fragment of entry.fragments) keys.add(fragment.key);
+        prepared.set(post.id, entry);
       }
-      return out;
+      const visible = visibleHoles && keys.size ? await visibleHoles(keys) : new Set<string>();
+      return new Map(
+        [...prepared].map(([id, { html, fragments }]) => {
+          // Children are captured before their parent, so only earlier indices may be nested.
+          const fill = (text: string, before: number): string =>
+            text.replace(fragmentMarker, (_marker, index: string) => {
+              const n = Number(index);
+              const fragment = n < before ? fragments[n] : undefined;
+              return fragment && visible.has(fragment.key) ? fill(fragment.html, n) : "<!--pm-hole:hide-->";
+            });
+          return [id, fill(html, fragments.length)];
+        }),
+      );
     },
     forReader: (html, viewerName, messages) => resolveHoles(html, { viewerName, messages }),
     preview: async (source, reader) => {
