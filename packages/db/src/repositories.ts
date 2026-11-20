@@ -678,6 +678,17 @@ export function createRepositories(db: Db, dialect: "sqlite" | "pg"): Repositori
         .execute();
       return paginate(rows.map(toPost), n(total.c), page);
     },
+    async newSince(topicId, since, exceptAuthor) {
+      const base = db
+        .selectFrom("posts")
+        .where("topicId", "=", topicId)
+        .where("visibility", "in", PUBLIC)
+        .where("createdAt", ">=", since)
+        .where((eb) => eb.or([eb("authorId", "is", null), eb("authorId", "!=", exceptAuthor)]));
+      const first = await base.select("id").orderBy("createdAt").orderBy("id").limit(1).executeTakeFirst();
+      const total = await base.select((eb) => eb.fn.countAll().as("c")).executeTakeFirstOrThrow();
+      return { first: first?.id ?? null, count: Number(total.c) };
+    },
     async positionInTopic(postId) {
       const post = await posts.get(postId);
       if (!post) return undefined;
@@ -1478,6 +1489,46 @@ export function createRepositories(db: Db, dialect: "sqlite" | "pg"): Repositori
     },
   };
 
+  const digests: Repositories["digests"] = {
+    async add(entry) {
+      await db
+        .insertInto("notificationDigests")
+        .values(entry)
+        .onConflict((oc) => oc.columns(["userId", "topicId"]).doNothing())
+        .execute();
+    },
+    async forget(userId, topicId) {
+      await db
+        .deleteFrom("notificationDigests")
+        .where("userId", "=", userId)
+        .where("topicId", "=", topicId)
+        .execute();
+    },
+    async takeDue(now, members) {
+      // One statement, so a member's due entries are taken exactly once.
+      const due = db
+        .selectFrom("notificationDigests")
+        .select("userId")
+        .where("dueAt", "<=", now)
+        .groupBy("userId")
+        .orderBy((eb) => eb.fn.min("dueAt"))
+        .orderBy("userId")
+        .limit(members);
+      const rows = await db
+        .deleteFrom("notificationDigests")
+        .where("dueAt", "<=", now)
+        .where("userId", "in", due)
+        .returningAll()
+        .execute();
+      return rows
+        .map((r) => ({ userId: r.userId, topicId: r.topicId, since: r.since, dueAt: r.dueAt }))
+        .sort((a, b) => a.userId - b.userId || a.since - b.since);
+    },
+    async removeAllFor(userId) {
+      await db.deleteFrom("notificationDigests").where("userId", "=", userId).execute();
+    },
+  };
+
   const toInvite = (i: Selectable<Schema["invites"]>): Invite => ({
     id: i.id,
     codeHash: i.codeHash,
@@ -1933,6 +1984,7 @@ export function createRepositories(db: Db, dialect: "sqlite" | "pg"): Repositori
     bans,
     messages,
     watches,
+    digests,
     search,
     invites,
     raw: db.withoutPlugins(),

@@ -150,6 +150,8 @@ export interface PostRepository {
   listByTopic(topicId: Id, page: PageRequest, opts?: { visibility?: VisibilityState[] }): Promise<Page<Post>>;
   /** 0-based position of a post within its topic (for `?p=` permalinks to the right page). */
   positionInTopic(postId: Id): Promise<number | undefined>;
+  /** Public posts in a topic from `since` on, not by `exceptAuthor`: the first one and how many. */
+  newSince(topicId: Id, since: Millis, exceptAuthor: Id): Promise<{ first: Id | null; count: number }>;
   setRendered(id: Id, html: string, renderVersion: number): Promise<void>;
   /** New text (and subject); the cached HTML is dropped so the next read renders it again. */
   edit(
@@ -413,6 +415,27 @@ export interface WatchRepository {
   removeAllFor(userId: Id): Promise<void>;
 }
 
+/** A watched topic with replies a member on daily e-mail hasn't been told about yet. */
+export interface DigestEntry {
+  userId: Id;
+  topicId: Id;
+  /** When the first reply they haven't heard about was posted. */
+  since: Millis;
+  /** When their next digest goes out. */
+  dueAt: Millis;
+}
+
+/** Daily digests (M2b slice 12): one entry per member and topic until the digest or a visit. */
+export interface DigestRepository {
+  /** Records a topic for the member's digest; an entry already waiting keeps its time and due date. */
+  add(entry: DigestEntry): Promise<void>;
+  /** The member read the topic: it leaves their digest. */
+  forget(userId: Id, topicId: Id): Promise<void>;
+  /** Takes (and removes) every entry of up to `members` members whose digest is due. */
+  takeDue(now: Millis, members: number): Promise<DigestEntry[]>;
+  removeAllFor(userId: Id): Promise<void>;
+}
+
 /** One post as the search index sees it (text already folded, see foldForSearch). */
 export interface SearchDocument {
   postId: Id;
@@ -471,6 +494,7 @@ export interface Repositories {
   bans: BanRepository;
   messages: PrivateMessageRepository;
   watches: WatchRepository;
+  digests: DigestRepository;
   search: SearchRepository;
   invites: InviteRepository;
   /** Runs fn atomically; the repositories passed in are bound to the transaction. */

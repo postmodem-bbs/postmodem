@@ -44,6 +44,7 @@ export async function deleteAccount(
 
     for (const m of await r.messages.allFor(user.id)) await r.messages.deleteFor(m.id, user.id);
     await r.watches.removeAllFor(user.id);
+    await r.digests.removeAllFor(user.id);
     await r.groups.removeAllFor(user.id);
     for (const g of await r.grants.all())
       if (g.subject.type === "user" && g.subject.id === user.id) await r.grants.remove(g.id);

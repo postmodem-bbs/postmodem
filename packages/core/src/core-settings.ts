@@ -157,6 +157,13 @@ export const deletedMemberPosts = defineSetting<"keep" | "remove">({
   default: "keep",
 });
 
+/** The hour of the day (in each member's own time zone, UTC if unset) daily digests go out. */
+export const digestHour = defineSetting({
+  key: "core.notify.digestHour",
+  schema: z.number().int().min(0).max(23),
+  default: 7,
+});
+
 /** Whether guests may see the member list (phpBB2 showed it to everyone). */
 export const memberlistForGuests = defineSetting({
   key: "core.memberlist.guests",
@@ -183,6 +190,7 @@ export function coreSettings(): SettingsRegistry {
     maxPostLength,
     enabledPackagesSetting,
     memberlistForGuests,
+    digestHour,
     searchesPerMinute,
     deletedMemberPosts,
     privacyNotice,

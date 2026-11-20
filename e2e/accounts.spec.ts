@@ -192,6 +192,28 @@ test("a group member signs in, sees the hidden sub-forum, and the cookie is lock
   await expect(page.locator(".site-header")).toContainText("Sign in");
 });
 
+test("a member chooses how they hear about replies, without JavaScript", async ({ browser }) => {
+  const context = await browser.newContext({ javaScriptEnabled: false, locale: "en-US" });
+  const page = await context.newPage();
+  try {
+    await signIn(page, "Łukasz Żółć", DEMO_PASSWORD);
+    await page.goto("/account");
+    const choice = page.getByRole("group", { name: "E-mail about replies in watched topics" });
+    await expect(choice.getByLabel("Right away (one e-mail per topic until I visit it)")).toBeChecked();
+    await choice.getByLabel("Once a day, in one digest").check();
+    await page.locator("form[action='?/profile']").getByRole("button", { name: "Save" }).click();
+    await page.goto("/account");
+    await expect(choice.getByLabel("Once a day, in one digest")).toBeChecked();
+    // Back to the default, so other tests see the board as seeded.
+    await choice.getByLabel("Right away (one e-mail per topic until I visit it)").check();
+    await page.locator("form[action='?/profile']").getByRole("button", { name: "Save" }).click();
+    await page.goto("/account");
+    await expect(choice.getByLabel("Right away (one e-mail per topic until I visit it)")).toBeChecked();
+  } finally {
+    await context.close();
+  }
+});
+
 test("sign-in returns to the page it started from, by e-mail address too", async ({ page }) => {
   await page.goto("/viewtopic.php?t=1");
   await page.getByRole("link", { name: "Sign in" }).click();

@@ -240,6 +240,13 @@ export interface TopicWatchesTable {
   notified: Bool;
 }
 
+export interface NotificationDigestsTable {
+  userId: number;
+  topicId: number;
+  since: number;
+  dueAt: number;
+}
+
 export interface SearchMetaTable {
   postId: number;
   topicId: number;
@@ -351,6 +358,7 @@ export interface Schema {
   bans: BansTable;
   privateMessages: PrivateMessagesTable;
   topicWatches: TopicWatchesTable;
+  notificationDigests: NotificationDigestsTable;
   searchMeta: SearchMetaTable;
   invites: InvitesTable;
   auditLog: AuditLogTable;

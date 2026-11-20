@@ -40,6 +40,18 @@ export const language = definePreference({
   guest: "cookie",
 });
 
+/**
+ * E-mail about replies in watched topics: right away (phpBB2's one e-mail until the next
+ * visit), in a daily digest, or not at all (M2b slice 12). Members only.
+ */
+export const replyMail = definePreference({
+  key: "core.replyMail",
+  schema: z.enum(["instant", "daily", "off"]),
+  default: "instant" as const,
+  guest: "none",
+  section: "notifications",
+});
+
 /** New posts in a topic, for readers who may read its forum. */
 export const topicChannel = defineChannel({
   key: "core.topic",
@@ -153,7 +165,7 @@ export function createPlatform(opts: {
     }),
   );
 
-  const preferences = new Preferences(db.platform.preferences, [colorScheme, language]);
+  const preferences = new Preferences(db.platform.preferences, [colorScheme, language, replyMail]);
   const fields = new Fields(db.platform.fields);
   const collections = new Collections(db.platform.docs, (def, event, doc) => {
     if (def.channel)

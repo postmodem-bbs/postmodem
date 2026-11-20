@@ -285,6 +285,67 @@ describe.each(testEngines())("posting on %s", (engine) => {
     expect(await r.watches.isWatching(bob.id, t.topic.id)).toBe(false);
   });
 
+  it("keeps one digest entry per member and topic until it's due or they visit", async () => {
+    const t = await createTopic(
+      r,
+      await perms(alice),
+      alice,
+      { nodeId: forum.id, title: "x", source: "a" },
+      RULES,
+    );
+    if (!t.ok) throw new Error(t.problem);
+    const later = await createTopic(
+      r,
+      await perms(alice),
+      alice,
+      { nodeId: forum.id, title: "y", source: "b" },
+      RULES,
+    );
+    if (!later.ok) throw new Error(later.problem);
+    await r.digests.add({ userId: bob.id, topicId: t.topic.id, since: 100, dueAt: 1000 });
+    // A second reply before the digest keeps the first one's time.
+    await r.digests.add({ userId: bob.id, topicId: t.topic.id, since: 200, dueAt: 2000 });
+    await r.digests.add({ userId: bob.id, topicId: later.topic.id, since: 300, dueAt: 1000 });
+    await r.digests.add({ userId: alice.id, topicId: t.topic.id, since: 100, dueAt: 5000 });
+    expect(await r.digests.takeDue(999, 10)).toEqual([]);
+    expect(await r.digests.takeDue(1000, 10)).toEqual([
+      { userId: bob.id, topicId: t.topic.id, since: 100, dueAt: 1000 },
+      { userId: bob.id, topicId: later.topic.id, since: 300, dueAt: 1000 },
+    ]);
+    expect(await r.digests.takeDue(1000, 10)).toEqual([]);
+    await r.digests.forget(alice.id, t.topic.id);
+    expect(await r.digests.takeDue(9999, 10)).toEqual([]);
+    await r.digests.add({ userId: alice.id, topicId: t.topic.id, since: 1, dueAt: 1 });
+    await r.digests.removeAllFor(alice.id);
+    expect(await r.digests.takeDue(9999, 10)).toEqual([]);
+  });
+
+  it("counts a topic's new posts by others since a time", async () => {
+    const t = await createTopic(
+      r,
+      await perms(alice),
+      alice,
+      { nodeId: forum.id, title: "x", source: "a" },
+      { ...RULES, now: 1000 },
+    );
+    if (!t.ok) throw new Error(t.problem);
+    const first = await reply(
+      r,
+      await perms(bob),
+      bob,
+      { topicId: t.topic.id, source: "1" },
+      {
+        ...RULES,
+        now: 2000,
+      },
+    );
+    if (!first.ok) throw new Error(first.problem);
+    await reply(r, await perms(alice), alice, { topicId: t.topic.id, source: "2" }, { ...RULES, now: 3000 });
+    await reply(r, await perms(bob), bob, { topicId: t.topic.id, source: "3" }, { ...RULES, now: 4000 });
+    expect(await r.posts.newSince(t.topic.id, 1500, alice.id)).toEqual({ first: first.post.id, count: 2 });
+    expect(await r.posts.newSince(t.topic.id, 5000, alice.id)).toEqual({ first: null, count: 0 });
+  });
+
   it("keeps links and private messages from new members until they have a few posts", async () => {
     const rules = { ...RULES, newMemberPosts: 2 };
     const p = await perms(alice);

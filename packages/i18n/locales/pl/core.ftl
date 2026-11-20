@@ -338,6 +338,27 @@ unread-mark-forum = Oznacz forum jako przeczytane
 unread-mark-all = Oznacz wszystkie fora jako przeczytane
 
 ## Notifications
+mail-digest-subject = { $count ->
+    [one] Nowe odpowiedzi w obserwowanym temacie na forum { $board }
+    [few] Nowe odpowiedzi w { $count } obserwowanych tematach na forum { $board }
+   *[other] Nowe odpowiedzi w { $count } obserwowanych tematach na forum { $board }
+}
+mail-digest-topic =
+    „{ $topic }”: { $count ->
+        [one] 1 nowa odpowiedź
+        [few] { $count } nowe odpowiedzi
+       *[other] { $count } nowych odpowiedzi
+    }
+    { $link }
+mail-digest-body =
+    Cześć { $name },
+
+    Oto co się wydarzyło na forum { $board } w obserwowanych przez Ciebie tematach:
+
+    { $topics }
+
+    To podsumowanie dostajesz raz dziennie. Żeby dostawać e-maile od razu albo wcale,
+    zmień „E-mail o odpowiedziach” w ustawieniach: { $settings }
 mail-reply-subject = Nowa odpowiedź w temacie „{ $topic }”
 mail-reply-body =
     Cześć { $name },
@@ -399,9 +420,13 @@ account-profile = Profil
 account-saved = Zapisano.
 account-signature = Podpis
 account-signature-now = Twój obecny podpis:
-account-notifications = Wysyłaj mi e-mail
-account-notify-pm = gdy dostanę prywatną wiadomość
-account-auto-watch = o odpowiedziach w tematach, które zakładam lub w których odpowiadam
+account-notifications = Powiadomienia
+account-notify-pm = Wysyłaj mi e-mail, gdy dostanę prywatną wiadomość
+account-auto-watch = Obserwuj tematy, które zakładam lub w których odpowiadam
+pref-core-replyMail = E-mail o odpowiedziach w obserwowanych tematach
+pref-core-replyMail-instant = Od razu (jeden e-mail na temat do mojej następnej wizyty)
+pref-core-replyMail-daily = Raz dziennie, w jednym podsumowaniu
+pref-core-replyMail-off = Nigdy
 account-password = Zmiana hasła
 account-password-current = Obecne hasło
 account-password-new = Nowe hasło
@@ -490,6 +515,7 @@ setting-core-newMembers-posts = Posty, po których można wstawiać linki i wysy
 setting-core-pm-inboxLimit = Pojemność skrzynki odbiorczej
 setting-core-search-perMinute = Wyszukiwania na IP na minutę (0: bez limitu)
 setting-core-memberlist-guests = Goście widzą listę użytkowników
+setting-core-notify-digestHour = Godzina wysyłki dziennych podsumowań (0–23, w strefie czasowej użytkownika)
 admin-kind = Rodzaj
 admin-kind-forum = Forum
 admin-kind-category = Kategoria

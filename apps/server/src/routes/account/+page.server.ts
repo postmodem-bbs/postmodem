@@ -18,12 +18,26 @@ import {
 } from "@postmodem/core";
 import { translator } from "@postmodem/i18n";
 import { fail, redirect } from "@sveltejs/kit";
+import { z } from "zod";
 import { clearSessionCookie } from "#lib/server/auth.ts";
 import { mayMail, queueAccountMail } from "#lib/server/emails.ts";
 import { readerOf } from "#lib/server/reader.ts";
 import type { Actions, PageServerLoad, RequestEvent } from "./$types";
 
 const SIGNATURE_MAX = 1000;
+
+/**
+ * The Notifications section's preferences (the core's, then packages'), as the form shows
+ * them: a checkbox for a boolean, a choice of options for an enum.
+ */
+async function notificationChoices(ctx: App.Locals["ctx"], userId: number) {
+  const prefs = await ctx.platform.preferences.forReader(userId, undefined);
+  return ctx.platform.preferences.section("notifications").map((def) => {
+    const label = `pref-${def.key.replace(/\./g, "-")}`;
+    const options = def.schema instanceof z.ZodEnum ? (def.schema.options as string[]) : null;
+    return { key: def.key, label, value: prefs.get(def) as string | boolean, options };
+  });
+}
 
 function me({ locals, url }: Pick<RequestEvent, "locals" | "url">) {
   if (!locals.user) redirect(303, `/login.php?redirect=${encodeURIComponent(url.pathname + url.search)}`);
@@ -49,6 +63,7 @@ export const load: PageServerLoad = async (event) => {
       notifyPm: user.notifyPm,
       autoWatch: user.autoWatch,
     },
+    notifications: await notificationChoices(event.locals.ctx, user.id),
     signatureHtml: user.signatureSource
       ? await event.locals.ctx.renderer.preview(user.signatureSource, readerOf(event.locals))
       : "",
@@ -76,7 +91,15 @@ export const actions: Actions = {
       website,
       signature,
     };
+    const { preferences } = event.locals.ctx.platform;
+    const chosen = preferences.section("notifications").map((def) => ({
+      def,
+      value: typeof def.default === "boolean" ? form.get(def.key) === "on" : String(form.get(def.key) ?? ""),
+    }));
+    for (const { def, value } of chosen)
+      if (!def.schema.safeParse(value).success) errors[def.key] = "invalid";
     if (Object.keys(errors).length) return fail(400, { section: "profile", errors, values });
+    for (const { def, value } of chosen) await preferences.set(user.id, def.key, value);
     await event.locals.ctx.db.repos.users.update(user.id, {
       location: values.location,
       website,
