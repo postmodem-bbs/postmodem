@@ -37,7 +37,13 @@ jobs:
           fi
           bad=0
           for sha in $(echo "$COMMITS" | jq -r '.[]'); do
-            prs=$(gh api "repos/$REPO/commits/$sha/pulls" --jq '[.[] | select(.merged_at != null and .base.ref == "main") | .number] | join(",")')
+            # GitHub links a squash commit to its pull request a little after the push, so
+            # merges in quick succession can look unlinked at first: ask again before failing.
+            for attempt in 1 2 3 4 5 6; do
+              prs=$(gh api "repos/$REPO/commits/$sha/pulls" --jq '[.[] | select(.merged_at != null and .base.ref == "main") | .number] | join(",")')
+              [ -n "$prs" ] && break
+              [ "$attempt" -lt 6 ] && sleep 10
+            done
             if [ -z "$prs" ]; then
               echo "::error::$(echo "$sha" | cut -c1-7) reached main without a merged pull request (CONTRIBUTING.md, Branch rules)."
               bad=1
