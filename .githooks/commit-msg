@@ -1,0 +1,5 @@
+#!/bin/sh
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Refuses a commit without a DCO sign-off by its author (CONTRIBUTING.md, AGENTS.md).
+# Installed by `pnpm install` (the prepare script sets core.hooksPath to .githooks).
+exec node "$(git rev-parse --show-toplevel)/scripts/dco.mjs" --message "$1"

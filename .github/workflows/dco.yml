@@ -18,17 +18,5 @@ jobs:
         env:
           BASE: ${{ github.event.pull_request.base.sha }}
           HEAD: ${{ github.event.pull_request.head.sha }}
-        run: |
-          missing=0
-          for c in $(git rev-list --no-merges "$BASE..$HEAD"); do
-            author_email=$(git log -1 --format='%ae' "$c")
-            if ! git log -1 --format='%B' "$c" | grep -qiE "^Signed-off-by: .+ <${author_email}>$"; then
-              echo "::error::commit $(git log -1 --format='%h %s' "$c") has no Signed-off-by matching its author (${author_email})"
-              missing=1
-            fi
-          done
-          if [ "$missing" -ne 0 ]; then
-            echo "Fix with: git rebase --signoff $BASE && git push --force-with-lease"
-            exit 1
-          fi
-          echo "All commits are signed off."
+        # The same check the commit-msg and pre-push hooks run (scripts/dco.mjs).
+        run: node scripts/dco.mjs "$BASE..$HEAD"
