@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Backup and restore round trip on SQLite (M2 slice 9).
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, expect, it } from "vitest";
@@ -39,4 +39,31 @@ it("backs up a running board and restores it, keeping what it replaced", async (
   expect(existsSync(join(dataDir, "uploads.before-restore", "smilies", "b.gif"))).toBe(true);
   await ctx.db.close();
   await expect(restore(dataDir, "postgres://x/y", dir)).rejects.toThrow(/pg_restore/);
+});
+
+it("cleans up a failed snapshot and can retry the same destination", async () => {
+  const dataDir = mkdtempSync(join(tmpdir(), "pm-backup-failure-"));
+  process.env.POSTMODEM_DATA_DIR = dataDir;
+  process.env.POSTMODEM_LOG_LEVEL = "error";
+  const ctx = await createContext({ migrate: true });
+  try {
+    const target = join(dataDir, "backups", "retry");
+    const failed = {
+      ...ctx,
+      db: {
+        ...ctx.db,
+        async backupTo(file: string) {
+          writeFileSync(file, "partial database");
+          throw new Error("snapshot failed");
+        },
+      },
+    };
+    await expect(backup(failed, target)).rejects.toThrow("snapshot failed");
+    expect(readdirSync(join(dataDir, "backups"))).toEqual([]);
+    mkdirSync(target);
+    await expect(backup(ctx, target)).resolves.toBe(target);
+    expect(existsSync(join(target, "manifest.json"))).toBe(true);
+  } finally {
+    await ctx.db.close();
+  }
 });

@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # One image, many roles (CONTAINERS.md §2). Targets:
 #   dev      — toolchain + sources, runs the Vite dev server (compose.dev.yaml, Dev Container)
-#   runtime  — distroless, non-root, read-only friendly; only the self-contained build output
+#   runtime  — distroless, non-root, read-only friendly
 
 ARG NODE_VERSION=24
 
@@ -35,6 +35,20 @@ COPY . .
 RUN pnpm --filter @postmodem/server build \
  && mkdir -p /out/data && cp -r apps/server/build /out/app && cp -r LICENSE LICENSE-EXCEPTION.md LICENSES /out/app/
 
+# ── PostgreSQL backup client ──
+# Keep the client and its matching loader/libraries private to the backup subprocess.
+FROM postgres:18-trixie AS pg-client
+RUN set -eu; \
+    mkdir -p /out/pg; \
+    dump=/usr/lib/postgresql/18/bin/pg_dump; \
+    cp -L "$dump" /out/pg/pg_dump; \
+    ldd "$dump" > /tmp/pg-libraries; \
+    if grep "not found" /tmp/pg-libraries; then exit 1; fi; \
+    awk '$2 == "=>" && $3 ~ /^\// {print $3}' /tmp/pg-libraries | xargs -r -I{} cp -L "{}" /out/pg/; \
+    cp -L "$(awk '$1 ~ /^\// {print $1}' /tmp/pg-libraries)" /out/pg/loader; \
+    cp --parents /usr/share/doc/*/copyright /out/pg/; \
+    /out/pg/loader --library-path /out/pg /out/pg/pg_dump --version
+
 # ── runtime ──
 FROM gcr.io/distroless/nodejs24-debian13:nonroot AS runtime
 ARG POSTMODEM_VERSION=0.0.0-dev
@@ -51,6 +65,7 @@ ENV NODE_ENV=production \
     POSTMODEM_VERSION=${POSTMODEM_VERSION} \
     POSTMODEM_REVISION=${POSTMODEM_REVISION}
 COPY --from=build /out/app /app
+COPY --from=pg-client /out/pg /opt/postmodem/pg
 # /data is created owned by the runtime user so named volumes inherit the ownership.
 COPY --from=build --chown=10001:10001 /out/data /data
 USER 10001:10001

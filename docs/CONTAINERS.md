@@ -291,15 +291,33 @@ docker compose -f compose.solo.yaml up -d
 
 The database and uploads it replaces are kept as `*.before-restore` until the next restore.
 
-**Stack (Postgres):** the runtime image has no `pg_dump`; the database container does:
+**Stack (Postgres):** the same command uses the image's PostgreSQL 18 client and the
+board's database credentials. It writes a custom-format `postmodem.dump`, the uploads, and
+`manifest.json`. An explicit destination must be new or empty. Copy the backup off the board's
+volume:
 
 ```bash
-docker compose exec -T db pg_dump -U postmodem -Fc postmodem > postmodem-$(date +%F).dump
-docker compose exec -T db pg_restore -U postmodem -d postmodem --clean < postmodem-<date>.dump
+docker compose exec -T web /nodejs/bin/node /app/postmodem.js backup /data/backups/nightly
+docker compose cp web:/data/backups/nightly ./nightly
 ```
 
-and the uploads volume is copied as files. Schedule either with cron on the host; the
-board doesn't send its backups anywhere by itself.
+To recover, stop the board's web, worker, and scheduler services. Restore the archive to a new, empty
+database and make the backed-up uploads available at `/data/uploads` in the board's data volume
+before starting it with the new database URL. Keep the original database and uploads until you
+verify recovery. For the default Compose roles:
+
+```bash
+docker compose stop web worker scheduler
+docker compose exec -T db createdb -U postmodem postmodem_restore
+docker compose exec -T db pg_restore -U postmodem -d postmodem_restore \
+  --single-transaction --no-owner --no-acl < ./nightly/postmodem.dump
+```
+
+The CLI's `restore` command handles SQLite. For Postgres use `pg_restore` from PostgreSQL 18 or
+later. A source installation needs `pg_dump` on its PATH, at least as new as the server. The
+archive covers the board database. Back up deployment configuration and secrets separately.
+Uploads are copied as files after the database snapshot, so pause writes during backup if the
+archive must capture both at the same instant. The board does not send backups off-host.
 
 ### 4.6 A public staging board (M2a)
 
