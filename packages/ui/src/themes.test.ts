@@ -14,14 +14,28 @@ const TEXT_PAIRS: [ColorToken, ColorToken][] = [
   ["link", "surface"],
   ["link", "surfaceAlt"],
   ["linkHover", "surface"],
+  // Header bars, and the links on them (site header, category titles), use headerText.
   ["headerText", "headerBg"],
   ["danger", "surface"],
   ["danger", "bg"],
+  // Form controls: typed text, secondary and danger button labels.
+  ["text", "controlBg"],
+  ["textMuted", "controlBg"],
+  ["danger", "controlBg"],
 ];
 // Non-text UI (focus ring, borders that convey state) needs 3:1.
 const UI_PAIRS: [ColorToken, ColorToken][] = [
   ["focus", "bg"],
   ["focus", "surface"],
+  ["focus", "controlBg"],
+  // A control's boundary and a checked box must stand out from the control and the page.
+  ["controlBorder", "controlBg"],
+  ["controlBorder", "bg"],
+  ["controlBorder", "surface"],
+  ["controlBorder", "surfaceAlt"],
+  ["accent", "controlBg"],
+  ["accent", "surface"],
+  ["accent", "surfaceAlt"],
 ];
 
 describe.each(Object.values(THEMES))("theme $name", (theme) => {
@@ -34,7 +48,7 @@ describe.each(Object.values(THEMES))("theme $name", (theme) => {
       })).filter((x) => x.ratio < 4.5);
       expect(failing).toEqual([]);
     });
-    it(`${variant}: focus indicator reaches 3:1`, () => {
+    it(`${variant}: focus, control borders and accent reach 3:1`, () => {
       const p = theme[variant];
       const failing = UI_PAIRS.map(([a, b]) => ({
         pair: `${a}/${b}`,

@@ -36,6 +36,62 @@ a:hover {
   outline-offset: 2px;
 }
 
+/* Form controls: one base style, from tokens only (M2 slice 12). Buttons are primary unless
+   marked .secondary or .danger; areas add layout, never colours. */
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: var(--pm-color-text);
+}
+input:not([type="checkbox"], [type="radio"], [type="hidden"], [type="file"], [type="range"]),
+select,
+textarea {
+  max-inline-size: 100%;
+  background: var(--pm-color-control-bg);
+  border: 1px solid var(--pm-color-control-border);
+  border-radius: var(--pm-radius);
+  padding: var(--pm-space-1) var(--pm-space-2);
+}
+input[aria-invalid="true"],
+select[aria-invalid="true"],
+textarea[aria-invalid="true"] {
+  border-color: var(--pm-color-danger);
+  border-width: 2px;
+}
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--pm-color-accent);
+  inline-size: 1.25rem;
+  block-size: 1.25rem;
+  margin: 0;
+}
+button {
+  border: 1px solid var(--pm-color-header-bg);
+  border-radius: var(--pm-radius);
+  padding: var(--pm-space-1) var(--pm-space-3);
+  background: var(--pm-color-header-bg);
+  color: var(--pm-color-header-text);
+  font-weight: 600;
+  cursor: pointer;
+}
+button.secondary {
+  background: var(--pm-color-control-bg);
+  color: var(--pm-color-text);
+  border-color: var(--pm-color-control-border);
+  font-weight: 400;
+}
+button.danger {
+  background: var(--pm-color-control-bg);
+  color: var(--pm-color-danger);
+  border-color: var(--pm-color-danger);
+}
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     animation: none !important;
@@ -137,15 +193,6 @@ main:focus {
   display: flex;
   gap: var(--pm-space-1);
   align-items: center;
-}
-.prefs select,
-.prefs button {
-  font: inherit;
-  color: var(--pm-color-text);
-  background: var(--pm-color-surface);
-  border: 1px solid var(--pm-color-border);
-  border-radius: var(--pm-radius);
-  padding: var(--pm-space-1) var(--pm-space-2);
 }
 
 /* ── Post content (BBCode output, @postmodem/markup) ───────────────────────── */
@@ -381,6 +428,11 @@ main:focus {
   color: var(--pm-color-header-text);
   border-radius: var(--pm-radius) var(--pm-radius) 0 0;
 }
+/* Links on a header bar take its text colour: the link colour can be the bar's own (Light). */
+.category-title a,
+.category-title a:hover {
+  color: var(--pm-color-header-text);
+}
 .board-table {
   width: 100%;
   border-collapse: collapse;
@@ -586,13 +638,8 @@ main:focus {
   min-block-size: 2.75rem;
 }
 .posting textarea {
-  font: inherit;
   inline-size: 100%;
   min-block-size: 12rem;
-}
-.panel .actions button.danger {
-  background: var(--pm-color-danger);
-  border-color: var(--pm-color-danger);
 }
 .modcp {
   display: grid;
@@ -792,6 +839,7 @@ tr.pm-unread a {
   background: none;
   border: 0;
   padding: 0;
+  font-weight: inherit;
   text-decoration: underline;
   cursor: pointer;
 }
@@ -815,40 +863,14 @@ tr.pm-unread a {
   align-items: center;
   font-weight: 400;
 }
-.form input:not([type="checkbox"]) {
-  font: inherit;
-  color: var(--pm-color-text);
-  background: var(--pm-color-surface);
-  border: 1px solid var(--pm-color-border);
-  border-radius: var(--pm-radius);
+.form input:not([type="checkbox"], [type="radio"]) {
   padding: var(--pm-space-2);
-}
-.form input[aria-invalid="true"] {
-  border-color: var(--pm-color-danger);
-  border-width: 2px;
-}
-.form input[type="checkbox"] {
-  inline-size: 1.25rem;
-  block-size: 1.25rem;
 }
 .form button,
 .panel .actions button {
-  font: inherit;
-  border: 1px solid;
-  border-radius: var(--pm-radius);
-  padding: var(--pm-space-2);
+  padding: var(--pm-space-2) var(--pm-space-3);
   align-self: flex-start;
   margin-block-start: var(--pm-space-3);
-  background: var(--pm-color-header-bg);
-  color: var(--pm-color-header-text);
-  border-color: var(--pm-color-header-bg);
-  font-weight: 600;
-  cursor: pointer;
-}
-.panel .actions button.secondary {
-  background: var(--pm-color-surface);
-  color: var(--pm-color-text);
-  border-color: var(--pm-color-border);
 }
 .hint {
   margin: 0;
