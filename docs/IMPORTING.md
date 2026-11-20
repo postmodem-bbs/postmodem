@@ -78,6 +78,10 @@ postmodem user expire-legacy-passwords --inactive-months 6
 `postmodem forum list` shows the imported tree with ids, and `postmodem forum recount`
 fixes counters if you ever edit the database by hand.
 
+With IP logging import enabled, legacy member addresses are dated using the member’s last
+visit, so those timestamps are approximate. The Przemo importer copies IPv4 addresses
+from the legacy hexadecimal fields and skips IPv6 addresses.
+
 ## Your old links
 
 With the default URL style (`classic`) the board answers phpBB2's own addresses

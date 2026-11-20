@@ -679,3 +679,13 @@ admin-trash-empty = W koszu tego forum nie ma tematów.
 admin-trash-restore-to = Przywróć „{ $title }” do
 admin-trash-pick-forum = Wybierz forum
 admin-trash-restore = Przywróć temat
+
+ip-logging-title = Historia adresów IP
+ip-logging-address = Adres IP
+ip-logging-event = Zdarzenie
+ip-logging-time = Czas (UTC)
+ip-logging-kind-sign-in = Logowanie
+ip-logging-kind-post = Post
+ip-logging-kind-legacy = Wpis z importu
+ip-logging-empty = Brak aktualnych wpisów.
+ip-logging-purpose = Po włączeniu rejestrowania adresów IP forum zapisuje adresy użytkowników podczas logowania i publikowania postów na potrzeby moderacji. Zapisane i zaimportowane adresy wygasają po { $days } dniach. Dostęp do nich mają uprawnieni administratorzy.

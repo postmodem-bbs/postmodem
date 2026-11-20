@@ -222,4 +222,29 @@ test.describe("as the administrator", () => {
     await expect(page.getByRole("checkbox", { name: /Reports/ })).toBeChecked({ checked: ESSENTIALS });
     await expectNoAxeViolations(page);
   });
+
+  test("IP history records an enabled member sign-in and requires admin access", async ({
+    page,
+    browser,
+  }) => {
+    await asAdmin(page, "/admin/packages");
+    const enabled = page.getByRole("checkbox", { name: /^IP logging/ });
+    if (!(await enabled.isChecked())) {
+      await enabled.check();
+      await page.getByRole("button", { name: "Save" }).click();
+      await expect(page.getByRole("status")).toHaveText("Saved.");
+    }
+
+    const member = await browser.newPage({ locale: "en-US", baseURL: new URL(page.url()).origin });
+    try {
+      await signIn(member, "retro_fan", "postmodem-demo");
+      await page.goto("/admin/users?q=retro_fan");
+      await page.getByRole("link", { name: "IP history" }).click();
+      await expect(page.getByRole("row", { name: /Sign-in/ }).first()).toBeVisible();
+      await expectNoAxeViolations(page);
+      expect((await member.goto(page.url()))?.status()).toBe(403);
+    } finally {
+      await member.close();
+    }
+  });
 });

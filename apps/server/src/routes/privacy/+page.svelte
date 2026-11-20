@@ -12,4 +12,7 @@
 <h1 class="page-title">{t("privacy-title")}</h1>
 <div class="panel privacy">
   {#each paragraphs as p, i (i)}<p>{p}</p>{/each}
+  {#each data.packages as pkg (pkg.purpose)}
+    <p>{t(pkg.purpose, pkg.retentionDays === undefined ? undefined : { days: pkg.retentionDays })}</p>
+  {/each}
 </div>

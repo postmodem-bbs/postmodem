@@ -87,6 +87,14 @@ export const handle: Handle = async ({ event, resolve }) => {
       : guestPrefs;
   event.locals.locale = pickLocale(requested ?? event.locals.prefs.get(language));
   event.locals.theme = event.locals.prefs.get(colorScheme);
+  event.locals.requestContext = {
+    via: "web",
+    ip,
+    userAgent: event.request.headers.get("user-agent")?.slice(0, 300),
+    sessionId: event.locals.session?.id,
+    locale: event.locals.locale,
+    timezone: event.locals.user?.timezone ?? null,
+  };
   const response = await resolve(event, {
     transformPageChunk: ({ html }) =>
       html

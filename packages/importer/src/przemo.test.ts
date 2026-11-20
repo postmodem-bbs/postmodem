@@ -273,3 +273,54 @@ it("maps supported legacy login settings and keeps the core password floor", () 
     used: new Set(),
   });
 });
+
+it("imports recent Przemo IPs for known accounts and resumes without duplicate records", async () => {
+  const db = await openTestDatabase("sqlite");
+  try {
+    await db.migrate();
+    const now = 1_700_000_000_000;
+    const seconds = now / 1000;
+    const empty = async () => [];
+    const source = {
+      prefix: "phpbb_",
+      tables: async () => ["phpbb_users", "phpbb_logs"],
+      columns: async (table: string) =>
+        table === "users" ? ["user_ip"] : ["id_log", "user_ip", "user_id", "time", "mode"],
+      all: empty,
+      batch: async (table: string, _key: string, after: number) => {
+        if (after > 0) return [];
+        if (table === "users")
+          return [
+            { user_id: 5, username: "member", user_ip: "c0000201", user_lastvisit: seconds, user_active: 1 },
+          ];
+        if (table === "logs")
+          return [
+            { id_log: 1, user_id: 5, user_ip: "c0000202", time: seconds - 60 },
+            { id_log: 2, user_id: 55, user_ip: "c0000203", time: seconds - 60 },
+            { id_log: 3, user_id: 5, user_ip: "c0000204", time: seconds - 86400 },
+          ];
+        return [];
+      },
+      query: empty,
+      close: async () => {},
+    };
+    const entries: string[] = [];
+    const opts = {
+      ipLogging: {
+        now,
+        earliest: now - 3600_000,
+        record: async (_tx: Repositories, entry: { ip: string }) => {
+          entries.push(entry.ip);
+        },
+      },
+    };
+    const report = await importPrzemo(db.repos, source, opts);
+    expect(report.counts["ip-logging"]).toEqual({ read: 4, imported: 2, skipped: 2 });
+    expect(report.notImported.columns.phpbb_logs).toEqual(["mode"]);
+    expect(entries).toEqual(["192.0.2.1", "192.0.2.2"]);
+    await importPrzemo(db.repos, source, opts);
+    expect(entries).toHaveLength(2);
+  } finally {
+    await db.close();
+  }
+});

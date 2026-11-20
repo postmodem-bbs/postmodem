@@ -217,6 +217,7 @@ export const actions: Actions = {
     await ctx.packages.emit(
       mode === "newtopic" ? "topic.created" : mode === "editpost" ? "post.edited" : "post.created",
       happened,
+      locals.requestContext,
     );
     await indexPosts(ctx.db.repos, [result.post]);
     if (mode !== "editpost") await afterPost(ctx, locals.urls, result.topic, result.post, locals.user!);

@@ -660,3 +660,13 @@ admin-trash-empty = This forum has no trashed topics.
 admin-trash-restore-to = Restore “{ $title }” to
 admin-trash-pick-forum = Choose a forum
 admin-trash-restore = Restore topic
+
+ip-logging-title = IP history
+ip-logging-address = IP address
+ip-logging-event = Event
+ip-logging-time = Time (UTC)
+ip-logging-kind-sign-in = Sign-in
+ip-logging-kind-post = Post
+ip-logging-kind-legacy = Imported record
+ip-logging-empty = No recent IP records.
+ip-logging-purpose = When IP logging is enabled, the board records IP addresses for member sign-ins and posts to support moderation. Recorded and imported addresses expire after { $days } days and are visible to authorized administrators.

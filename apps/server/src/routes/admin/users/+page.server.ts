@@ -20,6 +20,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
   const bans = await locals.ctx.activeBans();
   return {
     q,
+    canViewIp: locals.ctx.packages.isEnabled("ip-logging") && locals.perms.can("user.viewIp", null),
     users: found.map((u) => ({
       id: u.id,
       name: u.username,

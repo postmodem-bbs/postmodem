@@ -58,12 +58,21 @@ export const actions: Actions = {
     // Session rotation: a session id that existed before sign-in never survives it.
     const previous = cookies.get(sessionCookieName(ctx.config));
     if (previous) await endSession(ctx.db.repos, previous);
-    const { token } = await startSession(ctx.db.repos, result.user.id, {
+    const { token, session } = await startSession(ctx.db.repos, result.user.id, {
       userAgent: request.headers.get("user-agent") ?? "",
       ip: ipKey,
     });
     await ctx.packages.loginResult(attempt, true);
     setSessionCookie(cookies, ctx.config, token);
+    await ctx.packages.emit(
+      "auth.signedIn",
+      { actor: result.user, now },
+      {
+        ...locals.requestContext,
+        sessionId: session.id,
+        timezone: result.user.timezone,
+      },
+    );
     ctx.log.info("signed in", { userId: result.user.id });
     redirect(303, redirectTo);
   },

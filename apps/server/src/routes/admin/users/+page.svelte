@@ -21,6 +21,9 @@
 
 {#each data.users as u (u.id)}
   <section class="panel admin-user" aria-label={u.name}>
+    {#if data.canViewIp && u.status !== "deleted"}
+      <p><a href={`/admin/users/${u.id}/ips`}>{t("ip-logging-title")}</a></p>
+    {/if}
     <h2>{u.name} <span class="muted">· #{u.id} · {t(`admin-status-${u.status}`)}{#if u.banned} · {t("admin-banned")}{/if}</span></h2>
     <p class="muted">{u.email || t("admin-no-email")} · {t("posts-count", { count: u.posts })} · {t("post-author-joined")} {formatDate(u.joined, data.locale)}</p>
     <div class="admin-actions">

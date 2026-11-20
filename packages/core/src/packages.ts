@@ -23,6 +23,7 @@ export type PackageKey = string;
 
 /** Extension point #9 and the content lifecycle, as events after the fact. */
 export interface BoardEvents {
+  "auth.signedIn": { actor: User; now: Millis };
   "topic.created": { topic: Topic; post: Post; actor: User };
   "post.created": { topic: Topic; post: Post; actor: User };
   "post.edited": { topic: Topic; post: Post; actor: User };
@@ -119,6 +120,17 @@ export interface RenderHole {
   reveal(reader: RenderReader): boolean | Promise<boolean>;
 }
 
+export interface RequestContext {
+  via: "web" | "api" | "federation" | "cli" | "job";
+  locale: string;
+  timezone: string | null;
+  ip?: string;
+  userAgent?: string;
+  sessionId?: string;
+}
+
+export type PersonalRequestField = "ip" | "userAgent" | "sessionId";
+
 export interface PackageRuntime {
   /** EP #13: account export and erasure, including while the package is disabled. */
   privacy?: {
@@ -129,7 +141,9 @@ export interface PackageRuntime {
   auth?: PackageAuth;
   /** Extension points #3 (lifecycle) and #5 (access) on the posting commands. */
   content?: ContentHooks;
-  on?: { [E in BoardEvent]?: (event: BoardEvents[E]) => Promise<void> | void };
+  on?: {
+    [E in BoardEvent]?: (event: BoardEvents[E], request?: RequestContext) => Promise<void> | void;
+  };
   decorateTopics?(viewer: Viewer, topics: Topic[]): Promise<Map<Id, Decoration>>;
   decorateForums?(viewer: Viewer, nodes: Node[]): Promise<Map<Id, Decoration>>;
   slots?: { [S in SlotName]?: (args: SlotArgs) => Promise<SlotItem[]> | SlotItem[] };
@@ -153,9 +167,12 @@ export interface PackageDefinition {
   /** Capabilities with their default effect per built-in role (merged into those roles). */
   capabilities?: (CapabilityDef & { roles?: Record<string, Effect> })[];
   settings?: SettingDef<unknown>[];
-  personalData?: { purpose: string };
   /** EP-1a private topic states: excluded from ordinary reads, counts, and search. */
   privateTopicStates?: readonly string[];
+  personalData?: { purpose: string } & (
+    | { reads?: never; retentionDays?: never }
+    | { reads: readonly PersonalRequestField[]; retentionDays: number }
+  );
   /** Platform services (M2b slice 10), keys prefixed with the package key. */
   preferences?: PreferenceDef<unknown>[];
   fields?: FieldDef<unknown>[];
@@ -192,6 +209,7 @@ export const PROFILES = {
     "login-security",
     "trash-bin",
     "hide-until-reply",
+    "ip-logging",
   ] as PackageKey[],
 } as const;
 export type ProfileName = keyof typeof PROFILES;
