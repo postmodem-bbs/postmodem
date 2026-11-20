@@ -668,13 +668,16 @@ export function createRepositories(db: Db, dialect: "sqlite" | "pg"): Repositori
         )
         .execute();
     },
-    async getMany(ids) {
+    async getMany(ids, options) {
       if (!ids.length) return new Map();
-      const rows = await db
+      const query = db
         .selectFrom("posts")
         .selectAll()
-        .where("id", "in", [...new Set(ids)])
-        .execute();
+        .where("id", "in", [...new Set(ids)]);
+      const rows = await (options?.forUpdate && dialect === "pg"
+        ? query.orderBy("id").forUpdate()
+        : query
+      ).execute();
       return new Map(rows.map((r) => [r.id, toPost(r)]));
     },
     async listByTopic(topicId, page, opts) {
@@ -1608,6 +1611,28 @@ export function createRepositories(db: Db, dialect: "sqlite" | "pg"): Repositori
 
   const sqlite = dialect === "sqlite";
   const search: Repositories["search"] = {
+    async scheduleRebuild(version) {
+      const current = await db
+        .selectFrom("searchIndexState")
+        .select("appliedVersion")
+        .where("id", "=", 1)
+        .executeTakeFirstOrThrow();
+      if (current.appliedVersion === version) return false;
+      return atomic(db, async (tx) => {
+        const stateQuery = tx.selectFrom("searchIndexState").selectAll().where("id", "=", 1);
+        const state = await (sqlite ? stateQuery : stateQuery.forUpdate()).executeTakeFirstOrThrow();
+        if (state.appliedVersion === version) return false;
+        const r = createRepositories(tx, dialect);
+        const previous = state.jobId === null ? undefined : await r.jobs.get(Number(state.jobId));
+        if (previous?.status === "queued" || previous?.status === "running") return false;
+        const jobId = await r.jobs.enqueue("search.rebuild", { version });
+        await tx.updateTable("searchIndexState").set({ jobId }).where("id", "=", 1).execute();
+        return true;
+      });
+    },
+    async finishRebuild(version) {
+      await db.updateTable("searchIndexState").set({ appliedVersion: version }).where("id", "=", 1).execute();
+    },
     async index(docs) {
       if (!docs.length) return;
       await search.remove(docs.map((d) => d.postId));
@@ -1651,11 +1676,24 @@ export function createRepositories(db: Db, dialect: "sqlite" | "pg"): Repositori
       const match = sqlite
         ? sql`m.post_id in (select rowid from search_fts where search_fts match ${terms.map((t) => `"${t}"*`).join(" ")})`
         : sql`m.document @@ to_tsquery('simple', ${terms.map((t) => `${t}:*`).join(" & ")})`;
+      const fields = {
+        authorId: "m.author_id",
+        topicId: "m.topic_id",
+        postId: "m.post_id",
+        createdAt: "m.created_at",
+      };
+      const operators = { eq: sql`=`, gte: sql`>=`, lte: sql`<=` };
+      const filters = (q.filters ?? []).map(({ field, op, value }) => {
+        if (!Object.hasOwn(fields, field) || !Object.hasOwn(operators, op) || !Number.isSafeInteger(value))
+          throw new Error("invalid search filter");
+        return sql`and ${sql.ref(fields[field])} ${operators[op]} ${value}`;
+      });
       const base = sql`from search_meta m
-        join posts p on p.id = m.post_id and p.visibility = 'core:public'
+        join posts p on p.id = m.post_id and p.topic_id = m.topic_id and p.visibility = 'core:public'
         join topics t on t.id = p.topic_id and t.visibility = 'core:public'
-        where ${match} and t.node_id in (${sql.join(q.nodeIds)})
-        ${q.authorId != null ? sql`and p.author_id = ${q.authorId}` : sql``}`;
+          and t.moved_to_topic_id is null and t.node_id = m.node_id
+        where ${match} and t.node_id in (${sql.join(q.nodeIds)}) ${sql.join(filters, sql` `)}
+        ${q.authorId != null ? sql`and m.author_id = ${q.authorId}` : sql``}`;
       // Like phpBB2, results stop at SEARCH_RESULTS_MAX: counting 50,000 matches costs more
       // than anyone reads. The count says "more" with SEARCH_RESULTS_MAX + 1.
       const total = await sql<{

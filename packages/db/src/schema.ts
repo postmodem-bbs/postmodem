@@ -334,7 +334,14 @@ export interface ExtCountersTable {
   value: Generated<number>;
 }
 
+export interface SearchIndexStateTable {
+  id: number;
+  appliedVersion: string;
+  jobId: number | null;
+}
+
 export interface Schema {
+  searchIndexState: SearchIndexStateTable;
   settings: SettingsTable;
   nodes: NodesTable;
   users: UsersTable;

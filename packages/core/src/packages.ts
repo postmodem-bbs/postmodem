@@ -9,7 +9,7 @@
 import type { Permissions } from "./domain/core-permissions.ts";
 import type { ContentHooks } from "./domain/hooks.ts";
 import type { CapabilityDef, Viewer } from "./domain/permissions.ts";
-import type { Repositories } from "./domain/ports.ts";
+import type { Repositories, SearchDocument, SearchFilter } from "./domain/ports.ts";
 import type { Effect, Id, Millis, Node, Post, Session, Topic, User } from "./domain/types.ts";
 import type { Logger } from "./log.ts";
 import type { ChannelDef, Channels } from "./platform/channels.ts";
@@ -131,12 +131,25 @@ export interface RequestContext {
 
 export type PersonalRequestField = "ip" | "userAgent" | "sessionId";
 
+export interface PackageSearch {
+  /** Bump when a package changes an indexed field or exclusion. */
+  version: number;
+  omitTags?: readonly string[];
+  /** Public text fields, batched over already-visible documents. Core sanitizes them before indexing. */
+  fields?(
+    documents: readonly SearchDocument[],
+    tx: Repositories,
+  ): Promise<ReadonlyMap<Id, { title?: string; body?: string }>>;
+  filters?(params: URLSearchParams): readonly SearchFilter[];
+}
+
 export interface PackageRuntime {
   /** EP #13: account export and erasure, including while the package is disabled. */
   privacy?: {
     export(userId: Id): Promise<unknown>;
     erase(userId: Id, tx: Repositories): Promise<void>;
   };
+  search?: PackageSearch;
   renderHoles?: readonly RenderHole[];
   auth?: PackageAuth;
   /** Extension points #3 (lifecycle) and #5 (access) on the posting commands. */

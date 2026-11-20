@@ -26,7 +26,7 @@ import { type AppContext, createContext, readConfig } from "../lib/server/bootst
 import { DEMO_PASSWORD, seedDemo, seedLongTopic } from "../lib/server/demo.ts";
 import { sendDigests } from "../lib/server/notifications.ts";
 import { INSTALLED_PACKAGES, packageMigrations, packagePermissions } from "../lib/server/packages.ts";
-import { rebuildSearch } from "../lib/server/search.ts";
+import { rebuildSearch, searchPlan } from "../lib/server/search.ts";
 import { copyLegacyFiles, uploadsDir } from "../lib/server/uploads.ts";
 import {
   BAN_HELP,
@@ -323,6 +323,7 @@ async function importBoard(args: string[]): Promise<number> {
       const indexed = await rebuildSearch(
         ctx.db.repos,
         (n) => n % 20_000 === 0 && ctx.log.info("search index", { posts: n }),
+        searchPlan(ctx.packages.searchContributions()),
       );
       ctx.log.info("search index built", { posts: indexed });
       await ctx.db.repos.audit.append({
@@ -639,13 +640,14 @@ async function main(argv: string[]): Promise<number> {
           return 2;
         }
         const added = await seedLongTopic(ctx.db.repos, posts);
-        await rebuildSearch(ctx.db.repos);
+        await rebuildSearch(ctx.db.repos, undefined, searchPlan(ctx.packages.searchContributions()));
         console.log(`added topic ${added.topicId} with ${posts} posts in forum ${added.forumId}`);
         await ctx.db.close();
         return 0;
       }
       const result = await seedDemo(ctx.db.repos);
-      if (result.created) await rebuildSearch(ctx.db.repos);
+      if (result.created)
+        await rebuildSearch(ctx.db.repos, undefined, searchPlan(ctx.packages.searchContributions()));
       if (result.created)
         ctx.log.info("demo board created", {
           ...result,
@@ -706,6 +708,7 @@ async function main(argv: string[]): Promise<number> {
         const n = await rebuildSearch(
           ctx.db.repos,
           (done) => done % 20_000 === 0 && console.log(`${done} posts…`),
+          searchPlan(ctx.packages.searchContributions()),
         );
         await ctx.externalSearch?.rebuild();
         console.log(`search index rebuilt: ${n} posts`);
