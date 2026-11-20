@@ -58,7 +58,8 @@ export type IssueKind =
   | "missing-parent"
   | "remote-avatar-dropped"
   | "orphan-poll"
-  | "orphan-message";
+  | "orphan-message"
+  | "invalid-trash-forum";
 
 export interface ImportReport {
   source: { kind: "przemo"; prefix: string; tables: number };
@@ -153,6 +154,7 @@ const USED: Record<string, string[]> = {
     "forum_posts",
     "forum_topics",
     "forum_link",
+    "forum_trash",
     ...AUTH_FIELDS,
   ],
   auth_access: ["group_id", "forum_id", "auth_mod", ...AUTH_FIELDS],
@@ -665,6 +667,33 @@ export async function importPrzemo(
           }
         }
         await setCheckpoint(tx, "nodes", DONE);
+      });
+
+    if ((await checkpoint("trash-bin")) !== DONE)
+      await r.transaction(async (tx) => {
+        const forumIds = new Set(
+          (await tx.nodes.tree()).filter((node) => node.kind === "forum").map((node) => node.id),
+        );
+        // Przemo marks the board's trash forum with 1; source forums hold no destination ID.
+        const markers = forums.filter((forum) => num(forum.forum_trash) !== 0);
+        const valid = markers.filter(
+          (forum) => num(forum.forum_trash) === 1 && forumIds.has(num(forum.forum_id)),
+        );
+        for (const marker of markers) {
+          count("trash-bin", "read");
+          if (valid.length === 1 && marker === valid[0]) {
+            count("trash-bin", "imported");
+          } else {
+            count("trash-bin", "skipped");
+            issue("invalid-trash-forum", "forums", num(marker.forum_id), "invalid or ambiguous trash marker");
+          }
+        }
+        if (valid.length === 1) {
+          const destination = num(valid[0]!.forum_id);
+          for (const id of forumIds)
+            if (id !== destination) await tx.fields.save("forum", id, "trash-bin.destination", destination);
+        }
+        await setCheckpoint(tx, "trash-bin", DONE);
       });
 
     // ── topics ───────────────────────────────────────────────────────────────

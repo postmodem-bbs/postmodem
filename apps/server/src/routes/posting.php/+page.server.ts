@@ -227,10 +227,17 @@ export const actions: Actions = {
     redirect(303, locals.urls.post(result.post.id));
   },
   delete: async (event) => {
-    const { post } = await context(event);
+    const { post, node } = await context(event);
     const { locals } = event;
-    const result = await deletePost(locals.ctx.db.repos, locals.perms, locals.user, post!.id, {
-      hooks: locals.ctx.packages.contentHooks(),
+    const result = await locals.ctx.db.repos.transaction(async (tx) => {
+      const deleted = await deletePost(tx, locals.perms, locals.user, post!.id, {
+        hooks: locals.ctx.packages.contentHooks(),
+      });
+      if (deleted.ok && deleted.firstPostChanged && deleted.topic.firstPostId !== null) {
+        const first = await tx.posts.get(deleted.topic.firstPostId);
+        if (first) await indexPosts(tx, [first]);
+      }
+      return deleted;
     });
     if (!result.ok)
       return fail(STATUS[result.problem], { problem: result.problem, refusal: result.refusal ?? null });
@@ -241,10 +248,9 @@ export const actions: Actions = {
       actor: locals.user!,
       topicDeleted: !!result.topicDeleted,
     });
-    const node = await locals.ctx.db.repos.nodes.get(result.topic.nodeId);
     redirect(
       303,
-      result.topicDeleted ? locals.urls.forum(nodeRef(node!)) : locals.urls.topic(topicRef(result.topic)),
+      result.topicDeleted ? locals.urls.forum(nodeRef(node)) : locals.urls.topic(topicRef(result.topic)),
     );
   },
 };

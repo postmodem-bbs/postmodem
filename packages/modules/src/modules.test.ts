@@ -5,6 +5,7 @@ import {
   coreSettings,
   createTopic,
   deletePost,
+  deleteTopic,
   editPost,
   installCorePermissions,
   loadSnapshot,
@@ -22,6 +23,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { editPolicy } from "./edit-policy.ts";
 import { INSTALLED_PACKAGES, reportsFor, reportsStore, revisionsStore, unreadStore } from "./index.ts";
 import { revisions } from "./revisions.ts";
+import { restoreTrashedTopic, TRASHED, trashBin, trashDestination } from "./trash-bin.ts";
 import { unreadTracking } from "./unread-tracking.ts";
 
 const RULES = { floodSeconds: 0, maxLength: 1000 };
@@ -57,6 +59,91 @@ describe.each(testEngines())("first-party packages on %s", (engine) => {
   });
   afterEach(async () => {
     await db.close();
+  });
+
+  it("trashes moderator deletes, keeps them private, and restores their counts", async () => {
+    const trash = await r.nodes.create({ parentId: null, kind: "forum", title: "Trash" });
+    await r.fields.save("forum", forum.id, trashDestination.key, trash.id);
+    await r.grants.create(
+      (await r.roles.byKey("core:moderator"))!.id,
+      { type: "user", id: bob.id },
+      forum.id,
+    );
+    const mod = await perms(bob);
+    const hooks = (await trashBin.setup!({} as never)).content;
+    const created = await createTopic(
+      r,
+      await perms(alice),
+      alice,
+      { nodeId: forum.id, title: "Topic", source: "first" },
+      RULES,
+    );
+    if (!created.ok) throw new Error(created.problem);
+    const response = await reply(
+      r,
+      await perms(alice),
+      alice,
+      { topicId: created.topic.id, source: "second" },
+      RULES,
+    );
+    if (!response.ok) throw new Error(response.problem);
+    await r.search.index([
+      {
+        postId: response.post.id,
+        topicId: created.topic.id,
+        nodeId: forum.id,
+        authorId: alice.id,
+        createdAt: response.post.createdAt,
+        title: "topic",
+        body: "second",
+      },
+    ]);
+
+    const result = await deletePost(r, mod, bob, response.post.id, { hooks });
+    expect(result).toMatchObject({ ok: true, topicDeleted: false, topic: { id: created.topic.id } });
+    const moved = (await r.posts.get(response.post.id))!;
+    expect(moved.topicId).not.toBe(created.topic.id);
+    expect(await r.topics.get(moved.topicId)).toMatchObject({ nodeId: trash.id, visibility: TRASHED });
+    expect((await r.topics.listByNode(trash.id, { page: 1, perPage: 10 })).total).toBe(0);
+    expect(
+      (
+        await r.search.query({
+          terms: ["second"],
+          nodeIds: [forum.id, trash.id],
+          page: { page: 1, perPage: 10 },
+        })
+      ).total,
+    ).toBe(0);
+    expect(await r.nodes.get(forum.id)).toMatchObject({ topicCount: 1, postCount: 1 });
+    expect(await r.nodes.get(trash.id)).toMatchObject({ topicCount: 0, postCount: 0 });
+
+    const shadow = await r.topics.create({
+      nodeId: forum.id,
+      title: "Moved topic",
+      authorId: alice.id,
+      movedToTopicId: created.topic.id,
+    });
+    expect(await deleteTopic(r, mod, bob, created.topic.id, "cleanup", hooks)).toMatchObject({
+      ok: true,
+      topic: { nodeId: trash.id, visibility: TRASHED },
+    });
+    expect(await deleteTopic(r, mod, bob, created.topic.id, "retry")).toMatchObject({ ok: false });
+    expect(await r.users.get(alice.id)).toMatchObject({ postCount: 0 });
+    expect((await r.topics.listByNode(forum.id, { page: 1, perPage: 10 })).items).toEqual([]);
+    expect(await restoreTrashedTopic(r, created.topic.id, forum.id, bob.id)).toBe(true);
+    expect(await restoreTrashedTopic(r, created.topic.id, forum.id, bob.id)).toBe(false);
+    expect(await r.topics.get(created.topic.id)).toMatchObject({
+      nodeId: forum.id,
+      visibility: "core:public",
+    });
+    expect(await r.users.get(alice.id)).toMatchObject({ postCount: 1 });
+    expect(
+      (await r.topics.listByNode(forum.id, { page: 1, perPage: 10 })).items.map((topic) => topic.id),
+    ).toContain(shadow.id);
+    expect(await deleteTopic(r, mod, bob, created.topic.id, "package disabled")).toMatchObject({
+      ok: true,
+      topic: { nodeId: forum.id, visibility: "core:deleted" },
+    });
   });
 
   it("reports: members may report, only moderators of the forum see the queue", async () => {

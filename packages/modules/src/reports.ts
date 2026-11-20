@@ -132,9 +132,12 @@ export async function reportsFor(store: ReportsStore, repos: Repositories, perms
   const open = await store.open();
   if (!open.length) return [];
   const posts = await repos.posts.getMany(open.map((r) => r.postId));
+  const topics = await repos.topics.getMany([...posts.values()].map((post) => post.topicId));
   const nodes = new Map((await repos.nodes.tree()).map((n) => [n.id, n]));
   return open.flatMap((r) => {
     const post = posts.get(r.postId);
+    const topic = post && topics.get(post.topicId);
+    if (topic && topic.visibility !== "core:public" && topic.visibility !== "core:deleted") return [];
     const node = post && nodes.get(post.nodeId);
     return post && node && perms.can("moderate.reports", node) ? [{ report: r, post, node }] : [];
   });

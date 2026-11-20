@@ -91,8 +91,13 @@ export async function createPackageHost(opts: {
   const enabled = () => enabledPackages(installed, settings.get(enabledPackagesSetting), opts.profile);
   const runtimes = new Map<PackageKey, PackageRuntime>();
   const isEnabled = (key: PackageKey) => runtimes.has(key) && enabled().has(key);
+  const privateTopicStates = new Map<PackageKey, Set<string>>();
   for (const p of installed) {
     try {
+      const states = new Set(p.privateTopicStates);
+      if ([...states].some((state) => !state.startsWith(`${p.key}:`)))
+        throw new Error("private topic states must use the package namespace");
+      privateTopicStates.set(p.key, states);
       const runtime =
         (await p.setup?.({
           repos: opts.repos,
@@ -280,6 +285,17 @@ export async function createPackageHost(opts: {
             }
           }
           return { draft };
+        },
+        async beforeDelete(e, tx) {
+          for (const [key, hooks] of withHooks) {
+            const redirect = await hooks.beforeDelete?.(e, tx);
+            if (!redirect) continue;
+            if (!privateTopicStates.get(key)?.has(redirect.visibility)) {
+              log.error("package delete redirect used an unregistered state", { package: key });
+              throw new Error("invalid package delete redirect");
+            }
+            return redirect;
+          }
         },
         async postUpdated(e, tx) {
           for (const [, h] of withHooks) await h.postUpdated?.(e, tx);

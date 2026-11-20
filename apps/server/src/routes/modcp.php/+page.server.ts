@@ -102,7 +102,7 @@ async function run(
       action: String(form.get("action") ?? ""),
     });
   event.locals.ctx.log.info("moderation", { topicId: topic.id, by: event.locals.user!.id });
-  await reindexTopics(event.locals.ctx.db.repos, [topic.id, result.topic.id]);
+  if (!toForum) await reindexTopics(event.locals.ctx.db.repos, [topic.id, result.topic.id]);
   await event.locals.ctx.packages.emit("moderation.action", {
     action: event.url.search.split("&/").pop() ?? "",
     topicId: topic.id,
@@ -179,7 +179,14 @@ export const actions: Actions = {
       async (form, reason) => {
         const { topic } = await context(e);
         if (form.get("confirm") !== "on") return { ok: false, problem: "invalid" };
-        return deleteTopic(e.locals.ctx.db.repos, e.locals.perms, e.locals.user!, topic.id, reason);
+        return deleteTopic(
+          e.locals.ctx.db.repos,
+          e.locals.perms,
+          e.locals.user!,
+          topic.id,
+          reason,
+          e.locals.ctx.packages.contentHooks(),
+        );
       },
       true,
     ),

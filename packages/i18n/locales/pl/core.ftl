@@ -667,3 +667,14 @@ mail-change-email-body =
     { $link }
 
     Jeśli nie proszono o tę zmianę, zignoruj tę wiadomość.
+
+admin-trash-destination = Forum docelowe kosza
+admin-trash-disabled = Bez kosza
+admin-forums-error-trash-destination = Wybierz inne forum jako kosz.
+admin-trash-view = Tematy w koszu
+admin-trash-restored = Temat został przywrócony.
+admin-trash-restore-error = Nie udało się przywrócić tematu.
+admin-trash-empty = W koszu tego forum nie ma tematów.
+admin-trash-restore-to = Przywróć „{ $title }” do
+admin-trash-pick-forum = Wybierz forum
+admin-trash-restore = Przywróć temat

@@ -38,6 +38,20 @@
           <label class="check"><input type="checkbox" name="locked" checked={n.locked} /> {t("admin-locked")}</label>
           <div class="actions"><button type="submit">{t("posting-save")}</button></div>
         </form>
+        {#if n.kind === "forum"}<p><a href={`/admin/forums/trash?forum=${n.id}`}>{t("admin-trash-view")}</a></p>{/if}
+        {#if data.trashEnabled && n.kind === "forum"}
+          <form method="POST" action="?/trash" class="form">
+            <input type="hidden" name="id" value={n.id} />
+            <label for={`trash-${n.id}`}>{t("admin-trash-destination")}</label>
+            <select id={`trash-${n.id}`} name="destination">
+              <option value="" selected={n.trashDestination === null}>{t("admin-trash-disabled")}</option>
+              {#each data.nodes.filter((p) => p.kind === "forum" && p.id !== n.id) as p (p.id)}
+                <option value={p.id} selected={n.trashDestination === p.id}>{p.title}</option>
+              {/each}
+            </select>
+            <div class="actions"><button type="submit">{t("posting-save")}</button></div>
+          </form>
+        {/if}
         <form method="POST" action="?/delete" class="form">
           <input type="hidden" name="id" value={n.id} />
           <div class="actions"><button type="submit" class="danger">{t("admin-delete-empty")}</button></div>

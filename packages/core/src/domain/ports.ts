@@ -100,7 +100,7 @@ export interface NewTopic {
 
 export interface TopicRepository {
   create(input: NewTopic): Promise<Topic>;
-  get(id: Id): Promise<Topic | undefined>;
+  get(id: Id, options?: { forUpdate?: boolean }): Promise<Topic | undefined>;
   getMany(ids: Id[]): Promise<Map<Id, Topic>>;
   bySlug(slug: string): Promise<Topic | undefined>;
   /** Changes the title and slug; the old slug keeps resolving through slug_history. */
@@ -472,7 +472,20 @@ export interface InviteRepository {
   remove(id: Id): Promise<void>;
 }
 
+export type FieldTarget = "user" | "forum" | "topic" | "post";
+
+/** Port: the side tables (implemented in @postmodem/db). */
+export interface FieldStore {
+  /** Values of these fields for these entities: entity id → field key → value. */
+  load(target: FieldTarget, ids: Id[], keys: string[]): Promise<Map<Id, Record<string, unknown>>>;
+  save(target: FieldTarget, id: Id, key: string, value: unknown): Promise<void>;
+  remove(target: FieldTarget, id: Id, key: string): Promise<void>;
+  /** Every value of an entity (it was deleted). */
+  removeEntity(target: FieldTarget, id: Id): Promise<void>;
+}
+
 export interface Repositories {
+  fields: FieldStore;
   nodes: NodeRepository;
   topics: TopicRepository;
   posts: PostRepository;

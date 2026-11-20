@@ -8,6 +8,7 @@
 // topic takes its posts out of the posters' counts. Improved: a merged topic becomes a shadow
 // of the target, so its old links keep working.
 import type { Permissions } from "./core-permissions.ts";
+import type { ContentHooks } from "./hooks.ts";
 import type { Repositories } from "./ports.ts";
 import { cleanTitle, titleProblem } from "./posting.ts";
 import type { Ban, Id, Millis, Node, Topic, TopicType, User } from "./types.ts";
@@ -25,8 +26,14 @@ export type ModerationResult<T = Topic> = { ok: true; topic: T } | { ok: false; 
 
 const no = (problem: ModerationProblem) => ({ ok: false as const, problem });
 
-async function topicIn(repos: Repositories, perms: Permissions, topicId: Id, capability: string) {
-  const topic = await repos.topics.get(topicId);
+async function topicIn(
+  repos: Repositories,
+  perms: Permissions,
+  topicId: Id,
+  capability: string,
+  forUpdate = false,
+) {
+  const topic = await repos.topics.get(topicId, { forUpdate });
   if (topic?.visibility !== "core:public" || topic.movedToTopicId) return null;
   const node = await repos.nodes.get(topic.nodeId);
   if (!node || !perms.can("node.read", node)) return null;
@@ -105,14 +112,14 @@ export async function moveTopic(
   targetNodeId: Id,
   opts: { shadow: boolean; reason: string; now?: Millis },
 ): Promise<ModerationResult> {
-  const found = await topicIn(repos, perms, topicId, "moderate.move");
-  if (!found) return no("not-found");
-  if (!found.allowed) return no("forbidden");
-  const target = await repos.nodes.get(targetNodeId);
-  if (target?.kind !== "forum" || !perms.can("node.read", target)) return no("not-found");
-  if (target.id === found.node.id) return no("same-forum");
-  const { topic, node } = found;
   return repos.transaction(async (r) => {
+    const found = await topicIn(r, perms, topicId, "moderate.move", true);
+    if (!found) return no("not-found");
+    if (!found.allowed) return no("forbidden");
+    const target = await r.nodes.get(targetNodeId);
+    if (target?.kind !== "forum" || !perms.can("node.read", target)) return no("not-found");
+    if (target.id === found.node.id) return no("same-forum");
+    const { topic, node } = found;
     await r.topics.moveTo(topic.id, target.id);
     if (opts.shadow)
       await r.topics.create({
@@ -141,16 +148,30 @@ export async function deleteTopic(
   actor: User,
   topicId: Id,
   reason: string,
+  hooks?: ContentHooks,
 ): Promise<ModerationResult> {
-  const found = await topicIn(repos, perms, topicId, "moderate.delete");
-  if (!found) return no("not-found");
-  if (!found.allowed) return no("forbidden");
   return repos.transaction(async (r) => {
+    const found = await topicIn(r, perms, topicId, "moderate.delete", true);
+    if (!found) return no("not-found");
+    if (!found.allowed) return no("forbidden");
+    const redirect = await hooks?.beforeDelete?.({ topic: found.topic, node: found.node, actor }, r);
     const posts = (await r.posts.allInTopic(topicId)).filter((p) => p.visibility === "core:public");
-    await r.topics.setVisibility(topicId, "core:deleted");
-    for (const p of posts) if (p.authorId) await r.users.adjustPostCount(p.authorId, -1);
+    if (redirect) await r.topics.moveTo(topicId, redirect.nodeId);
+    await r.topics.setVisibility(topicId, redirect?.visibility ?? "core:deleted");
+    const counts = new Map<Id, number>();
+    for (const post of posts) {
+      if (post.authorId !== null) counts.set(post.authorId, (counts.get(post.authorId) ?? 0) + 1);
+    }
+    for (const [author, count] of [...counts].sort(([a], [b]) => a - b))
+      await r.users.adjustPostCount(author, -count);
     await r.nodes.recount(found.node.id);
-    await audit(r, actor, "deleted", topicId, { posts: posts.length, reason });
+    for (let start = 0; start < posts.length; start += 500)
+      await r.search.remove(posts.slice(start, start + 500).map((p) => p.id));
+    await audit(r, actor, redirect ? "trashed" : "deleted", topicId, {
+      posts: posts.length,
+      reason,
+      ...(redirect && { from: found.node.id, to: redirect.nodeId }),
+    });
     return { ok: true as const, topic: (await r.topics.get(topicId))! };
   });
 }
@@ -162,20 +183,20 @@ export async function splitTopic(
   actor: User,
   input: { topicId: Id; postIds: Id[]; title: string; targetNodeId?: Id; reason: string },
 ): Promise<ModerationResult> {
-  const found = await topicIn(repos, perms, input.topicId, "moderate.split");
-  if (!found) return no("not-found");
-  if (!found.allowed) return no("forbidden");
-  const title = cleanTitle(input.title);
-  const tp = titleProblem(title);
-  if (tp) return no(tp as ModerationProblem);
-  const target = input.targetNodeId ? await repos.nodes.get(input.targetNodeId) : found.node;
-  if (target?.kind !== "forum" || !perms.can("node.read", target)) return no("not-found");
-  const posts = (await repos.posts.allInTopic(input.topicId)).filter((p) => p.visibility === "core:public");
-  const chosen = posts.filter((p) => input.postIds.includes(p.id));
-  // At least one post must stay and one must go.
-  if (!chosen.length || chosen.length === posts.length) return no("nothing-selected");
-  const first = chosen[0]!;
   return repos.transaction(async (r) => {
+    const found = await topicIn(r, perms, input.topicId, "moderate.split", true);
+    if (!found) return no("not-found");
+    if (!found.allowed) return no("forbidden");
+    const title = cleanTitle(input.title);
+    const tp = titleProblem(title);
+    if (tp) return no(tp as ModerationProblem);
+    const target = input.targetNodeId ? await r.nodes.get(input.targetNodeId) : found.node;
+    if (target?.kind !== "forum" || !perms.can("node.read", target)) return no("not-found");
+    const posts = (await r.posts.allInTopic(input.topicId)).filter((p) => p.visibility === "core:public");
+    const chosen = posts.filter((p) => input.postIds.includes(p.id));
+    // At least one post must stay and one must go.
+    if (!chosen.length || chosen.length === posts.length) return no("nothing-selected");
+    const first = chosen[0]!;
     const created = await r.topics.create({
       nodeId: target.id,
       title,
@@ -210,11 +231,14 @@ export async function mergeTopics(
   reason: string,
 ): Promise<ModerationResult> {
   if (sourceId === targetId) return no("invalid");
-  const source = await topicIn(repos, perms, sourceId, "moderate.split");
-  const target = await topicIn(repos, perms, targetId, "moderate.split");
-  if (!source || !target) return no("not-found");
-  if (!source.allowed || !target.allowed) return no("forbidden");
   return repos.transaction(async (r) => {
+    // Lock in ID order so simultaneous merges cannot lock the pair in opposite order.
+    await r.topics.get(Math.min(sourceId, targetId), { forUpdate: true });
+    await r.topics.get(Math.max(sourceId, targetId), { forUpdate: true });
+    const source = await topicIn(r, perms, sourceId, "moderate.split");
+    const target = await topicIn(r, perms, targetId, "moderate.split");
+    if (!source || !target) return no("not-found");
+    if (!source.allowed || !target.allowed) return no("forbidden");
     const posts = await r.posts.allInTopic(sourceId);
     await r.posts.moveTo(
       posts.map((p) => p.id),
