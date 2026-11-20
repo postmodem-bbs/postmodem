@@ -210,6 +210,27 @@ jobs:
           docker compose exec -T web /nodejs/bin/node /app/postmodem.js settings set core.posting.perHour 0
           docker compose exec -T web /nodejs/bin/node /app/postmodem.js settings set core.search.perMinute 0
           printf '%s' "$PM_ADMIN_PASSWORD" | docker compose exec -T web /nodejs/bin/node /app/postmodem.js user set-password Admin
+      - name: Round-trip a Postgres backup from the runtime image
+        if: matrix.mode == 'stack'
+        working-directory: deploy
+        run: |
+          docker compose exec -T web /nodejs/bin/node -e '
+            const fs = require("node:fs");
+            fs.mkdirSync("/data/uploads", { recursive: true });
+            fs.writeFileSync("/data/uploads/backup-smoke.txt", "backup smoke test");
+          '
+          docker compose exec -T web /nodejs/bin/node /app/postmodem.js backup /data/backups/ci
+          docker compose cp web:/data/backups/ci "$RUNNER_TEMP/postmodem-backup"
+          backup="$RUNNER_TEMP/postmodem-backup"
+          jq -e '.format == 1 and .dialect == "pg"' "$backup/manifest.json"
+          test "$(cat "$backup/uploads/backup-smoke.txt")" = "backup smoke test"
+          docker compose exec -T db createdb -U postmodem postmodem_restore
+          docker compose exec -T db pg_restore -U postmodem -d postmodem_restore \
+            --single-transaction --no-owner --no-acl < "$backup/postmodem.dump"
+          before=$(docker compose exec -T db psql -U postmodem -d postmodem -Atc 'SELECT count(*) FROM posts')
+          after=$(docker compose exec -T db psql -U postmodem -d postmodem_restore -Atc 'SELECT count(*) FROM posts')
+          test "$before" -gt 0
+          test "$before" = "$after"
       - name: Run Playwright
         env:
           PM_BASE_URL: ${{ matrix.mode == 'solo' && 'http://localhost:8080' || 'https://localhost' }}

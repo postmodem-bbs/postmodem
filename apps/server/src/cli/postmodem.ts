@@ -78,10 +78,10 @@ ${PACKAGES_HELP}
                 strings), e.g. settings set core.urls.style numbered; running servers
                 pick changes up within a few seconds
   backup [<directory>]
-                a consistent copy of a SQLite board (database + uploads) while it runs,
-                by default into <data>/backups/<time>; Postgres: pg_dump (docs/CONTAINERS.md)
+                copy a running SQLite or Postgres board (database + uploads),
+                by default into <data>/backups/<time>
   restore <directory>
-                put a backup in place (the board must be stopped); the current database
+                restore a SQLite backup (the board must be stopped); the current database
                 and uploads are kept as *.before-restore
   search rebuild
                 rebuild the search index from every post (imports do this themselves)
