@@ -1,9 +1,15 @@
 #!/bin/sh
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# Refuses pushes to main from this clone (CONTRIBUTING.md, Branch rules): changes reach main
-# only through a merged pull request. Turn on with: git config core.hooksPath .githooks
-# Release tags (v*) are still pushed from main as before.
-while read -r local_ref _local_sha remote_ref _remote_sha; do
+# Runs before every push from this clone (installed by `pnpm install`, which sets
+# core.hooksPath to .githooks):
+# - refuses pushes to main (CONTRIBUTING.md, Branch rules): changes reach main only through a
+#   merged pull request. Release tags (v*) are still pushed from main as before;
+# - refuses commits without a DCO sign-off by their author (AGENTS.md). This also covers
+#   commits the commit-msg hook never saw: rebased, cherry-picked or made with --no-verify.
+zero=0000000000000000000000000000000000000000
+root=$(git rev-parse --show-toplevel)
+status=0
+while read -r local_ref local_sha remote_ref remote_sha; do
   case "$remote_ref" in
     refs/heads/main)
       echo "pre-push: main only changes through a pull request (CONTRIBUTING.md, Branch rules)." >&2
@@ -11,6 +17,17 @@ while read -r local_ref _local_sha remote_ref _remote_sha; do
       exit 1
       ;;
   esac
+  # Deleting a remote branch pushes no commits.
+  case "$local_sha" in *[!0]*) ;; *) continue ;; esac
   : "$local_ref"
+  # Only commits the remote doesn't have yet: since the remote's tip if we know it, otherwise
+  # everything not on any remote-tracking branch (new branches, force-pushes after a rebase).
+  if [ "$remote_sha" != "$zero" ] && git cat-file -e "$remote_sha^{commit}" 2>/dev/null &&
+    git merge-base --is-ancestor "$remote_sha" "$local_sha"; then
+    node "$root/scripts/dco.mjs" "$remote_sha..$local_sha" || status=1
+  else
+    node "$root/scripts/dco.mjs" "$local_sha" --not --remotes || status=1
+  fi
 done
-exit 0
+[ "$status" -eq 0 ] || echo "pre-push: nothing was pushed. Sign off the commits above, then push again." >&2
+exit $status

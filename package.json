@@ -9,6 +9,7 @@
     "node": ">=24.0.0"
   },
   "scripts": {
+    "prepare": "git rev-parse --is-inside-work-tree >/dev/null 2>&1 && git config core.hooksPath .githooks || true",
     "dev": "pnpm --filter @postmodem/server dev",
     "build": "pnpm --filter @postmodem/server build",
     "typecheck": "pnpm -r --parallel typecheck",
@@ -22,7 +23,8 @@
     "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm check:spdx && pnpm check:licenses",
     "fixtures:generate": "pnpm --filter @postmodem/fixtures generate",
     "fixtures:image": "pnpm --filter @postmodem/fixtures image",
-    "cli": "POSTMODEM_DATA_DIR=${POSTMODEM_DATA_DIR:-var/data} node apps/server/src/cli/postmodem.ts"
+    "cli": "POSTMODEM_DATA_DIR=${POSTMODEM_DATA_DIR:-var/data} node apps/server/src/cli/postmodem.ts",
+    "check:dco": "node scripts/dco.mjs origin/main..HEAD"
   },
   "devDependencies": {
     "@axe-core/playwright": "4.14.0",

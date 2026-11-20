@@ -12,8 +12,28 @@ the right to submit it under the project's licences
 git commit -s -m "Describe the change"
 ```
 
-This adds `Signed-off-by: Your Name <you@example.org>`. CI rejects pull
-requests with commits that lack it. There is no CLA: you keep your copyright.
+This adds `Signed-off-by: Your Name <you@example.org>`, which must match the
+commit's author. There is no CLA: you keep your copyright.
+
+The sign-off is checked at every step, by one script
+([`scripts/dco.mjs`](scripts/dco.mjs)):
+
+- `pnpm install` turns on the repository's git hooks (`core.hooksPath`
+  `.githooks`). In an existing clone, run `pnpm run prepare` once.
+- The `commit-msg` hook refuses an unsigned commit. The `pre-push` hook refuses
+  to push unsigned commits, including rebased or cherry-picked ones.
+- The `dco` CI job fails the pull request, and the main guard flags any commit
+  on `main` without a sign-off.
+- Commits made in GitHub's web interface require a sign-off (a repository
+  setting).
+
+Forgot it? `git rebase --signoff origin/main && git push --force-with-lease`.
+`pnpm check:dco` checks your branch before you push.
+
+**Coding agents** follow [AGENTS.md](AGENTS.md). An agent commits under, and
+signs off as, the person it works for. It never bypasses the hooks or signs off
+for anyone else. If you let an agent commit for you, its sign-off is your
+certification.
 
 ## Licences
 

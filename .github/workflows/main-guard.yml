@@ -1,8 +1,9 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Guards main (CONTRIBUTING.md, Branch rules). The rules themselves live in .github/rulesets
 # and GitHub enforces them where the plan allows; this workflow works on any plan:
-# - every commit that reaches main must come from a merged pull request, and main is never
-#   force-pushed (a red run here means something skipped review and CI);
+# - every commit that reaches main must come from a merged pull request, carry a DCO
+#   sign-off, and main is never force-pushed (a red run here means something skipped review
+#   and CI);
 # - the rulesets on GitHub must match the files (checked weekly and when they change).
 name: Main guard
 
@@ -42,6 +43,13 @@ jobs:
               bad=1
             else
               echo "$(echo "$sha" | cut -c1-7): merged in #$prs"
+            fi
+            # Squash merges keep the pull request's commit messages, sign-offs included
+            # (squash_merge_commit_message = COMMIT_MESSAGES). The squash commit's author is a
+            # GitHub noreply address, so the per-author match is the dco job's, on the PR.
+            if ! gh api "repos/$REPO/commits/$sha" --jq .commit.message | grep -qE '^Signed-off-by: .+ <[^>]+>$'; then
+              echo "::error::$(echo "$sha" | cut -c1-7) reached main without a DCO sign-off (AGENTS.md, CONTRIBUTING.md)."
+              bad=1
             fi
           done
           exit $bad

@@ -31,8 +31,9 @@ shaped it:
   version's source (from the image's OCI labels). Admins who run a modified
   build point it at their own source in the ACP. Running Postmodem unmodified
   requires nothing further.
-- **Contributions** use the **DCO** (`Signed-off-by:` on every commit, checked
-  in CI). No CLA: no one, including the maintainers, can relicense the core
+- **Contributions** use the **DCO** (`Signed-off-by:` on every commit by its
+  author, checked by the git hooks, in CI and on `main`; coding agents sign off
+  as the person they work for, see [AGENTS.md](../../AGENTS.md)). No CLA: no one, including the maintainers, can relicense the core
   later without contributors' consent.
 - Every source file carries an SPDX header; CI checks headers and dependency
   licence compatibility (Apache-2.0, MIT, BSD, ISC, MPL-2.0 OK for the core;
