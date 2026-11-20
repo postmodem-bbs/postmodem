@@ -360,6 +360,8 @@ export interface Schema {
   topicWatches: TopicWatchesTable;
   notificationDigests: NotificationDigestsTable;
   searchMeta: SearchMetaTable;
+  searchSync: { id: number; ready: number; leaseUntil: number };
+  searchDirty: { postId: number; revision: Generated<number> };
   invites: InvitesTable;
   auditLog: AuditLogTable;
   legacyIds: LegacyIdsTable;

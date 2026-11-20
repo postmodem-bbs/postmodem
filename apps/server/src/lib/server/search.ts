@@ -6,8 +6,10 @@
 import { foldForSearch, type Id, type Post, type Repositories, type SearchDocument } from "@postmodem/core";
 import { toPlainText } from "@postmodem/markup";
 
-async function documents(repos: Repositories, posts: Post[]): Promise<SearchDocument[]> {
-  const topics = await repos.topics.getMany(posts.map((p) => p.topicId));
+export function searchDocuments(
+  posts: Post[],
+  topics: Awaited<ReturnType<Repositories["topics"]["getMany"]>>,
+): SearchDocument[] {
   return posts.flatMap((p) => {
     const t = topics.get(p.topicId);
     if (t?.visibility !== "core:public" || p.visibility !== "core:public" || p.format !== "bbcode-phpbb2")
@@ -28,7 +30,8 @@ async function documents(repos: Repositories, posts: Post[]): Promise<SearchDocu
 }
 
 export async function indexPosts(repos: Repositories, posts: Post[]): Promise<void> {
-  await repos.search.index(await documents(repos, posts));
+  const topics = await repos.topics.getMany(posts.map((p) => p.topicId));
+  await repos.search.index(searchDocuments(posts, topics));
 }
 
 /** After a move, split or merge: the topic's posts may have a new topic, forum or first post. */

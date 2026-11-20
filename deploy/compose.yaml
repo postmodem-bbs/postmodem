@@ -28,6 +28,8 @@ x-postmodem: &postmodem
     POSTMODEM_REGISTRATIONS_PER_IP_HOUR: ${POSTMODEM_REGISTRATIONS_PER_IP_HOUR:-10}
     # --profile scale: counters and live updates on Valkey (see .env.example). Unset, live
     # updates go over Postgres LISTEN/NOTIFY and each replica flushes its own counters.
+    POSTMODEM_SEARCH_URL: ${POSTMODEM_SEARCH_URL:-builtin://}
+    POSTMODEM_SEARCH_KEY: ${MEILI_MASTER_KEY:-}
     POSTMODEM_COUNTERS_URL: ${POSTMODEM_COUNTERS_URL:-}
     POSTMODEM_REALTIME_URL: ${POSTMODEM_REALTIME_URL:-}
   secrets: [db_password, secret_key]
@@ -98,6 +100,9 @@ services:
   search:
     image: getmeili/meilisearch:v1.15
     profiles: ["search"]
+    environment:
+      MEILI_ENV: production
+      MEILI_MASTER_KEY: ${MEILI_MASTER_KEY:-}
     volumes: ["meili-data:/meili_data"]
     restart: unless-stopped
 

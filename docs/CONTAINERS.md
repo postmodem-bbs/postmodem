@@ -124,6 +124,7 @@ are never editable from the browser).
 | `POSTMODEM_QUEUE` | `db` | `db` (or `redis`) |
 | `POSTMODEM_STORAGE_URL` | `file:///data/uploads` | `s3://postmodem-uploads?endpoint=http://garage:3900` |
 | `POSTMODEM_SEARCH_URL` | `builtin://` | `meilisearch://search:7700` |
+| `POSTMODEM_SEARCH_KEY[_FILE]` | unset | API key with access to the search index and its tasks |
 | `POSTMODEM_MAIL_URL` | `log://` | `smtp://user:pass@mail.example.org:587`, `smtps://…:465` |
 | `POSTMODEM_MAIL_FROM` | `"<board name>" <noreply@<public host>>` | `"Forum" <forum@example.org>` |
 | `POSTMODEM_REGISTRATIONS_PER_IP_HOUR` | `10` | `0` (unlimited: LAN parties, schools, CI) |
@@ -259,6 +260,33 @@ one web replica with realtime/counter-heavy packages, `s3` for multi-host
 attachments, `av` for attachment scanning, `search` for large boards.
 The app detects absent optional services from config and degrades to the
 built-in implementation (in-process cache, DB search, local disk).
+
+#### Meilisearch
+
+In the stack's `.env`, set `POSTMODEM_SEARCH_URL=meilisearch://search:7700` and
+`MEILI_MASTER_KEY` to a random key of at least 16 bytes. Compose supplies the key to both
+services. Start the profile and build the index for the existing board.
+
+```sh
+docker compose --profile search up -d
+docker compose exec -T web /nodejs/bin/node /app/postmodem.js search rebuild
+```
+
+The `worker` role sends committed post changes to Meilisearch in batches and retries failed
+batches. The web role uses the database search during a rebuild and when a Meilisearch query
+fails. It verifies each external hit against current forum access and post visibility before
+showing it. Meilisearch requires all words and applies prefix matching to the final word.
+Results are ordered newest first.
+
+Keep Meilisearch private. Its index includes searchable text from member-only forums, and the
+search key is for server-side use. For a separately managed service, use `meilisearchs://`
+for HTTPS and provide `POSTMODEM_SEARCH_KEY` or its `_FILE` variant. Give each board its own
+index by appending `/index-name` to its URL. The default index name is `postmodem`.
+
+Run `search rebuild` after restoring a backup or replacing the external index. The index is
+derived from the board database. To switch back to database search, set
+`POSTMODEM_SEARCH_URL=builtin://` and recreate the web and worker containers. Postmodem
+maintains the built-in index while Meilisearch is enabled.
 
 ### Behind an existing reverse proxy
 

@@ -43,7 +43,13 @@ jobs:
         ports: ["6379:6379"]
         options: >-
           --health-cmd "valkey-cli ping" --health-interval 3s --health-timeout 3s --health-retries 20
+      meilisearch:
+        image: getmeili/meilisearch:v1.15
+        ports: ["7700:7700"]
+        env: { MEILI_MASTER_KEY: postmodem-ci-search-key }
     env:
+      PM_TEST_MEILI_URL: meilisearch://localhost:7700
+      PM_TEST_MEILI_KEY: postmodem-ci-search-key
       PM_TEST_PG_URL: postgres://test:test@localhost:5432/test
       PM_TEST_VALKEY_URL: valkey://localhost:6379
     steps:
@@ -241,13 +247,16 @@ jobs:
           POSTMODEM_PUBLIC_URL=https://localhost
           POSTMODEM_DOMAIN=localhost
           POSTMODEM_MAIL_URL=smtp://mailpit:1025
+          POSTMODEM_SEARCH_URL=meilisearch://search:7700
+          MEILI_MASTER_KEY=postmodem-ci-search-key
           POSTMODEM_REGISTRATIONS_PER_IP_HOUR=0
           POSTMODEM_PROFILE=${{ matrix.profile }}
           EOF
-          docker compose -f compose.yaml -f ci/mailpit.yaml up -d --wait web worker mailpit
+          docker compose --profile search -f compose.yaml -f ci/mailpit.yaml up -d --wait web worker mailpit search
           docker compose up -d proxy
           for _ in $(seq 1 30); do curl -skf https://localhost/readyz && break; sleep 2; done
           docker compose exec -T web /nodejs/bin/node /app/postmodem.js seed-demo
+          docker compose exec -T web /nodejs/bin/node /app/postmodem.js search rebuild
           docker compose exec -T web /nodejs/bin/node /app/postmodem.js settings set core.posting.floodSeconds 0
           docker compose exec -T web /nodejs/bin/node /app/postmodem.js settings set core.posting.perHour 0
           docker compose exec -T web /nodejs/bin/node /app/postmodem.js settings set core.search.perMinute 0
