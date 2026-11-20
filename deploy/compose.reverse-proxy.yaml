@@ -1,0 +1,9 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Stack overlay for an existing TLS-terminating proxy on the same host.
+services:
+  proxy:
+    ports: !override
+      - "${POSTMODEM_PROXY_BIND:-127.0.0.1}:${POSTMODEM_HTTP_PORT:-8080}:80"
+    environment:
+      POSTMODEM_CADDY_ADDRESS: http://:80
+      POSTMODEM_CADDY_TRUSTED_PROXIES: ${POSTMODEM_CADDY_TRUSTED_PROXIES:?set the upstream proxy addresses as seen by Caddy}

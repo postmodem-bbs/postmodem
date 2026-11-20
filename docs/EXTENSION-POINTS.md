@@ -401,8 +401,8 @@ interface RequestContext {
   the manifest (`personalData: { reads: ['ip', 'userAgent'], purpose: '…', retentionDays: 90 }`).
   The ACP shows these declarations, and they feed the board's privacy page.
 - Stored personal data must go through `pm.privacy` (§11).
-- Behind trusted proxies (`POSTMODEM_TRUSTED_PROXIES`) the core resolves the real
-  client IP. Packages never parse headers themselves.
+- Behind [configured reverse proxies](CONTAINERS.md#behind-an-existing-reverse-proxy)
+  the server resolves the client IP. Packages never parse headers themselves.
 
 ## 11. Privacy hooks — EP-13 *(new)*
 

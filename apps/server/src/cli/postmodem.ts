@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // The `postmodem` CLI: one image, many roles (CONTAINERS.md §2.2).
 import { accessSync, constants, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
-import { createServer, type Server } from "node:http";
+import { createServer, type RequestListener, type Server } from "node:http";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import {
@@ -41,6 +41,7 @@ import {
   packagesCommand,
   USER_EXPIRE_HELP,
 } from "./admin.ts";
+import { clientAddressResolver } from "./client-address.ts";
 
 const HELP = `postmodem — a modern bulletin board
 
@@ -360,17 +361,23 @@ async function startWeb(ctx: AppContext): Promise<Server> {
   const { config } = ctx;
   // adapter-node reads these when the handler module loads.
   process.env.ORIGIN ??= config.publicUrl;
-  if (config.trustedProxies.length) {
-    process.env.ADDRESS_HEADER ??= "x-forwarded-for";
-    process.env.XFF_DEPTH ??= "1";
-    process.env.PROTOCOL_HEADER ??= "x-forwarded-proto";
-  }
+  const addressHeader = "x-postmodem-client-address";
+  process.env.ADDRESS_HEADER = addressHeader;
+  const resolveAddress = clientAddressResolver(config);
   globalThis.__postmodem = Promise.resolve(ctx);
   ctx.watchSettings();
   ctx.platform.counters.start();
   const handlerUrl = pathToFileURL(join(import.meta.dirname, "handler.js")).href;
-  const { handler } = (await import(handlerUrl)) as { handler: (req: unknown, res: unknown) => void };
-  const server = createServer(handler as never);
+  const { handler } = (await import(handlerUrl)) as { handler: RequestListener };
+  const server = createServer((req, res) => {
+    // Always overwrite the internal handoff to adapter-node, including on direct requests.
+    const forwarded = req.headers["x-forwarded-for"];
+    req.headers[addressHeader] = resolveAddress(
+      req.socket.remoteAddress ?? "",
+      Array.isArray(forwarded) ? forwarded.join(",") : forwarded,
+    );
+    handler(req, res);
+  });
   await new Promise<void>((resolve) => server.listen(config.port, config.host, resolve));
   ctx.log.info("web server listening", { host: config.host, port: config.port, publicUrl: config.publicUrl });
   return server;

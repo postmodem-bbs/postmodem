@@ -132,7 +132,8 @@ are never editable from the browser).
 | `POSTMODEM_AV_URL` | — (scanning off) | `clamd://clamav:3310` |
 | `POSTMODEM_PROFILE` | `essentials` | `vanilla` · `essentials` · `przemo` (first boot only; see PACKAGES.md §5) |
 | `POSTMODEM_SECRET_KEY(_FILE)` | generated into `/data/secrets` | Compose secret |
-| `POSTMODEM_TRUSTED_PROXIES` | — | `10.0.0.0/8` |
+| `POSTMODEM_TRUSTED_PROXIES` | — | Comma-separated IPv4/IPv6 addresses or CIDRs. The shipped stack defaults to `172.16.0.0/12` for Caddy on Docker's private network. |
+| `POSTMODEM_PROXY_HOPS` | `0` | `1` when trusted proxies are configured, or the number of proxies between the visitor and Postmodem |
 | `POSTMODEM_ADMIN_EMAIL/PASSWORD_FILE` | used by `postmodem init` on first boot (`POSTMODEM_ADMIN_USERNAME` optional, default `admin`) | |
 
 Config is validated at startup against a schema; invalid config fails fast
@@ -146,6 +147,7 @@ with a readable message (container exits non-zero, Compose shows why).
 deploy/
   compose.yaml            # production stack, profiles for optional services
   compose.solo.yaml       # minimal single-service example
+  compose.reverse-proxy.yaml # stack override for an existing TLS terminator
   .env.example
   caddy/Caddyfile
 deploy/dev/
@@ -257,6 +259,52 @@ one web replica with realtime/counter-heavy packages, `s3` for multi-host
 attachments, `av` for attachment scanning, `search` for large boards.
 The app detects absent optional services from config and degrades to the
 built-in implementation (in-process cache, DB search, local disk).
+
+### Behind an existing reverse proxy
+
+Set `POSTMODEM_PUBLIC_URL` to the public HTTPS URL. At the public edge, replace any
+client-supplied `X-Forwarded-For` with the connecting client's IP. Each subsequent
+proxy must append its connecting peer's IP. Count every proxy that forwards
+requests to Postmodem, including the shipped Caddy if you keep it.
+
+Set `POSTMODEM_PROXY_HOPS` to that count (maximum 32) and set
+`POSTMODEM_TRUSTED_PROXIES` to the proxy addresses or CIDRs as they appear
+to Postmodem, including the immediate TCP peer. Use the narrowest ranges that
+cover your proxies and restrict access to the backend port to those peers.
+Postmodem checks the proxy hops from right to left. If the expected part of
+the chain is missing, malformed, or includes an untrusted proxy, it uses the
+immediate peer's IP. With zero hops it always uses the peer's IP.
+
+**Stack with Caddy behind the TLS terminator.** Use the shipped Compose override
+(Compose 2.24.4 or newer). For a TLS terminator → Caddy → Postmodem chain,
+set `POSTMODEM_PROXY_HOPS=2`. Include both proxies in
+`POSTMODEM_TRUSTED_PROXIES` and list the upstream proxy addresses as Caddy
+sees them in `POSTMODEM_CADDY_TRUSTED_PROXIES`, separated by spaces. For
+container deployments these can be Docker gateway or container addresses,
+depending on how the upstream connects. Keep the full proxy chain in the
+header that reaches Postmodem.
+
+```sh
+docker compose -f compose.yaml -f compose.reverse-proxy.yaml up -d
+```
+
+Caddy listens on plain HTTP. Point a same-host TLS terminator at
+`http://127.0.0.1:8080`. To connect from another host or container, set
+`POSTMODEM_PROXY_BIND` to a reachable private host address and restrict the
+published port to the upstream proxy. `POSTMODEM_HTTP_PORT` changes the host port.
+The normal stack command without the override continues to serve HTTPS at Caddy.
+
+**Solo.** Point your TLS terminator at the solo service, restrict its published
+port to your proxy (for a same-host proxy, bind it to loopback in the Compose
+file), and set the same two Postmodem proxy settings. An edge proxy directly
+in front of the solo service counts as one hop.
+
+**Upgrading.** An existing one-proxy installation can omit the hop count.
+Review its trusted addresses because Postmodem now enforces them. Replace any
+adapter-node `ADDRESS_HEADER` / `XFF_DEPTH` settings with the Postmodem settings.
+Sign in as an administrator with `admin.config` through the public URL and open
+`/admin/client-address` to see the address the board uses for bans and rate
+limits. Compare it with the client's IP as seen at the public edge.
 
 ### 4.4 Upgrades
 

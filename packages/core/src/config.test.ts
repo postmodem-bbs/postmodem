@@ -12,6 +12,7 @@ describe("loadConfig", () => {
     const { config, sources } = loadConfig(io({}));
     expect(config.databaseUrl).toBe("sqlite:///data/db/postmodem.sqlite");
     expect(config.port).toBe(8080);
+    expect(config.proxyHops).toBe(0);
     expect(sources.port).toBe("default");
   });
 
@@ -37,7 +38,22 @@ describe("loadConfig", () => {
     expect(config.secretKey).toBe("k".repeat(40));
     expect(sources.secretKey).toBe("env-file");
     expect(config.trustedProxies).toEqual(["10.0.0.0/8", "172.16.0.0/12"]);
+    expect(config.proxyHops).toBe(1);
     expect(config.databaseUrl).toBe("sqlite:///srv/db/postmodem.sqlite");
+  });
+
+  it("validates the forwarded hop count and trusted proxies", () => {
+    const env = { POSTMODEM_TRUSTED_PROXIES: "2001:db8::/32, 10.0.0.1" };
+    const toml = { "/data/postmodem.toml": "proxy_hops = 2" };
+    expect(loadConfig(io(env, toml)).config.proxyHops).toBe(2);
+    expect(loadConfig(io({ ...env, POSTMODEM_PROXY_HOPS: "0" }, toml)).config.proxyHops).toBe(0);
+    expect(() => loadConfig(io({ POSTMODEM_PROXY_HOPS: "2" }))).toThrowError(/POSTMODEM_PROXY_HOPS/);
+    expect(() => loadConfig(io({ ...env, POSTMODEM_PROXY_HOPS: "1.5" }))).toThrowError(
+      /POSTMODEM_PROXY_HOPS/,
+    );
+    expect(() => loadConfig(io({ POSTMODEM_TRUSTED_PROXIES: "10.0.0.0/33" }))).toThrowError(
+      /POSTMODEM_TRUSTED_PROXIES/,
+    );
   });
 
   it("warns about typos in variable names", () => {

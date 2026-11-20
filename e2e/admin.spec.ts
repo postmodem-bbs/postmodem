@@ -2,6 +2,7 @@
 // The admin panel v0 (M2 slice 8). CI gives the demo board's Admin a password through
 // `postmodem user set-password` and passes it as PM_ADMIN_PASSWORD; without it these skip.
 // Nothing here bans or resets a demo member (other specs sign in as them in parallel).
+import { isIP } from "node:net";
 import { expect, type Page, test } from "@playwright/test";
 import { expectNoAxeViolations, guardCsp, signIn } from "./helpers.ts";
 
@@ -19,13 +20,29 @@ async function asAdmin(page: Page, path: string) {
 test("guests sign in first and members without admin rights get a 403", async ({ page }) => {
   await page.goto("/admin");
   await expect(page).toHaveURL(/\/login\.php\?redirect=%2Fadmin/);
+  expect((await page.request.get("/admin/client-address", { maxRedirects: 0 })).status()).toBe(303);
   await signIn(page, "retro_fan", "postmodem-demo");
   await expect(page.locator(".site-header").getByRole("link", { name: "Admin", exact: true })).toHaveCount(0);
   expect((await page.goto("/admin/settings"))?.status()).toBe(403);
+  expect((await page.request.get("/admin/client-address")).status()).toBe(403);
 });
 
 test.describe("as the administrator", () => {
   test.skip(!ADMIN_PASSWORD, "needs PM_ADMIN_PASSWORD (CI sets the demo Admin's password)");
+
+  test("the address diagnostic reports the board's resolved address", async ({ page }) => {
+    await asAdmin(page, "/admin");
+    const normal = await page.request.get("/admin/client-address");
+    expect(normal.ok()).toBe(true);
+    expect(normal.headers()["cache-control"]).toBe("no-store");
+    const address = (await normal.text()).trim();
+    expect(isIP(address)).toBeGreaterThan(0);
+
+    const forwarded = await page.request.get("/admin/client-address", {
+      headers: { "x-forwarded-for": "192.0.2.17", "x-postmodem-client-address": "192.0.2.18" },
+    });
+    expect((await forwarded.text()).trim()).toBe(address);
+  });
 
   test("overview, settings and the audit log", async ({ page }) => {
     await asAdmin(page, "/");

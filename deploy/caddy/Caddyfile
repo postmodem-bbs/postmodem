@@ -1,6 +1,14 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# Automatic HTTPS for POSTMODEM_DOMAIN; "localhost" gets a locally trusted certificate.
-{$POSTMODEM_DOMAIN:localhost} {
+{
+	servers {
+		# The default matches no connected peer.
+		trusted_proxies static {$POSTMODEM_CADDY_TRUSTED_PROXIES:0.0.0.0/32}
+		trusted_proxies_strict
+	}
+}
+
+# Automatic HTTPS by default; the reverse-proxy overlay uses an explicit HTTP address.
+{$POSTMODEM_CADDY_ADDRESS:localhost} {
 	encode zstd gzip
 	reverse_proxy web:8080 {
 		health_uri /readyz
