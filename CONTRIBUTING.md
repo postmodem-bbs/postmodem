@@ -24,6 +24,8 @@ The sign-off is checked at every step, by one script
   to push unsigned commits, including rebased or cherry-picked ones.
 - The `dco` CI job fails the pull request, and the main guard flags any commit
   on `main` without a sign-off.
+- Commits made in GitHub's web interface require a sign-off (a repository
+  setting).
 
 Forgot it? `git rebase --signoff origin/main && git push --force-with-lease`.
 `pnpm check:dco` checks your branch before you push.

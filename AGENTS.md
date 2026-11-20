@@ -42,6 +42,7 @@ replace it.
 | `.githooks/pre-push`                                            | refuses to push unsigned commits, including rebased, cherry-picked and `--no-verify` ones, and refuses pushes to `main` |
 | `dco` job ([dco.yml](.github/workflows/dco.yml))                | fails the pull request if any commit lacks the author's sign-off                                                        |
 | Main guard ([main-guard.yml](.github/workflows/main-guard.yml)) | flags any commit on `main` without a sign-off                                                                           |
+| Repository setting                                              | GitHub requires a sign-off on commits made in the web interface                                                         |
 
 All of them use the same check, [`scripts/dco.mjs`](scripts/dco.mjs). To fix commits that are
 already on a pushed branch:
