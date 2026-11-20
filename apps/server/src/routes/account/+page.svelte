@@ -55,6 +55,18 @@
     <legend>{t("account-notifications")}</legend>
     <label class="check"><input type="checkbox" name="notifyPm" checked={p.notifyPm} /> {t("account-notify-pm")}</label>
     <label class="check"><input type="checkbox" name="autoWatch" checked={p.autoWatch} /> {t("account-auto-watch")}</label>
+    {#each data.notifications as pref (pref.key)}
+      {#if pref.options}
+        <fieldset class="choices">
+          <legend>{t(pref.label)}</legend>
+          {#each pref.options as option (option)}
+            <label class="check"><input type="radio" name={pref.key} value={option} checked={pref.value === option} /> {t(`${pref.label}-${option}`)}</label>
+          {/each}
+        </fieldset>
+      {:else}
+        <label class="check"><input type="checkbox" name={pref.key} checked={pref.value === true} /> {t(pref.label)}</label>
+      {/if}
+    {/each}
   </fieldset>
   <div class="actions"><button type="submit">{t("posting-save")}</button></div>
 </form>

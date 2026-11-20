@@ -24,6 +24,7 @@ import { loginSecuritySettings } from "@postmodem/modules";
 import { backup, restore } from "../lib/server/backup.ts";
 import { type AppContext, createContext, readConfig } from "../lib/server/bootstrap.ts";
 import { DEMO_PASSWORD, seedDemo, seedLongTopic } from "../lib/server/demo.ts";
+import { sendDigests } from "../lib/server/notifications.ts";
 import { INSTALLED_PACKAGES, packageMigrations, packagePermissions } from "../lib/server/packages.ts";
 import { rebuildSearch } from "../lib/server/search.ts";
 import { copyLegacyFiles, uploadsDir } from "../lib/server/uploads.ts";
@@ -399,6 +400,17 @@ function startRole(ctx: AppContext, role: "worker" | "scheduler") {
     }
   };
   setInterval(purge, 3600_000).unref();
+  // Daily digests go out at each member's chosen hour; checking every ten minutes keeps them close to it.
+  const digests = async () => {
+    try {
+      for (let sent = await sendDigests(ctx); sent > 0; sent = await sendDigests(ctx))
+        ctx.log.info("digests queued", { emails: sent });
+    } catch (e) {
+      ctx.log.warn("digests failed", { error: (e as Error).message });
+    }
+  };
+  void digests();
+  setInterval(digests, 10 * 60_000).unref();
 }
 
 /**

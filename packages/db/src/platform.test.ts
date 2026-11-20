@@ -45,6 +45,40 @@ const signature = definePreference({
   guest: "none",
 });
 
+it("preferences: a page lists its section's booleans and enums, in registration order", () => {
+  const replies = definePreference({
+    key: "core.replyMail",
+    schema: z.enum(["instant", "daily", "off"]),
+    default: "instant",
+    guest: "none",
+    section: "notifications",
+  });
+  const mentions = definePreference({
+    key: "mentions.mail",
+    schema: z.boolean(),
+    default: true,
+    guest: "none",
+    section: "notifications",
+  });
+  const store = {
+    load: async () => ({}),
+    save: async () => {},
+    remove: async () => {},
+    deleteAll: async () => {},
+  };
+  const prefs = new Preferences(store, [colorScheme, replies, signature]).register(mentions);
+  expect(prefs.section("notifications").map((d) => d.key)).toEqual(["core.replyMail", "mentions.mail"]);
+  expect(() =>
+    definePreference({
+      key: "mentions.when",
+      schema: z.array(z.string()),
+      default: [],
+      guest: "none",
+      section: "notifications",
+    }),
+  ).toThrow(/boolean or an enum/);
+});
+
 describe.each(testEngines())("platform services on %s", (engine) => {
   let db: Database;
   beforeEach(async () => {

@@ -325,6 +325,25 @@ unread-mark-forum = Mark forum read
 unread-mark-all = Mark all forums read
 
 ## Notifications
+mail-digest-subject = { $count ->
+    [one] New replies in a topic you watch on { $board }
+   *[other] New replies in { $count } topics you watch on { $board }
+}
+mail-digest-topic =
+    "{ $topic }": { $count ->
+        [one] 1 new reply
+       *[other] { $count } new replies
+    }
+    { $link }
+mail-digest-body =
+    Hello { $name },
+
+    Here's what happened on { $board } in the topics you watch:
+
+    { $topics }
+
+    You get this digest once a day. To get e-mails right away, or none, change
+    "E-mail about replies" in your settings: { $settings }
 mail-reply-subject = New reply in "{ $topic }"
 mail-reply-body =
     Hello { $name },
@@ -386,9 +405,13 @@ account-profile = Profile
 account-saved = Saved.
 account-signature = Signature
 account-signature-now = Your signature now:
-account-notifications = E-mail me
-account-notify-pm = when I get a private message
-account-auto-watch = about replies in topics I start or reply to
+account-notifications = Notifications
+account-notify-pm = E-mail me when I get a private message
+account-auto-watch = Watch the topics I start or reply to
+pref-core-replyMail = E-mail about replies in watched topics
+pref-core-replyMail-instant = Right away (one e-mail per topic until I visit it)
+pref-core-replyMail-daily = Once a day, in one digest
+pref-core-replyMail-off = Never
 account-password = Change password
 account-password-current = Current password
 account-password-new = New password
@@ -475,6 +498,7 @@ setting-core-newMembers-posts = Posts before members may post links and send mes
 setting-core-pm-inboxLimit = Messages an inbox holds
 setting-core-search-perMinute = Searches per IP and minute (0: no limit)
 setting-core-memberlist-guests = Guests may see the member list
+setting-core-notify-digestHour = Hour daily digests go out (0–23, in each member's time zone)
 admin-kind = Kind
 admin-kind-forum = Forum
 admin-kind-category = Category

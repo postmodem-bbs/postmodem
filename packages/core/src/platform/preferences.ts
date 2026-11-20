@@ -13,6 +13,12 @@ export interface PreferenceDef<T> {
   default: T;
   /** Where a guest's choice lives: one shared cookie (small scalars only), or nowhere. */
   guest: "cookie" | "none";
+  /**
+   * A page that lists the preference for members to change. "notifications": the
+   * Notifications section of /account, labelled `pref-<key>` and, for each option of an enum,
+   * `pref-<key>-<option>` (dots in the key become dashes). Booleans and enums only.
+   */
+  section?: "notifications";
 }
 
 const KEY = /^[a-z][a-z0-9-]*\.[a-zA-Z][a-zA-Z0-9]*$/;
@@ -23,6 +29,8 @@ export function definePreference<T>(def: PreferenceDef<T>): PreferenceDef<T> {
     throw new Error(`default for preference '${def.key}' does not match its schema`);
   if (def.guest === "cookie" && !["string", "number", "boolean"].includes(typeof def.default))
     throw new Error(`preference '${def.key}': only scalar values can be kept in the guest cookie`);
+  if (def.section && !["string", "boolean"].includes(typeof def.default))
+    throw new Error(`preference '${def.key}': a listed preference is a boolean or an enum`);
   return def;
 }
 
@@ -81,6 +89,11 @@ export class Preferences {
 
   all(): PreferenceDef<unknown>[] {
     return [...this.#defs.values()];
+  }
+
+  /** The preferences a page lists, in registration order (the core's first, then packages'). */
+  section(name: NonNullable<PreferenceDef<unknown>["section"]>): PreferenceDef<unknown>[] {
+    return this.all().filter((d) => d.section === name);
   }
 
   /**

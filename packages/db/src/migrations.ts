@@ -547,5 +547,23 @@ export function migrations(dialect: Dialect): Record<string, Migration> {
         await db.schema.alterTable("email_tokens").addColumn("target_email", "text").execute();
       },
     },
+    "0016_notification_digests": {
+      async up(db: Db) {
+        // Watched topics waiting for a member's daily digest (M2b slice 12).
+        await db.schema
+          .createTable("notification_digests")
+          .addColumn("user_id", "bigint", notNull)
+          .addColumn("topic_id", "bigint", notNull)
+          .addColumn("since", "bigint", notNull)
+          .addColumn("due_at", "bigint", notNull)
+          .addPrimaryKeyConstraint("notification_digests_pk", ["user_id", "topic_id"])
+          .execute();
+        await db.schema
+          .createIndex("notification_digests_due")
+          .on("notification_digests")
+          .columns(["due_at", "user_id"])
+          .execute();
+      },
+    },
   };
 }
