@@ -16,6 +16,7 @@ const FIELDS = {
   databasePassword: { env: "DATABASE_PASSWORD", toml: "database_password", secret: true },
   secretKey: { env: "SECRET_KEY", toml: "secret_key", secret: true },
   trustedProxies: { env: "TRUSTED_PROXIES", toml: "trusted_proxies", secret: false },
+  proxyHops: { env: "PROXY_HOPS", toml: "proxy_hops", secret: false },
   logLevel: { env: "LOG_LEVEL", toml: "log_level", secret: false },
   sourceUrl: { env: "SOURCE_URL", toml: "source_url", secret: false },
   // Shown with any password redacted (redactUrl), so not marked secret as a whole.
@@ -58,7 +59,10 @@ const ConfigSchema = z.object({
     .regex(/^(sqlite|postgres|postgresql):\/\//, "must start with sqlite:// or postgres://"),
   databasePassword: z.string().optional(),
   secretKey: z.string().min(32, "must be at least 32 characters").optional(),
-  trustedProxies: z.array(z.string()),
+  trustedProxies: z.array(z.union([z.ipv4(), z.ipv6(), z.cidrv4(), z.cidrv6()])),
+  proxyHops: z
+    .union([z.number(), z.string().regex(/^\d+$/).transform(Number)])
+    .pipe(z.number().int().min(0).max(32)),
   logLevel: z.enum(["debug", "info", "warn", "error"]),
   sourceUrl: z.url().optional(),
   mailUrl: z.string().regex(/^(log|smtps?):\/\//, "must start with log://, smtp:// or smtps://"),
@@ -114,6 +118,7 @@ export function loadConfig(io: ConfigIo): LoadedConfig {
     port: 8080,
     databaseUrl: `sqlite://${dataDir}/db/postmodem.sqlite`,
     trustedProxies: [],
+    proxyHops: undefined,
     logLevel: "info",
     mailUrl: "log://",
     registrationsPerIpHour: 10,
@@ -178,6 +183,8 @@ export function loadConfig(io: ConfigIo): LoadedConfig {
     }
   }
 
+  // Existing one-proxy deployments can keep their trusted list and omit a hop count.
+  raw.proxyHops ??= Array.isArray(raw.trustedProxies) && raw.trustedProxies.length ? 1 : 0;
   const parsed = ConfigSchema.safeParse(raw);
   if (!parsed.success) {
     const lines = parsed.error.issues.map((i) => {
@@ -188,7 +195,12 @@ export function loadConfig(io: ConfigIo): LoadedConfig {
     });
     throw new ConfigError(`invalid configuration:\n  ${lines.join("\n  ")}`);
   }
-  return { config: parsed.data, sources, warnings };
+  const config = parsed.data;
+  if (config.proxyHops > 0 && config.trustedProxies.length === 0)
+    throw new ConfigError(
+      `invalid configuration:\n  POSTMODEM_PROXY_HOPS (from ${sources.proxyHops}): requires POSTMODEM_TRUSTED_PROXIES when greater than zero`,
+    );
+  return { config, sources, warnings };
 }
 
 /** Effective configuration for `postmodem config print`, secrets redacted. */

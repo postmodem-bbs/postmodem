@@ -18,6 +18,7 @@ x-postmodem: &postmodem
     # Every replica must share the same key, so it can't be generated per container here.
     POSTMODEM_SECRET_KEY_FILE: /run/secrets/secret_key
     POSTMODEM_TRUSTED_PROXIES: ${POSTMODEM_TRUSTED_PROXIES:-172.16.0.0/12}
+    POSTMODEM_PROXY_HOPS: ${POSTMODEM_PROXY_HOPS:-}
     POSTMODEM_LOG_LEVEL: ${POSTMODEM_LOG_LEVEL:-info}
     # smtp://user:pass@host:587 to deliver mail; log:// only writes it to the log.
     POSTMODEM_MAIL_URL: ${POSTMODEM_MAIL_URL:-log://}
@@ -64,7 +65,7 @@ services:
     image: caddy:2.10
     ports: ["${POSTMODEM_HTTP_PORT:-80}:80", "${POSTMODEM_HTTPS_PORT:-443}:443"]
     environment:
-      POSTMODEM_DOMAIN: ${POSTMODEM_DOMAIN:-localhost}
+      POSTMODEM_CADDY_ADDRESS: ${POSTMODEM_DOMAIN:-localhost}
     volumes:
       - ./caddy/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy-data:/data
