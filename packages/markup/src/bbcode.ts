@@ -36,6 +36,7 @@ const MAX_DEPTH = 24; // deeper nesting is rendered as text (defence against pat
 interface Frame {
   name: TagName | "#root";
   arg: string | null;
+  start: number;
   raw: string; // the opening tag as typed, for degrading to text
   children: Node[];
 }
@@ -60,8 +61,28 @@ function unquote(arg: string | undefined): string | null {
 }
 
 export function parse(source: string): Node[] {
+  return parseSource(source.replace(/\r\n?/g, "\n"));
+}
+
+/** Remove parsed hide blocks while retaining the original markup around them. */
+export function stripHidden(source: string): string {
   const text = source.replace(/\r\n?/g, "\n");
-  const root: Frame = { name: "#root", arg: null, raw: "", children: [] };
+  const spans: Array<{ start: number; end: number }> = [];
+  parseSource(text, (start, end) => spans.push({ start, end }));
+  if (!spans.length) return source;
+
+  const visible: string[] = [];
+  let cursor = 0;
+  for (const { start, end } of spans.sort((a, b) => a.start - b.start)) {
+    if (start >= cursor) visible.push(text.slice(cursor, start));
+    cursor = Math.max(cursor, end);
+  }
+  visible.push(text.slice(cursor));
+  return visible.join("");
+}
+
+function parseSource(text: string, onHide?: (start: number, end: number) => void): Node[] {
+  const root: Frame = { name: "#root", arg: null, start: 0, raw: "", children: [] };
   const stack: Frame[] = [root];
   const top = () => stack[stack.length - 1]!;
 
@@ -122,6 +143,7 @@ export function parse(source: string): Node[] {
       // [*] items close implicitly; a stray [/*] is text.
       const target = name === "*" ? -1 : stack.findLastIndex((f) => f.name === name);
       if (target > 0) {
+        if (name === "hide") onHide?.(stack[target]!.start, pos);
         // Close any open list item on the way to its list.
         closeTo(target, true);
       } else pushText(current.children, raw);
@@ -148,7 +170,7 @@ export function parse(source: string): Node[] {
       pushText(current.children, raw);
       continue;
     }
-    stack.push({ name, arg: unquote(rawArg), raw, children: [] });
+    stack.push({ name, arg: unquote(rawArg), start: m.index, raw, children: [] });
   }
   pushText(top().children, text.slice(pos));
   // Close open list items at the end of their list; everything else left open degrades.

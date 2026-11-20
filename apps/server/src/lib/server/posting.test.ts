@@ -12,3 +12,9 @@ it("quotes without revealing hidden content or breaking out of the quote tag", (
   expect(quoteSource('Zły"]nick', "x")).toBe('[quote="Złynick"]x[/quote]\n');
   expect(quoteSource("A", "[HIDE]\nlinia\n[/HIDE]")).toBe('[quote="A"][/quote]\n');
 });
+
+it("preserves literal BBCode in code blocks when quoting", () => {
+  expect(quoteSource("A", "[code][hide][/code] example")).toBe(
+    '[quote="A"][code][hide][/code] example[/quote]\n',
+  );
+});
