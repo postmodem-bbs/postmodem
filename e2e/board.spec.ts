@@ -142,6 +142,37 @@ test.describe("browsing", () => {
     });
   }
 
+  // axe reports text in its own background colour as "incomplete", not as a violation, so the
+  // 0.1.0 bug (category links in the link colour on a bar of the same colour) needs its own check.
+  for (const colorScheme of ["light", "dark"] as const) {
+    test(`links on header bars are readable (${colorScheme})`, async ({ page }) => {
+      await page.emulateMedia({ colorScheme });
+      await page.goto("/");
+      const links = page.locator(".category-title a");
+      await expect(links.first()).toBeVisible();
+      const ratios = await links.evaluateAll((elements) => {
+        const rgb = (value: string) =>
+          value
+            .match(/[\d.]+/g)!
+            .slice(0, 3)
+            .map(Number);
+        const luminance = (value: string) => {
+          const [r, g, b] = rgb(value).map((c) => {
+            const s = c / 255;
+            return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+          });
+          return 0.2126 * r! + 0.7152 * g! + 0.0722 * b!;
+        };
+        return elements.map((a) => {
+          const fg = luminance(getComputedStyle(a).color);
+          const bg = luminance(getComputedStyle(a.closest(".category-title")!).backgroundColor);
+          return (Math.max(fg, bg) + 0.05) / (Math.min(fg, bg) + 0.05);
+        });
+      });
+      for (const ratio of ratios) expect(ratio).toBeGreaterThanOrEqual(4.5);
+    });
+  }
+
   test("pages fit a 320px wide screen without horizontal scrolling", async ({ page }) => {
     await page.setViewportSize({ width: 320, height: 640 });
     for (const path of ["/", "/viewtopic.php?t=1"]) {

@@ -18,6 +18,9 @@ export const classic: Theme = {
     headerText: "#ffffff",
     focus: "#9a4a00",
     danger: "#b00020",
+    accent: "#006699",
+    controlBg: "#ffffff",
+    controlBorder: "#5f7380",
   },
   dark: {
     bg: "#12161a",
@@ -32,6 +35,9 @@ export const classic: Theme = {
     headerText: "#ffffff",
     focus: "#f0a35e",
     danger: "#ff8a8a",
+    accent: "#6cb8e6",
+    controlBg: "#12161a",
+    controlBorder: "#7d8f9c",
   },
   bbColors: {
     light: {

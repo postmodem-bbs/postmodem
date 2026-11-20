@@ -16,6 +16,12 @@ export const COLOR_TOKENS = [
   "focus",
   /** Error messages and invalid-field markers. */
   "danger",
+  /** Checked checkboxes and radio buttons (`accent-color`); 3:1 against the control background. */
+  "accent",
+  /** Background of text inputs, selects, textareas and secondary buttons. */
+  "controlBg",
+  /** Boundary of form controls; 3:1 against what surrounds them (WCAG 1.4.11). */
+  "controlBorder",
 ] as const;
 export type ColorToken = (typeof COLOR_TOKENS)[number];
 export type Palette = Record<ColorToken, string>;

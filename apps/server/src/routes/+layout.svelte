@@ -91,7 +91,7 @@
           <option value="dark" selected={data.theme === "dark"}>{t("theme-dark")}</option>
         </select>
       </label>
-      <button type="submit">OK</button>
+      <button type="submit" class="secondary">OK</button>
     </form>
   </div>
 </footer>
