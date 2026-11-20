@@ -86,8 +86,9 @@ test.describe("as the administrator", () => {
     const item = row(title);
     await expect(item).toBeVisible();
     await item.locator("summary").click();
-    await item.getByLabel("Title").fill(`${title} (zmienione)`);
-    await item.getByRole("button", { name: "Save" }).click();
+    const edit = item.locator("form[action='?/update']");
+    await edit.getByLabel("Title").fill(`${title} (zmienione)`);
+    await edit.getByRole("button", { name: "Save" }).click();
     const renamed = row(`${title} (zmienione)`);
     await renamed.locator("summary").click();
     await renamed.getByRole("button", { name: "Delete (only when empty)" }).click();
