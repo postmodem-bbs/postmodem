@@ -67,6 +67,7 @@ export const GET: RequestHandler = async ({ locals }) => {
       createdAt: iso(d.created),
       data: d.data,
     })),
+    packages: await locals.ctx.packages.exportPersonal(user.id),
     privateMessages: messages.map((m) => ({
       id: m.id,
       direction: m.recipientId === user.id ? "received" : "sent",

@@ -107,6 +107,11 @@ export interface PackageAuth {
 }
 
 export interface PackageRuntime {
+  /** EP #13: account export and erasure, including while the package is disabled. */
+  privacy?: {
+    export(userId: Id): Promise<unknown>;
+    erase(userId: Id, tx: Repositories): Promise<void>;
+  };
   auth?: PackageAuth;
   /** Extension points #3 (lifecycle) and #5 (access) on the posting commands. */
   content?: ContentHooks;
@@ -134,6 +139,7 @@ export interface PackageDefinition {
   /** Capabilities with their default effect per built-in role (merged into those roles). */
   capabilities?: (CapabilityDef & { roles?: Record<string, Effect> })[];
   settings?: SettingDef<unknown>[];
+  personalData?: { purpose: string };
   /** Platform services (M2b slice 10), keys prefixed with the package key. */
   preferences?: PreferenceDef<unknown>[];
   fields?: FieldDef<unknown>[];

@@ -411,15 +411,17 @@ scattered across 45 modules, GDPR export and erasure must be extension points
 too, or they'll be incomplete.
 
 ```ts
-pm.privacy.handles({
-  export: async (userId) => ({ 'revisions': await listRevisionsBy(userId) }),
-  erase:  async (userId, mode /* 'anonymise' | 'delete' */) => { … },
-  retention: { job: 'revisions:prune', setting: 'revisions.keepDays' },
-});
+// PackageRuntime returned by setup
+privacy: {
+  export: (userId) => store.exportFor(userId),
+  erase: (userId, tx) => reportsStore(tx.raw).eraseFor(userId),
+}
 ```
 
-The core refuses to enable a package that declares personal data but provides
-no `export`/`erase` handlers.
+A package declares stored personal data with `personalData` in its manifest. The host requires
+both handlers for those packages. Account export keys each contribution by package name, and
+erasure runs inside the account-deletion transaction. Both include installed packages while
+disabled so members can still access or erase data collected before disablement.
 
 ## 12. Search contributions — EP-11
 

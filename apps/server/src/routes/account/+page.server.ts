@@ -174,7 +174,10 @@ export const actions: Actions = {
       return fail(400, { section: "delete", errors: { confirm: "required" } });
     // Posts are credited to "Deleted user" in the board's language, like phpBB2 stored a name.
     const deletedName = translator(ctx.settings.get(defaultLocale))("deleted-user");
-    await deleteAccount(ctx.db.repos, user, { posts: ctx.settings.get(deletedMemberPosts), deletedName });
+    await ctx.db.repos.transaction(async (tx) => {
+      await deleteAccount(tx, user, { posts: ctx.settings.get(deletedMemberPosts), deletedName });
+      await ctx.packages.erasePersonal(user.id, tx);
+    });
     // The platform services' data about the member goes too (preferences, user fields, and
     // documents they wrote; posts stay or go by the board's setting above).
     await ctx.db.platform.preferences.deleteAll(user.id);

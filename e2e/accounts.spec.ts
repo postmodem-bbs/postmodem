@@ -251,12 +251,21 @@ test("a member downloads their data and deletes their account", async ({ page })
   await page.getByRole("button", { name: "Confirm and sign in" }).click();
   await expect(page.locator(".site-header")).toContainText(`Signed in as ${name}`);
 
+  const reason = `Report from ${name}`;
+  await page.goto("/viewforum.php?f=5");
+  await page.getByRole("link", { name: "Najlepsza gra na Amigę?" }).click();
+  await page.locator("article.post").first().getByRole("link", { name: "Report" }).click();
+  await page.getByLabel("What's wrong with this post?").fill(reason);
+  await page.getByRole("button", { name: "Send to the moderators" }).click();
+  await expect(page.getByRole("status")).toContainText("the moderators have your report");
+
   await page.goto("/account");
   const download = page.waitForEvent("download");
   await page.getByRole("link", { name: "Download my data (JSON)" }).click();
   const file = await (await download).path();
   const data = JSON.parse(await (await import("node:fs/promises")).readFile(file, "utf8"));
   expect(data.account).toMatchObject({ username: name, email: `${name}@example.org` });
+  expect(data.packages.reports).toEqual([expect.objectContaining({ reason, status: "open" })]);
   expect(JSON.stringify(data)).not.toMatch(/argon2|hash/i);
 
   const del = page.locator("form[action='?/delete']");

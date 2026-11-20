@@ -75,6 +75,21 @@ export function reportsStore(raw: unknown) {
         .executeTakeFirstOrThrow();
       return toReport(row);
     },
+    async exportFor(userId: Id) {
+      const rows = await db
+        .selectFrom("pm_reports")
+        .selectAll()
+        .where("reporter_id", "=", userId)
+        .orderBy("id")
+        .execute();
+      return rows.map((row) => {
+        const { id, postId, reason, status, outcome, createdAt, closedAt } = toReport(row);
+        return { id, postId, reason, status, outcome, createdAt, closedAt };
+      });
+    },
+    async eraseFor(userId: Id) {
+      await db.deleteFrom("pm_reports").where("reporter_id", "=", userId).execute();
+    },
     async get(id: Id) {
       const row = await db.selectFrom("pm_reports").selectAll().where("id", "=", id).executeTakeFirst();
       return row && toReport(row);
@@ -126,6 +141,7 @@ export async function reportsFor(store: ReportsStore, repos: Repositories, perms
 
 export const reports: PackageDefinition = {
   key: "reports",
+  personalData: { purpose: "Reports filed by members for moderator review" },
   name: "Reports",
   description: "Members report posts; moderators work through a queue.",
   tier: 2,
@@ -181,6 +197,10 @@ export const reports: PackageDefinition = {
   setup: (ctx) => {
     const store = reportsStore(ctx.db);
     return {
+      privacy: {
+        export: (userId) => store.exportFor(userId),
+        erase: (userId, tx) => reportsStore(tx.raw).eraseFor(userId),
+      },
       slots: {
         "post.actions": ({ user, perms, node, post }) =>
           user && node && post && post.authorId !== user.id && perms.can("reports.create", node)

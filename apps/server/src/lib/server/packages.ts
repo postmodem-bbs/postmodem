@@ -45,6 +45,8 @@ export interface PackageHost {
   validateSession(session: Session, ip: string): boolean;
   isEnabled(key: PackageKey): boolean;
   enabled(): PackageKey[];
+  exportPersonal(userId: Id): Promise<Record<string, unknown>>;
+  erasePersonal(userId: Id, tx: Repositories): Promise<void>;
   emit<E extends BoardEvent>(event: E, payload: BoardEvents[E]): Promise<void>;
   decorateTopics(viewer: Viewer, topics: Topic[]): Promise<Map<Id, Decoration[]>>;
   decorateForums(viewer: Viewer, nodes: Node[]): Promise<Map<Id, Decoration[]>>;
@@ -87,26 +89,35 @@ export async function createPackageHost(opts: {
 }): Promise<PackageHost> {
   const { installed, settings, log } = opts;
   const enabled = () => enabledPackages(installed, settings.get(enabledPackagesSetting), opts.profile);
-  const isEnabled = (key: PackageKey) => enabled().has(key);
   const runtimes = new Map<PackageKey, PackageRuntime>();
+  const isEnabled = (key: PackageKey) => runtimes.has(key) && enabled().has(key);
   for (const p of installed) {
     try {
-      runtimes.set(
-        p.key,
+      const runtime =
         (await p.setup?.({
           repos: opts.repos,
           db: opts.db,
           settings,
           log,
-          isEnabled,
+          isEnabled: (key) => enabled().has(key),
           fields: opts.platform.fields,
           collections: opts.platform.collections,
           channels: opts.platform.channels,
           counters: opts.platform.counters,
-        })) ?? {},
-      );
+        })) ?? {};
+      if (p.personalData && (!runtime.privacy?.export || !runtime.privacy.erase))
+        throw new Error("personal data requires export and erasure handlers");
+      runtimes.set(p.key, runtime);
     } catch (e) {
       log.error("package failed to start; it stays off", { package: p.key, error: (e as Error).message });
+    }
+  }
+  function* privacyHandlers() {
+    for (const pkg of installed) {
+      const privacy = runtimes.get(pkg.key)?.privacy;
+      if (pkg.personalData && !privacy)
+        throw new Error(`Privacy handlers unavailable for package ${pkg.key}`);
+      if (privacy) yield [pkg.key, privacy] as const;
     }
   }
   const active = () => {
@@ -192,7 +203,15 @@ export async function createPackageHost(opts: {
       return true;
     },
     isEnabled,
-    enabled: () => [...enabled()],
+    enabled: () => [...enabled()].filter((key) => runtimes.has(key)),
+    async exportPersonal(userId) {
+      const entries = [];
+      for (const [key, privacy] of privacyHandlers()) entries.push([key, await privacy.export(userId)]);
+      return Object.fromEntries(entries);
+    },
+    async erasePersonal(userId, tx) {
+      for (const [, privacy] of privacyHandlers()) await privacy.erase(userId, tx);
+    },
     async emit(event, payload) {
       for (const [key, r] of active()) {
         const handler = r.on?.[event] as ((p: typeof payload) => Promise<void> | void) | undefined;
