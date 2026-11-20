@@ -70,7 +70,7 @@ export const load: PageServerLoad = async (event) => {
 
 export const actions: Actions = {
   report: async (event) => {
-    const { user, store } = guard(event);
+    const { user } = guard(event);
     const { post } = await reportable(event, user.id);
     const form = await event.request.formData();
     const reason = String(form.get("reason") ?? "").trim();
@@ -80,8 +80,15 @@ export const actions: Actions = {
     const now = Date.now();
     if ((await event.locals.ctx.throttles.posting.wait(key, now)) > 0)
       return fail(429, { error: "reason", reason });
-    if (!(await store.openBy(post.id, user.id))) {
+    const created = await event.locals.ctx.db.repos.transaction(async (tx) => {
+      const account = await tx.users.get(user.id, { forUpdate: true });
+      if (account?.status !== "active") error(403, "Forbidden");
+      const store = reportsStore(tx.raw);
+      if (await store.openBy(post.id, user.id)) return false;
       await store.create({ postId: post.id, reporterId: user.id, reason, now });
+      return true;
+    });
+    if (created) {
       await live(event.locals.ctx, REPORTS_CHANNEL, null, "changed");
       await event.locals.ctx.throttles.posting.fail(key, now);
       event.locals.ctx.log.info("post reported", { postId: post.id, by: user.id });

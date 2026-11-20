@@ -56,7 +56,11 @@ function nodeSqliteAdapter(db: DatabaseSync) {
       return hit;
     }
     const st = db.prepare(text);
-    const prepared = { st, reader: st.columns().length > 0 };
+    const reader = st.columns().length > 0;
+    // FTS can leave an internal rowid above Number.MAX_SAFE_INTEGER in run() metadata.
+    // Kysely accepts bigint metadata, while SELECT and RETURNING still return numbers.
+    if (!reader) st.setReadBigInts(true);
+    const prepared = { st, reader };
     cache.set(text, prepared);
     if (cache.size > STATEMENT_CACHE_SIZE) cache.delete(cache.keys().next().value!);
     return prepared;

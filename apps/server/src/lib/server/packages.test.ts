@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import {
   coreSettings,
+  deleteAccount,
   enabledPackagesSetting,
   MemoryThrottleStore,
   type PackageDefinition,
@@ -8,9 +9,10 @@ import {
   type Session,
   Settings,
 } from "@postmodem/core";
-import { loginSecuritySettings } from "@postmodem/modules";
+import { openTestDatabase, testEngines } from "@postmodem/db/testing";
+import { loginSecuritySettings, reportsStore } from "@postmodem/modules";
 import { describe, expect, it } from "vitest";
-import { createPackageHost, INSTALLED_PACKAGES } from "./packages.ts";
+import { createPackageHost, INSTALLED_PACKAGES, packageMigrations } from "./packages.ts";
 
 const viewer = { userId: 1, groupIds: [] };
 const quiet = { error: () => {}, warn: () => {}, info: () => {}, debug: () => {} } as never;
@@ -121,4 +123,74 @@ it("applies login-security only while enabled and preserves independent attempt 
   await settings.set(enabledPackagesSetting, ["login-security"]);
   await host.loginResult(attempt, true);
   expect(await host.loginWait(attempt)).toBe(0);
+});
+
+describe.each(testEngines())("package privacy on %s", (engine) => {
+  it("exports only the member's reports and rolls back erasure if a disabled package fails", async () => {
+    const db = await openTestDatabase(engine);
+    try {
+      const reports = INSTALLED_PACKAGES.find((pkg) => pkg.key === "reports")!;
+      const failing: PackageDefinition = {
+        key: "failing",
+        name: "Failing",
+        description: "",
+        tier: 2,
+        version: "0",
+        personalData: { purpose: "Test data" },
+        setup: () => ({
+          privacy: {
+            export: async () => [],
+            erase: async () => {
+              throw new Error("Cannot erase");
+            },
+          },
+        }),
+      };
+      await db.migrate();
+      await db.migratePackages(packageMigrations([reports], db.dialect));
+      const { repos } = db;
+      const settings = new Settings(coreSettings(), { loadAll: async () => new Map(), save: async () => {} });
+      const opts = {
+        repos,
+        db: repos.raw,
+        settings,
+        profile: "vanilla" as const,
+        log: quiet,
+        platform: {} as never,
+      };
+      const host = await createPackageHost({ ...opts, installed: [reports, failing] });
+      const user = await repos.users.create({
+        username: "reporter",
+        email: "reporter@example.test",
+        status: "active",
+      });
+      const store = reportsStore(repos.raw);
+      const filed = await store.create({ reporterId: user.id, postId: 1, reason: "My report" });
+      const other = await store.create({ reporterId: user.id + 1, postId: 1, reason: "Other report" });
+      await store.close(filed.id, 100, "Reviewed");
+
+      expect(host.isEnabled("reports")).toBe(false);
+      const exported = await host.exportPersonal(user.id);
+      expect(exported.reports).toEqual([
+        expect.objectContaining({ id: filed.id, reason: "My report", status: "closed", outcome: "Reviewed" }),
+      ]);
+      expect(JSON.stringify(exported)).not.toMatch(/closedBy|reporterId|Other report/);
+
+      const erase = (packages: typeof host) =>
+        repos.transaction(async (tx) => {
+          await deleteAccount(tx, user, { posts: "keep", deletedName: "Deleted user" });
+          await packages.erasePersonal(user.id, tx);
+        });
+      await expect(erase(host)).rejects.toThrow("Cannot erase");
+      expect(await repos.users.get(user.id)).toMatchObject({ status: "active", email: user.email });
+      expect(await store.get(filed.id)).toBeDefined();
+
+      await erase(await createPackageHost({ ...opts, installed: [reports] }));
+      expect(await repos.users.get(user.id)).toMatchObject({ status: "deleted", email: null });
+      expect(await store.get(filed.id)).toBeUndefined();
+      expect(await store.get(other.id)).toBeDefined();
+    } finally {
+      await db.close();
+    }
+  });
 });
