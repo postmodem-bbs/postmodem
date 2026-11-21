@@ -28,8 +28,9 @@ commit**: the human you are working for. You commit as them, so you sign off as 
    than the configured identity. If no git identity is configured, stop and ask your human.
    Don't invent one.
 6. **Don't merge** a pull request whose `dco` check (or any other required check) is not
-   green. GitHub doesn't enforce the required checks on the current plan (#78), so this is on
-   you. The main guard reports any commit that reaches `main` without a sign-off.
+   green. The `main` ruleset enforces the required checks since the repository went public
+   (#78), but don't lean on it alone. The main guard reports any commit that reaches `main`
+   without a sign-off.
 
 Attribution trailers such as `Co-Authored-By:` are fine alongside the sign-off. They don't
 replace it.
