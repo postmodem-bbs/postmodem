@@ -37,9 +37,13 @@ test("a reader sees replies posted while the topic is open, as a link", async ({
   const notice = page.getByRole("status").filter({ hasText: "new repl" });
   await expect(notice).toHaveCount(0);
 
-  const box = author.locator(".slot-quick-reply");
-  await box.getByLabel("Message").fill("Druga wiadomość, na żywo.");
-  await box.getByRole("button", { name: "Post" }).click();
+  // The core reply page, not quick reply: the vanilla profile has no packages.
+  await author.getByRole("link", { name: "Reply" }).first().click();
+  // The link navigates client-side, and on essentials the topic page has a quick-reply box
+  // labelled "Message" too: wait for the reply page, or the fill lands in the old page's box.
+  await expect(author.getByRole("heading", { level: 1 })).toHaveText("Reply");
+  await author.getByLabel("Message").fill("Druga wiadomość, na żywo.");
+  await author.getByRole("button", { name: "Post" }).click();
   await author.waitForURL(/#p\d+$|[?&]p=\d+/);
 
   await expect(notice).toHaveText(/1 new reply since you opened this page/);

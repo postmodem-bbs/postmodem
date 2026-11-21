@@ -2,8 +2,9 @@
 // The essentials profile's first packages (M2 slices 3–4): quick-reply, reports and
 // unread-tracking. In the demo board the Moderatorzy group (Ola) moderates "Gry retro" (5).
 import { expect, test } from "@playwright/test";
-import { expectNoAxeViolations, guardCsp, signIn } from "./helpers.ts";
+import { ESSENTIALS, expectNoAxeViolations, guardCsp, signIn } from "./helpers.ts";
 
+test.skip(!ESSENTIALS, "the essentials packages are off on a vanilla board");
 guardCsp();
 test.use({ locale: "en-US" });
 

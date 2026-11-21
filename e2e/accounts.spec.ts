@@ -3,6 +3,7 @@
 // Mail tests read the board's e-mails from Mailpit (PM_MAILPIT_URL), as CI provides.
 import { expect, type Page, test } from "@playwright/test";
 import {
+  ESSENTIALS,
   expectNoAxeViolations,
   guardCsp,
   latestMail,
@@ -273,13 +274,16 @@ test("a member downloads their data and deletes their account", async ({ page })
   await page.getByRole("button", { name: "Confirm and sign in" }).click();
   await expect(page.locator(".site-header")).toContainText(`Signed in as ${name}`);
 
+  // EP #13: a package's personal data is in the export (reports, on essentials boards).
   const reason = `Report from ${name}`;
-  await page.goto("/viewforum.php?f=5");
-  await page.getByRole("link", { name: "Najlepsza gra na Amigę?" }).click();
-  await page.locator("article.post").first().getByRole("link", { name: "Report" }).click();
-  await page.getByLabel("What's wrong with this post?").fill(reason);
-  await page.getByRole("button", { name: "Send to the moderators" }).click();
-  await expect(page.getByRole("status")).toContainText("the moderators have your report");
+  if (ESSENTIALS) {
+    await page.goto("/viewforum.php?f=5");
+    await page.getByRole("link", { name: "Najlepsza gra na Amigę?" }).click();
+    await page.locator("article.post").first().getByRole("link", { name: "Report" }).click();
+    await page.getByLabel("What's wrong with this post?").fill(reason);
+    await page.getByRole("button", { name: "Send to the moderators" }).click();
+    await expect(page.getByRole("status")).toContainText("the moderators have your report");
+  }
 
   await page.goto("/account");
   const download = page.waitForEvent("download");
@@ -287,7 +291,10 @@ test("a member downloads their data and deletes their account", async ({ page })
   const file = await (await download).path();
   const data = JSON.parse(await (await import("node:fs/promises")).readFile(file, "utf8"));
   expect(data.account).toMatchObject({ username: name, email: `${name}@example.org` });
-  expect(data.packages.reports).toEqual([expect.objectContaining({ reason, status: "open" })]);
+  // Installed packages export even while they are off, so a vanilla board lists none.
+  expect(data.packages.reports).toEqual(
+    ESSENTIALS ? [expect.objectContaining({ reason, status: "open" })] : [],
+  );
   expect(JSON.stringify(data)).not.toMatch(/argon2|hash/i);
 
   const del = page.locator("form[action='?/delete']");

@@ -20,6 +20,8 @@ x-postmodem: &postmodem
     POSTMODEM_TRUSTED_PROXIES: ${POSTMODEM_TRUSTED_PROXIES:-172.16.0.0/12}
     POSTMODEM_PROXY_HOPS: ${POSTMODEM_PROXY_HOPS:-}
     POSTMODEM_LOG_LEVEL: ${POSTMODEM_LOG_LEVEL:-info}
+    # Which packages are on until an admin picks them: vanilla, essentials or przemo.
+    POSTMODEM_PROFILE: ${POSTMODEM_PROFILE:-essentials}
     # smtp://user:pass@host:587 to deliver mail; log:// only writes it to the log.
     POSTMODEM_MAIL_URL: ${POSTMODEM_MAIL_URL:-log://}
     POSTMODEM_MAIL_FROM: ${POSTMODEM_MAIL_FROM:-}

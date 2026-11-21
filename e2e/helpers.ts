@@ -24,6 +24,13 @@ export function guardCsp() {
   });
 }
 
+/**
+ * The board's profile (POSTMODEM_PROFILE). CI runs the suite on an `essentials` board and on a
+ * `vanilla` one; tests of a package's own behaviour skip themselves on `vanilla`.
+ */
+export const PROFILE = process.env.PM_PROFILE ?? "essentials";
+export const ESSENTIALS = PROFILE !== "vanilla";
+
 /** Mailpit's HTTP API (CI and the dev stack). Mail-dependent tests need it. */
 export const MAILPIT = process.env.PM_MAILPIT_URL;
 

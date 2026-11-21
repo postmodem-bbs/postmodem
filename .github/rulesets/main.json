@@ -51,6 +51,7 @@
           { "context": "Build image", "integration_id": 15368 },
           { "context": "E2E + accessibility (solo)", "integration_id": 15368 },
           { "context": "E2E + accessibility (stack)", "integration_id": 15368 },
+          { "context": "E2E + accessibility (vanilla)", "integration_id": 15368 },
           { "context": "dco", "integration_id": 15368 }
         ]
       }
