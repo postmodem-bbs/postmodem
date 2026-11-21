@@ -19,9 +19,9 @@ test.use({ locale: "en-US" });
 const DEMO_PASSWORD = "postmodem-demo";
 const unique = () => `e2e${Date.now().toString(36)}${Math.floor(Math.random() * 1e6).toString(36)}`;
 
-/** Fills in and submits the registration form. */
+/** Fills in and submits the registration form, opening it first unless the page is on it. */
 async function registerAccount(page: Page, name: string, password = "a long enough passphrase") {
-  await page.goto("/register");
+  if (new URL(page.url()).pathname !== "/register") await page.goto("/register");
   await page.getByLabel("Username").fill(name);
   await page.getByLabel("E-mail address").fill(`${name}@example.org`);
   await page.getByLabel("Password").fill(password);
@@ -36,6 +36,8 @@ test("register, confirm the e-mail address, see members-only forums, sign out", 
   await page.goto("/");
   await expect(page.locator("main")).not.toContainText("Strefa użytkowników");
   await page.getByRole("link", { name: "Register" }).click();
+  // The link navigates client-side, and Playwright doesn't wait for that (#120).
+  await expect(page).toHaveURL(/\/register$/);
   await registerAccount(page, name);
   await expect(page.locator(".site-header")).toContainText("Sign in"); // not signed in yet
   await expectNoAxeViolations(page);
@@ -52,6 +54,7 @@ test("register, confirm the e-mail address, see members-only forums, sign out", 
   await expect(page.getByRole("link", { name: "Strefa użytkowników" })).toBeVisible();
   // Registered users can read the archive guests only see listed.
   await page.getByRole("link", { name: "Archiwum" }).click();
+  await expect(page).toHaveURL(/\/viewforum\.php\?f=\d+$/);
   await expect(page.getByRole("link", { name: "Stare ogłoszenia z 2004 roku" })).toBeVisible();
   // …but the moderators' room stays hidden.
   await page.goto("/");
@@ -201,13 +204,18 @@ test("a member chooses how they hear about replies, without JavaScript", async (
     await page.goto("/account");
     const choice = page.getByRole("group", { name: "E-mail about replies in watched topics" });
     await expect(choice.getByLabel("Right away (one e-mail per topic until I visit it)")).toBeChecked();
+    // Wait for the board's answer before leaving: a goto while the form posts cancels it (#120).
+    const save = async () => {
+      await page.locator("form[action='?/profile']").getByRole("button", { name: "Save" }).click();
+      await expect(page.getByRole("status").filter({ hasText: "Saved." })).toBeVisible();
+    };
     await choice.getByLabel("Once a day, in one digest").check();
-    await page.locator("form[action='?/profile']").getByRole("button", { name: "Save" }).click();
+    await save();
     await page.goto("/account");
     await expect(choice.getByLabel("Once a day, in one digest")).toBeChecked();
     // Back to the default, so other tests see the board as seeded.
     await choice.getByLabel("Right away (one e-mail per topic until I visit it)").check();
-    await page.locator("form[action='?/profile']").getByRole("button", { name: "Save" }).click();
+    await save();
     await page.goto("/account");
     await expect(choice.getByLabel("Right away (one e-mail per topic until I visit it)")).toBeChecked();
   } finally {

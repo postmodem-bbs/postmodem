@@ -96,9 +96,10 @@ that passed CI, and its history is never rewritten.
   branch by hand. A pull request whose group fails leaves the queue and stays
   open.
 - **Required checks:** `Lint, typecheck, unit tests, licences`, `Build image`,
-  `E2E + accessibility (solo)`, `E2E + accessibility (stack)`,
-  `E2E + accessibility (vanilla)` and `dco`, on the pull request and again on
-  its merge-queue group.
+  `E2E` and `dco`, on the pull request and again on its merge-queue group.
+  `E2E` passes only when every e2e job passed. There is one job per board and
+  browser (`E2E + accessibility (vanilla, webkit)` and so on), so a failing
+  browser shows on its own and can be re-run alone.
 - **Code scanning:** CodeQL (GitHub's default setup) must have analysed the
   pull request, and the pull request must not introduce a high or critical
   security alert, or an error-level alert. Fix the alert, or have a maintainer
