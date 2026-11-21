@@ -4,10 +4,18 @@
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-import { CamelCasePlugin, CompiledQuery, type Driver, Kysely, SqliteDialect } from "kysely";
+import {
+  CamelCasePlugin,
+  CompiledQuery,
+  type DatabaseIntrospector,
+  type Driver,
+  Kysely,
+  SqliteDialect,
+} from "kysely";
 import { PostgresJSDialect } from "kysely-postgres-js";
 import postgres from "postgres";
 import type { Dialect } from "./migrations.ts";
+import { SchemaScopedPostgresIntrospector } from "./pg-introspector.ts";
 import type { Schema } from "./schema.ts";
 
 export interface Engine {
@@ -100,6 +108,13 @@ export function sqliteEngine(path: string, opts: { onQuery?: (sql: string) => vo
 /** Postgres int8 (ids, counts, epoch-millisecond timestamps) as JS numbers; all values fit in 2^53. */
 const INT8 = { to: 20, from: [20], serialize: (v: number) => String(v), parse: (v: string) => Number(v) };
 
+/** postgres.js with an introspector that reads only the board's own schema (#115). */
+class SchemaScopedPostgresJSDialect extends PostgresJSDialect {
+  override createIntrospector(db: Kysely<unknown>): DatabaseIntrospector {
+    return new SchemaScopedPostgresIntrospector(db);
+  }
+}
+
 export function postgresEngine(url: string, password?: string): Engine {
   const client = postgres(url, {
     ...(password ? { password } : {}),
@@ -109,7 +124,7 @@ export function postgresEngine(url: string, password?: string): Engine {
   });
   return {
     dialect: "pg",
-    db: new Kysely<Schema>({ dialect: new PostgresJSDialect({ postgres: client }), plugins }),
+    db: new Kysely<Schema>({ dialect: new SchemaScopedPostgresJSDialect({ postgres: client }), plugins }),
     // postgres.js keeps one dedicated connection for every listener and re-listens after it
     // reconnects, so a database restart doesn't silently end live updates.
     async listen(channel, onPayload) {
