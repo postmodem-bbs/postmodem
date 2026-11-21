@@ -4,6 +4,7 @@ name: DCO
 
 on:
   pull_request:
+  merge_group:
 
 permissions:
   contents: read
@@ -15,8 +16,26 @@ jobs:
       - uses: actions/checkout@v7
         with: { fetch-depth: 0 }
       - name: Check sign-offs
+        if: github.event_name == 'pull_request'
         env:
           BASE: ${{ github.event.pull_request.base.sha }}
           HEAD: ${{ github.event.pull_request.head.sha }}
         # The same check the commit-msg and pre-push hooks run (scripts/dco.mjs).
         run: node scripts/dco.mjs "$BASE..$HEAD"
+      # In the merge queue, every commit is a squash of a pull request whose commits this job
+      # already checked per author. A squash commit's author can be a GitHub noreply address,
+      # so here each one only needs a sign-off, as the main guard checks on main.
+      - name: Check squash commits carry a sign-off
+        if: github.event_name == 'merge_group'
+        env:
+          BASE: ${{ github.event.merge_group.base_sha }}
+          HEAD: ${{ github.event.merge_group.head_sha }}
+        run: |
+          bad=0
+          for sha in $(git rev-list --no-merges "$BASE..$HEAD"); do
+            if ! git log -1 --format=%B "$sha" | grep -qE '^Signed-off-by: .+ <[^>]+>$'; then
+              echo "::error::$(git log -1 --format='%h %s' "$sha") has no Signed-off-by line (AGENTS.md)."
+              bad=1
+            fi
+          done
+          exit $bad
