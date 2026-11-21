@@ -1,0 +1,6 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+blank_issues_enabled: true
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/postmodem-bbs/postmodem/security/advisories/new
+    about: Privately, never in a public issue (SECURITY.md).

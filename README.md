@@ -5,11 +5,16 @@ batteries included, every battery removable, trivially self-hosted.
 Classic forum layout, modern internals: accessible, themeable, extensible,
 works without JavaScript, and ships as one Docker image.
 
-> **Status: 0.1.0, public beta.** A usable board: reading, posting, moderation, private
-> messages, notifications, search, an admin panel, spam protection, and an importer for
-> phpBB2 / Przemo boards that keeps their links working. See the
+> **Status: 0.1.0, an early preview. Not ready for production.** It is already a usable
+> board: reading, posting, moderation, private messages, notifications, search, an admin
+> panel, spam protection, and an importer for phpBB2 / Przemo boards that keeps their links
+> working. Data formats may still change before 1.0. Migrations carry a board forward, but
+> there is no downgrade. The project doesn't run a public board of its own yet; that waits
+> for a more complete build ([M2.md, decision 5](docs/milestones/M2.md)). See the
 > [0.1.0 release notes](docs/releases/0.1.0.md) for what's in it and what isn't yet, and
-> [CONTAINERS.md §4.6](docs/CONTAINERS.md#46-a-public-staging-board-m2a) to run one.
+> the [milestones](docs/milestones/) and [design](docs/DESIGN.md) for where it's going.
+> [CONTAINERS.md §4.6](docs/CONTAINERS.md#46-a-public-staging-board-m2a) covers running a
+> test board in public.
 >
 > Try it with demo content: `pnpm cli seed-demo`, then `pnpm dev`
 > (or `postmodem seed-demo` inside the container). Demo members `Łukasz Żółć`,
@@ -23,8 +28,11 @@ works without JavaScript, and ships as one Docker image.
 **Solo** (one container, SQLite, data in a named volume):
 
 ```bash
-docker run -d --name postmodem -p 8080:8080 -v postmodem-data:/data --read-only --tmpfs /tmp ghcr.io/postmodem-bbs/postmodem:edge
+docker run -d --name postmodem -p 8080:8080 -v postmodem-data:/data --read-only --tmpfs /tmp ghcr.io/postmodem-bbs/postmodem:0.1
 ```
+
+Images are signed with cosign. `:0.1` follows the latest 0.1.x release, and `:edge` is the
+latest tested build of `main`.
 
 **Stack** (Postgres, Caddy with automatic HTTPS, several web replicas): see
 [deploy/compose.yaml](deploy/compose.yaml) and [deploy/.env.example](deploy/.env.example).
@@ -33,7 +41,7 @@ docker run -d --name postmodem -p 8080:8080 -v postmodem-data:/data --read-only 
 cd deploy && docker compose up -d
 ```
 
-The image is not published yet; until it is, build it locally with
+To run your own build instead, run
 `docker build --target runtime -t postmodem:local .` and set
 `POSTMODEM_IMAGE=postmodem:local`.
 
@@ -104,4 +112,9 @@ pnpm e2e            # Playwright + axe against a running board (PM_BASE_URL)
 AGPL-3.0-or-later for the board; Apache-2.0 for the extension SDK (once it
 exists); CC-BY-4.0 for documentation. See [ADR 0010](docs/adr/0010-agpl-core-apache-sdk.md),
 [CONTRIBUTING.md](CONTRIBUTING.md) (DCO sign-off required) and
-[LICENSE-EXCEPTION.md](LICENSE-EXCEPTION.md) (draft, pending legal review).
+[LICENSE-EXCEPTION.md](LICENSE-EXCEPTION.md). The extension exception is a draft and is
+**not in force**: until its legal review is done ([#48](https://github.com/postmodem-bbs/postmodem/issues/48)), all of the board's code, extensions
+included, is under the AGPL alone.
+
+Found a security problem? Please report it privately; see [SECURITY.md](SECURITY.md).
+Everyone taking part follows the [Code of Conduct](CODE_OF_CONDUCT.md).
