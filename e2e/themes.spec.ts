@@ -25,7 +25,8 @@ test("guests inherit the board theme and can reset a device choice", async ({
   ignoreHTTPSErrors,
 }) => {
   const response = await page.goto("/");
-  expect(response?.headers().vary?.toLowerCase().split(/,\s*/)).toContain("cookie");
+  const vary = (await response!.headerValues("vary")).flatMap((value) => value.toLowerCase().split(/,\s*/));
+  expect(vary).toContain("cookie");
   await expectTheme(page, boardTheme);
   await expect(page.locator("html")).toHaveCSS("color-scheme", process.env.PM_COLOR_SCHEME ?? "light");
   await page.emulateMedia({ colorScheme: "dark" });
