@@ -11,6 +11,19 @@ export async function expectNoAxeViolations(page: Page) {
   expect(violations.map((v) => `${v.id}: ${v.nodes.map((n) => n.target.join(" ")).join(", ")}`)).toEqual([]);
 }
 
+/**
+ * Opens a URL and waits until SvelteKit's client has started on it (#120). `page.goto` returns
+ * at the `load` event, but the client starts later and calls `history.replaceState` on the
+ * page's own URL. WebKit reports that as a navigation, so a `goto` made before it is
+ * "interrupted by another navigation" to the page just opened. A page reached through a
+ * redirect is the usual case. The client's first replaceState stores `sveltekit:metadata` in
+ * `history.state`, so that is what this waits for. Pages with JavaScript only.
+ */
+export async function open(page: Page, url: string) {
+  await page.goto(url);
+  await page.waitForFunction(() => history.state?.["sveltekit:metadata"] !== undefined);
+}
+
 export function guardCsp() {
   test.beforeEach(async ({ page }) => {
     const violations: string[] = [];
