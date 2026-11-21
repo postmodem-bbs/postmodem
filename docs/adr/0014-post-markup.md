@@ -22,8 +22,10 @@ CSP forbids inline `style` attributes, and some tags (`[you]`, `[hide]`) depend 
   classes whose values are theme tokens (`--pm-bb-*`), contrast-tested at 4.5:1 in light
   and dark; sizes map to five steps; effects (`fade`, `scroll`) stop under reduced motion.
 - **Holes:** `[you]` and `[hide]` render as markers in the cached HTML and are filled per
-  request. `[hide]` content is dropped from the cache entirely until the hide-until-reply
-  module exists (M3), so a missed resolve step can't leak it.
+  request. M2b adds the `hide-until-reply` package. The renderer stores sanitized private
+  fragments alongside the public HTML in the server-side cache. Only the topic view
+  resolves them with reader facts. The package, when enabled, checks for a public reply
+  or `hide.bypass` in the topic's forum.
 - **Caching:** HTML is stored on the post with `RENDER_VERSION`; bumping it re-renders
   lazily on read.
 - **External images:** `[img]` hotlinks are part of every legacy board, so the CSP allows

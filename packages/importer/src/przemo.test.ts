@@ -69,6 +69,54 @@ describe.each(testEngines())("Przemo trash destinations (%s)", (engine) => {
   });
 });
 
+it("imports Przemo hide tags using the post's own BBCode UID", async () => {
+  const db = await openTestDatabase("sqlite");
+  try {
+    await db.migrate();
+    const source: LegacySource = {
+      prefix: "phpbb_",
+      tables: async () => [
+        "phpbb_categories",
+        "phpbb_forums",
+        "phpbb_topics",
+        "phpbb_posts",
+        "phpbb_posts_text",
+      ],
+      columns: async () => [],
+      all: async (table) => {
+        if (table === "forums") return [{ forum_id: 1, forum_name: "Source", cat_id: 1 }];
+        if (table === "categories") return [{ cat_id: 1, cat_title: "Legacy" }];
+        return [];
+      },
+      batch: async (table, _key, after) => {
+        if (after) return [];
+        if (table === "topics") return [{ topic_id: 1, forum_id: 1, topic_title: "Imported" }];
+        if (table === "posts") return [{ post_id: 1, topic_id: 1, enable_bbcode: 1 }];
+        return [];
+      },
+      query: async (sql) =>
+        sql.includes("{p}posts_text")
+          ? [
+              {
+                post_id: 1,
+                bbcode_uid: "abc123",
+                post_text:
+                  "public [hide:abc123]hidden &amp; sound[/hide:abc123] [hide:def123]literal[/hide:def123]",
+              },
+            ]
+          : [],
+      close: async () => {},
+    };
+    const report = await importPrzemo(db.repos, source);
+    expect(report.counts["hide-until-reply"]).toEqual({ read: 1, imported: 1, skipped: 0 });
+    expect((await db.repos.posts.get(1))?.source).toBe(
+      "public [hide]hidden & sound[/hide] [hide:def123]literal[/hide:def123]",
+    );
+  } finally {
+    await db.close();
+  }
+});
+
 interface Manifest {
   counts: Record<string, number>;
   accounts: { userId: number; username: string; password: string; level: string }[];

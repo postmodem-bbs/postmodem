@@ -5,7 +5,7 @@
 // core.posting.perHour = 0 (CI sets both after seed-demo): those limits are covered by the
 // core's tests, and every browser posting as the same demo users would trip them here.
 import { expect, type Page, test } from "@playwright/test";
-import { expectNoAxeViolations, guardCsp, signIn } from "./helpers.ts";
+import { ESSENTIALS, expectNoAxeViolations, guardCsp, signIn } from "./helpers.ts";
 
 guardCsp();
 test.use({ locale: "en-US" });
@@ -65,6 +65,50 @@ test("a member starts a topic, previews and posts a reply, quotes, edits and del
   await page.locator("article.post").last().getByRole("link", { name: "Delete" }).click();
   await page.getByRole("button", { name: "Delete" }).click();
   await expect(page.locator("article.post")).toHaveCount(1);
+});
+
+test("hide blocks show to the topic's author, unlock for a reader who replied, and stay private for guests", async ({
+  page,
+  browser,
+}) => {
+  test.skip(!ESSENTIALS, "hide-until-reply is off on a vanilla board");
+  await signIn(page, "retro_fan", PASSWORD);
+  const marker = `Protected ${unique()}`;
+  await newTopic(page, `Hidden content ${unique()}`, `Public introduction. [hide][b]${marker}[/b][/hide]`);
+  const topicUrl = page.url();
+  // The author sees their own hidden text.
+  await expect(page.locator("article.post").first().locator("strong", { hasText: marker })).toBeVisible();
+
+  const reader = await browser.newContext({ locale: "en-US" });
+  try {
+    const readerPage = await reader.newPage();
+    await signIn(readerPage, "Łukasz Żółć", PASSWORD);
+    await readerPage.goto(topicUrl);
+    const first = readerPage.locator("article.post").first();
+    await expect(first).toContainText("This content is hidden.");
+    expect(await readerPage.content()).not.toContain(marker);
+
+    await first.getByRole("link", { name: "Quote" }).click();
+    await expect(readerPage.getByRole("heading", { level: 1 })).toHaveText("Reply");
+    await expect(readerPage.getByLabel("Message")).not.toHaveValue(new RegExp(marker));
+    await readerPage.getByLabel("Message").fill("A public reply.");
+    await readerPage.getByRole("button", { name: "Post" }).click();
+    await expect(first.locator("strong", { hasText: marker })).toBeVisible();
+  } finally {
+    await reader.close();
+  }
+
+  const guest = await browser.newContext({ javaScriptEnabled: false, locale: "en-US" });
+  try {
+    const guestPage = await guest.newPage();
+    const response = await guestPage.goto(topicUrl);
+    expect(await response?.text()).not.toContain(marker);
+    await expect(guestPage.locator("article.post").first()).toContainText("This content is hidden.");
+    await guestPage.goto(new URL(`/search.php?search_keywords=${encodeURIComponent(marker)}`, topicUrl).href);
+    await expect(guestPage.getByRole("status")).toHaveText("Nothing found.");
+  } finally {
+    await guest.close();
+  }
 });
 
 test("members can't edit someone else's post", async ({ page, request }) => {

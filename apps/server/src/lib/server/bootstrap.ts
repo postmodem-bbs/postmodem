@@ -191,7 +191,7 @@ export async function createContext(opts: {
     loaded,
     db,
     settings,
-    renderer: createRenderer(db.repos),
+    renderer: createRenderer(db.repos, packages.renderTags),
     capabilities,
     throttles: {
       login: new Throttle(LOGIN_POLICY, db.repos.throttle, "login"),

@@ -637,5 +637,14 @@ export function migrations(dialect: Dialect): Record<string, Migration> {
         }
       },
     },
+    "0018_posts_by_topic_author": {
+      async up(db: Db) {
+        await db.schema
+          .createIndex("posts_topic_author_visibility")
+          .on("posts")
+          .columns(["topic_id", "author_id", "visibility"])
+          .execute();
+      },
+    },
   };
 }

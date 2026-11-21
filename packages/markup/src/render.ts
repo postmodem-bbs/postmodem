@@ -7,7 +7,7 @@ import { type Node, parse } from "./bbcode.ts";
 import { escapeHtml } from "./entities.ts";
 
 /** Bump whenever output changes, so cached posts.rendered is refreshed. */
-export const RENDER_VERSION = 2;
+export const RENDER_VERSION = 3;
 
 export interface Smiley {
   code: string;
@@ -16,6 +16,8 @@ export interface Smiley {
 }
 export interface RenderOptions {
   smilies?: Smiley[];
+  /** Capture sanitized reader-dependent content without adding it to the public HTML. */
+  captureHole?: (tag: string, render: () => string) => string | undefined;
   /** Base URL path where smiley images are served. */
   smileyBase?: string;
 }
@@ -159,7 +161,7 @@ export function renderHtml(source: string, opts: RenderOptions = {}): string {
   };
 
   const plain = (nodes: Node[]): string =>
-    nodes.map((n) => (n.type === "text" ? n.value : plain(n.children))).join("");
+    nodes.map((n) => (n.type === "text" ? n.value : n.name === "hide" ? "" : plain(n.children))).join("");
 
   // Line breaks typed next to a block (quote, code, list…) would add <br>s on top of the
   // block's own margins; up to two are absorbed on each side.
@@ -242,11 +244,9 @@ export function renderHtml(source: string, opts: RenderOptions = {}): string {
       }
       case "scroll":
         return `<div class="bb-scroll"><span>${inner()}</span></div>`;
-      // Reader-dependent content becomes a hole, filled per request (holes.ts).
-      // [hide] content is dropped entirely: until the hide-until-reply module exists (M3),
-      // nobody may see it, and a forgotten resolve step must not leak it.
+      // Without a registered consumer this private tag remains a placeholder.
       case "hide":
-        return "<!--pm-hole:hide-->";
+        return opts.captureHole?.(n.name, inner) ?? "<!--pm-hole:hide-->";
       case "you":
         return "<!--pm-hole:you-->";
     }

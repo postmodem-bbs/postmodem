@@ -31,7 +31,7 @@ for (const post of topic.posts) render(post);[/code]
 
 [center]Linki: [url=https://github.com/postmodem-bbs/postmodem]repozytorium[/url], albo po prostu www.example.org :-)[/center]
 
-Cześć, [you]! Ten fragment widzi każdy, ale [hide]ten jest ukryty[/hide] — do czasu modułu „ukryj do odpowiedzi”.
+Cześć, [you]! Ten fragment widzi każdy, ale [hide]ten jest ukryty[/hide] — do czasu odpowiedzi w tym temacie.
 
 [scroll]Przewijany tekst, jak w 2005 roku ;-)[/scroll]`;
 

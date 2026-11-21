@@ -720,8 +720,20 @@ export function createRepositories(db: Db, dialect: "sqlite" | "pg"): Repositori
         .executeTakeFirstOrThrow();
       return n(before.c);
     },
-    async setRendered(id, html, renderVersion) {
-      await db.updateTable("posts").set({ rendered: html, renderVersion }).where("id", "=", id).execute();
+    async hasReply(topicId, authorId, firstPostId) {
+      return !!(await db
+        .selectFrom("posts")
+        .select("id")
+        .where("topicId", "=", topicId)
+        .where("authorId", "=", authorId)
+        .where("visibility", "in", PUBLIC)
+        .where("id", "!=", firstPostId)
+        .limit(1)
+        .executeTakeFirst());
+    },
+    async setRendered(id, html, renderVersion, source) {
+      const query = db.updateTable("posts").set({ rendered: html, renderVersion }).where("id", "=", id);
+      await (source === undefined ? query : query.where("source", "=", source)).execute();
     },
     async edit(id, patch) {
       await db

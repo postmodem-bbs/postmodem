@@ -23,6 +23,7 @@ import {
   type Post,
   type ProfileName,
   packageRoleGrants,
+  type RenderReader,
   type Repositories,
   type Session,
   type Settings,
@@ -39,6 +40,8 @@ export { INSTALLED_PACKAGES };
 
 export interface PackageHost {
   installed: PackageDefinition[];
+  renderTags: ReadonlyMap<string, string>;
+  visibleRenderHoles(reader: RenderReader, keys: ReadonlySet<string>): Promise<ReadonlySet<string>>;
   loginWait(attempt: LoginAttempt): Promise<number>;
   loginResult(attempt: LoginAttempt, succeeded: boolean): Promise<void>;
   passwordPolicy: PackagePasswordPolicy;
@@ -125,6 +128,22 @@ export async function createPackageHost(opts: {
       if (pkg.personalData && privacyUnavailable(pkg.key))
         throw new Error(`Privacy handlers unavailable for package ${pkg.key}`);
       if (privacy) yield [pkg.key, privacy] as const;
+    }
+  }
+
+  const renderTags = new Map<string, string>();
+  const holes = new Map<
+    string,
+    { owner: PackageKey; reveal: NonNullable<PackageRuntime["renderHoles"]>[number]["reveal"] }
+  >();
+  for (const [owner, runtime] of runtimes) {
+    for (const hole of runtime.renderHoles ?? []) {
+      if (!hole.key.startsWith(`${owner}:`) || holes.has(hole.key) || renderTags.has(hole.tag)) {
+        log.error("invalid or duplicate package render hole", { package: owner, key: hole.key });
+        continue;
+      }
+      renderTags.set(hole.tag, hole.key);
+      holes.set(hole.key, { owner, reveal: hole.reveal });
     }
   }
   const active = () => {
@@ -219,6 +238,23 @@ export async function createPackageHost(opts: {
     },
     async erasePersonal(userId, tx) {
       for (const [, privacy] of privacyHandlers()) await privacy.erase(userId, tx);
+    },
+    renderTags,
+    async visibleRenderHoles(reader, keys) {
+      const on = enabled();
+      const visible = new Set<string>();
+      await Promise.all(
+        [...keys].map(async (key) => {
+          const hole = holes.get(key);
+          if (
+            hole &&
+            on.has(hole.owner) &&
+            (await guarded(hole.owner, "render hole", () => hole.reveal(reader), false))
+          )
+            visible.add(key);
+        }),
+      );
+      return visible;
     },
     async emit(event, payload) {
       for (const [key, r] of active()) {

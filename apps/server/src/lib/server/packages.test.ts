@@ -5,6 +5,7 @@ import {
   enabledPackagesSetting,
   MemoryThrottleStore,
   type PackageDefinition,
+  type RenderReader,
   type Repositories,
   type Session,
   Settings,
@@ -193,4 +194,52 @@ describe.each(testEngines())("package privacy on %s", (engine) => {
       await db.close();
     }
   });
+});
+
+it("reveals hide blocks only for eligible readers while the package is enabled", async () => {
+  const settings = new Settings(coreSettings(), { loadAll: async () => new Map(), save: async () => {} });
+  let lookups = 0;
+  const repos = {
+    posts: {
+      async hasReply(topicId: number, authorId: number, firstPostId: number) {
+        lookups++;
+        expect([topicId, firstPostId]).toEqual([7, 12]);
+        return authorId === 2;
+      },
+    },
+  } as unknown as Repositories;
+  const host = await createPackageHost({
+    installed: INSTALLED_PACKAGES.filter((pkg) => pkg.key === "hide-until-reply"),
+    repos,
+    db: null,
+    settings,
+    profile: "essentials",
+    log: quiet,
+    platform: {} as never,
+  });
+  const key = host.renderTags.get("hide")!;
+  const visible = (userId: number | null, bypass = false) =>
+    host.visibleRenderHoles(
+      {
+        topic: { id: 7, firstPostId: 12, authorId: 3 },
+        node: {},
+        perms: {
+          viewer: { userId },
+          can: (cap: string) => cap === "hide.bypass" && bypass,
+        },
+      } as unknown as RenderReader,
+      new Set([key]),
+    );
+  expect(await visible(null)).toEqual(new Set());
+  expect(await visible(1, true)).toEqual(new Set([key]));
+  expect(lookups).toBe(0);
+  expect(await visible(1)).toEqual(new Set());
+  expect(await visible(2)).toEqual(new Set([key]));
+  expect(lookups).toBe(2);
+  // The topic's author reads their own hidden text without a reply.
+  expect(await visible(3)).toEqual(new Set([key]));
+  expect(lookups).toBe(2);
+  await settings.set(enabledPackagesSetting, []);
+  expect(await visible(2, true)).toEqual(new Set());
+  expect(lookups).toBe(2);
 });

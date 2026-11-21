@@ -157,6 +157,7 @@ describe("reader-dependent holes", () => {
   it("never puts hidden content into the cached HTML", () => {
     const html = renderHtml("public [hide]SECRET[/hide] for [you]");
     expect(html).not.toContain("SECRET");
+    expect(renderHtml("[url]https://example.net/[hide]SECRET[/hide][/url]")).not.toContain("SECRET");
     expect(resolveHoles(html, { viewerName: "Ala <script>", messages })).toBe(
       'public <p class="bb-hidden">Ukryta treść</p> for <span class="bb-you">Ala &#60;script&#62;</span>',
     );

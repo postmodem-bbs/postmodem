@@ -4,7 +4,7 @@
 // Ids are kept for users, forums, topics and posts, so phpBB2's own URLs keep working.
 // Categories get new node ids (they share the node table with forums) and are mapped through
 // legacy_ids. Each step commits with its checkpoint, so an interrupted import resumes where
-// it stopped. Only the core is imported; everything Przemo added is listed in the report as
+// it stopped. Unsupported Przemo data is listed in the report as
 // "not imported" for its package to take over (PACKAGES §0).
 import { createHash } from "node:crypto";
 import {
@@ -15,7 +15,13 @@ import {
   type Repositories,
   type UserStatus,
 } from "@postmodem/core";
-import { decodeEntities, fromPhpbb2SmileyCode, fromPhpbb2Storage } from "@postmodem/markup";
+import {
+  decodeEntities,
+  fromPhpbb2SmileyCode,
+  fromPhpbb2Storage,
+  type Node as MarkupNode,
+  parse,
+} from "@postmodem/markup";
 import { decodeLegacy, type LegacyCharset } from "./charset.ts";
 import {
   type AccessRow,
@@ -29,6 +35,10 @@ import {
 import { PRZEMO_CONFIG } from "./przemo-additions.ts";
 import type { LegacySource, Row } from "./source.ts";
 import { classifyUnread, type UnreadByOrigin } from "./unread.ts";
+
+function hasHide(nodes: MarkupNode[]): boolean {
+  return nodes.some((node) => node.type === "tag" && (node.name === "hide" || hasHide(node.children)));
+}
 
 export const SOURCE = "przemo";
 
@@ -769,6 +779,11 @@ export async function importPrzemo(
           if (num(p.enable_bbcode) === 0)
             issue("bbcode-disabled", "posts", id, "BBCode was off for this post");
           const t = texts.get(id);
+          const body = fromPhpbb2Storage(text(t?.post_text, "posts_text", id), plain(t?.bbcode_uid));
+          if (/\[hide(?:[=\]])/i.test(body) && hasHide(parse(body))) {
+            count("hide-until-reply", "read");
+            count("hide-until-reply", "imported");
+          }
           rows.push({
             id,
             topicId: topic.id,
@@ -776,7 +791,7 @@ export async function importPrzemo(
             authorId,
             authorName: authorId === null ? plain(p.post_username) : "",
             subject: postSubject(plain(t?.post_subject, "posts_text", id), topic.title),
-            source: fromPhpbb2Storage(text(t?.post_text, "posts_text", id), plain(t?.bbcode_uid)),
+            source: body,
             format: "bbcode-phpbb2",
             createdAt: ms(p.post_time) ?? Date.now(),
             editedAt: ms(p.post_edit_time),
