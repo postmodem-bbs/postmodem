@@ -109,7 +109,8 @@ async function lastPosts(
   // A parent forum's last post may live in a sub-forum the viewer cannot read.
   for (const [id, p] of posts) {
     const topic = topics.get(p.topicId);
-    if (!topic || !readable(topic.nodeId)) posts.delete(id);
+    if (p.visibility !== "core:public" || topic?.visibility !== "core:public" || !readable(topic.nodeId))
+      posts.delete(id);
   }
   const users = await repos.users.getMany(
     [...posts.values()].flatMap((p) => (p.authorId ? [p.authorId] : [])),
@@ -393,7 +394,8 @@ export async function locatePost(repos: Repositories, perms: Permissions, postId
   const post = await repos.posts.get(postId);
   if (post?.visibility !== "core:public") return null;
   const topic = await repos.topics.get(post.topicId);
-  const node = topic && (await repos.nodes.get(topic.nodeId));
+  if (topic?.visibility !== "core:public") return null;
+  const node = await repos.nodes.get(topic.nodeId);
   if (!node) return null;
   const allowed = access(perms, node);
   if (allowed !== "ok") return deny(allowed);
@@ -420,7 +422,11 @@ export async function loadTopic(
   if (allowed !== "ok") return deny(allowed);
   if (topic.movedToTopicId) {
     const target = await repos.topics.get(topic.movedToTopicId);
-    return target ? ({ movedTo: topicRef(target) } as const) : null;
+    if (target?.visibility !== "core:public") return null;
+    const destination = await repos.nodes.get(target.nodeId);
+    return destination && access(perms, destination) === "ok"
+      ? ({ movedTo: topicRef(target) } as const)
+      : null;
   }
   const total = topic.replyCount + 1;
   const start = normaliseStart(startParam, POSTS_PER_PAGE, total);

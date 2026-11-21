@@ -17,10 +17,57 @@ import type { Database } from "@postmodem/db";
 import { openTestDatabase, testEngines } from "@postmodem/db/testing";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { anonymise, type ImportReport, importLoginSecuritySettings, importPrzemo } from "./przemo.ts";
-import { openMysqlSource } from "./source.ts";
+import { type LegacySource, openMysqlSource } from "./source.ts";
 
 const URL = process.env.PM_TEST_MYSQL_URL;
 const MANIFEST = process.env.PM_TEST_FIXTURE_MANIFEST;
+
+describe.each(testEngines())("Przemo trash destinations (%s)", (engine) => {
+  it("imports only valid forum destinations and rolls back a dry run", async () => {
+    const db = await openTestDatabase(engine);
+    try {
+      await db.migrate();
+      const forums = [
+        { forum_id: 1, forum_name: "Source", cat_id: 1, forum_trash: 0 },
+        { forum_id: 2, forum_name: "Destination", cat_id: 1, forum_trash: 1 },
+        { forum_id: 3, forum_name: "Invalid destination", cat_id: 1, forum_trash: 100 },
+      ];
+      const empty = async () => [];
+      const source: LegacySource = {
+        prefix: "phpbb_",
+        tables: async () => ["phpbb_categories", "phpbb_forums"],
+        columns: async (table) => (table === "forums" ? Object.keys(forums[0]!) : []),
+        all: async (table) =>
+          table === "forums" ? forums : table === "categories" ? [{ cat_id: 1, cat_title: "Test" }] : [],
+        batch: empty,
+        query: empty,
+        close: async () => {},
+      };
+      const r = db.repos;
+      const field = () => r.fields.load("forum", [1, 2, 3], ["trash-bin.destination"]);
+      expect((await importPrzemo(r, source, { dryRun: true })).counts["trash-bin"]?.imported).toBe(1);
+      expect(await field()).toEqual(new Map());
+      const result = await importPrzemo(r, source);
+      expect(result.counts["trash-bin"]).toEqual({ read: 2, imported: 1, skipped: 1 });
+      expect(result.notImported.columns.forums ?? []).not.toContain("forum_trash");
+      expect(await field()).toEqual(
+        new Map([
+          [1, { "trash-bin.destination": 2 }],
+          [3, { "trash-bin.destination": 2 }],
+        ]),
+      );
+      expect((await importPrzemo(r, source)).resumed).toBe(true);
+      expect(await field()).toEqual(
+        new Map([
+          [1, { "trash-bin.destination": 2 }],
+          [3, { "trash-bin.destination": 2 }],
+        ]),
+      );
+    } finally {
+      await db.close();
+    }
+  });
+});
 
 interface Manifest {
   counts: Record<string, number>;

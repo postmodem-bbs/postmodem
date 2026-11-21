@@ -648,3 +648,14 @@ mail-change-email-body =
     { $link }
 
     If you did not request this change, you can ignore this message.
+
+admin-trash-destination = Trash destination
+admin-trash-disabled = No trash destination
+admin-forums-error-trash-destination = Choose a different forum for the trash destination.
+admin-trash-view = Trashed topics
+admin-trash-restored = Topic restored.
+admin-trash-restore-error = The topic could not be restored.
+admin-trash-empty = This forum has no trashed topics.
+admin-trash-restore-to = Restore “{ $title }” to
+admin-trash-pick-forum = Choose a forum
+admin-trash-restore = Restore topic

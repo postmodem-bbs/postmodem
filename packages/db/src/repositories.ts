@@ -45,6 +45,7 @@ import { type ExpressionBuilder, type Kysely, type Selectable, sql } from "kysel
 /** Search results are counted (and paged) up to this many, as phpBB2 did. */
 export const SEARCH_RESULTS_MAX = 1000;
 
+import { fieldStore } from "./platform.ts";
 import type {
   JobsTable,
   NodesTable,
@@ -438,8 +439,9 @@ export function createRepositories(db: Db, dialect: "sqlite" | "pg"): Repositori
         return (await createRepositories(db, dialect).topics.get(id))!;
       });
     },
-    async get(id) {
-      const r = await db.selectFrom("topics").selectAll().where("id", "=", id).executeTakeFirst();
+    async get(id, options) {
+      const query = db.selectFrom("topics").selectAll().where("id", "=", id);
+      const r = await (options?.forUpdate && dialect === "pg" ? query.forUpdate() : query).executeTakeFirst();
       return r && toTopic(r);
     },
     async insertMany(rows) {
@@ -500,7 +502,19 @@ export function createRepositories(db: Db, dialect: "sqlite" | "pg"): Repositori
       const base = db
         .selectFrom("topics")
         .where("nodeId", "=", nodeId)
-        .where("visibility", "in", opts?.visibility ?? PUBLIC);
+        .where("visibility", "in", opts?.visibility ?? PUBLIC)
+        .where((eb) =>
+          eb.or([
+            eb("movedToTopicId", "is", null),
+            eb.exists(
+              eb
+                .selectFrom("topics as destination")
+                .select("destination.id")
+                .whereRef("destination.id", "=", "topics.movedToTopicId")
+                .where("destination.visibility", "in", PUBLIC),
+            ),
+          ]),
+        );
       const total = await base.select((eb) => eb.fn.countAll().as("c")).executeTakeFirstOrThrow();
       const rows = await base
         .selectAll()
@@ -1987,6 +2001,7 @@ export function createRepositories(db: Db, dialect: "sqlite" | "pg"): Repositori
     digests,
     search,
     invites,
+    fields: fieldStore(db),
     raw: db.withoutPlugins(),
     transaction: (fn) =>
       db.isTransaction

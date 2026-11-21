@@ -10,7 +10,8 @@ async function documents(repos: Repositories, posts: Post[]): Promise<SearchDocu
   const topics = await repos.topics.getMany(posts.map((p) => p.topicId));
   return posts.flatMap((p) => {
     const t = topics.get(p.topicId);
-    if (!t || p.format !== "bbcode-phpbb2") return [];
+    if (t?.visibility !== "core:public" || p.visibility !== "core:public" || p.format !== "bbcode-phpbb2")
+      return [];
     return [
       {
         postId: p.id,

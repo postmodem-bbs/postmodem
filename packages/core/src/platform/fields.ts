@@ -5,10 +5,10 @@
 // the tier-1 manifest compile to the same shape in M4.
 import type { z } from "zod";
 import type { Permissions } from "../domain/core-permissions.ts";
+import type { FieldStore, FieldTarget } from "../domain/ports.ts";
 import type { Id, Node } from "../domain/types.ts";
 
 export const FIELD_TARGETS = ["user", "forum", "topic", "post"] as const;
-export type FieldTarget = (typeof FIELD_TARGETS)[number];
 
 /** Who is asking, and about which entity (its forum, for per-forum capabilities). */
 export interface FieldAccess {
@@ -60,16 +60,6 @@ export function allows(rule: FieldRule, a: FieldAccess): boolean {
     case "staff":
       return a.perms.can("moderate.edit", a.node) || a.perms.can("admin.access", null);
   }
-}
-
-/** Port: the side tables (implemented in @postmodem/db). */
-export interface FieldStore {
-  /** Values of these fields for these entities: entity id → field key → value. */
-  load(target: FieldTarget, ids: Id[], keys: string[]): Promise<Map<Id, Record<string, unknown>>>;
-  save(target: FieldTarget, id: Id, key: string, value: unknown): Promise<void>;
-  remove(target: FieldTarget, id: Id, key: string): Promise<void>;
-  /** Every value of an entity (it was deleted). */
-  removeEntity(target: FieldTarget, id: Id): Promise<void>;
 }
 
 export class FieldDeniedError extends Error {}

@@ -6,6 +6,7 @@ import { loginSecurity } from "./login-security.ts";
 import { quickReply } from "./quick-reply.ts";
 import { reports } from "./reports.ts";
 import { revisions } from "./revisions.ts";
+import { trashBin } from "./trash-bin.ts";
 import { unreadTracking } from "./unread-tracking.ts";
 
 export { editPolicy, editPolicyVote, editWindowMinutes, protectAdminPosts } from "./edit-policy.ts";
@@ -25,6 +26,7 @@ export {
   revisionsKeepDays,
   revisionsStore,
 } from "./revisions.ts";
+export { restoreTrashedTopic, TRASHED, trashDestination } from "./trash-bin.ts";
 export { type UnreadStore, unreadDays, unreadStore } from "./unread-tracking.ts";
 
 export const INSTALLED_PACKAGES: PackageDefinition[] = [
@@ -34,6 +36,7 @@ export const INSTALLED_PACKAGES: PackageDefinition[] = [
   revisions,
   editPolicy,
   loginSecurity,
+  trashBin,
 ];
 
 export { loginSecuritySettings } from "./login-security.ts";

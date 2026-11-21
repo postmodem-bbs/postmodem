@@ -2,6 +2,7 @@
 // /admin/forums: the forum tree. Create, edit (title, description, locked, position), move,
 // and delete when empty; forums with topics are emptied by moving their topics first (modcp).
 import type { NodeKind } from "@postmodem/core";
+import { trashDestination } from "@postmodem/modules";
 import { fail } from "@sveltejs/kit";
 import { adminAudit, requireAdmin } from "#lib/server/admin.ts";
 import type { Actions, PageServerLoad, RequestEvent } from "./$types";
@@ -10,8 +11,18 @@ const KINDS: NodeKind[] = ["category", "forum", "link"];
 
 export const load: PageServerLoad = async ({ locals, url }) => {
   requireAdmin(locals, url, "admin.forums");
-  const tree = await locals.ctx.db.repos.nodes.tree();
+  const { repos } = locals.ctx.db;
+  const tree = await repos.nodes.tree();
+  const trashEnabled = locals.ctx.packages.isEnabled("trash-bin");
+  const destinations = trashEnabled
+    ? await repos.fields.load(
+        "forum",
+        tree.filter((node) => node.kind === "forum").map((node) => node.id),
+        [trashDestination.key],
+      )
+    : new Map<number, Record<string, unknown>>();
   return {
+    trashEnabled,
     nodes: tree.map((n) => ({
       id: n.id,
       parentId: n.parentId,
@@ -24,6 +35,7 @@ export const load: PageServerLoad = async ({ locals, url }) => {
       topics: n.topicCount,
       posts: n.postCount,
       linkUrl: n.linkUrl ?? "",
+      trashDestination: Number(destinations.get(n.id)?.[trashDestination.key]) || null,
     })),
   };
 };
@@ -85,6 +97,30 @@ export const actions: Actions = {
     }
     await adminAudit(event.locals, "node.updated", "node", id, { ...patch, parentId: newParent });
     return { action: "update", done: id };
+  },
+  trash: async (event) => {
+    const { form, repos } = await guarded(event);
+    const id = Number(form.get("id"));
+    const rawDestination = form.get("destination");
+    const destination = rawDestination === "" ? null : Number(rawDestination);
+    if (!event.locals.ctx.packages.isEnabled("trash-bin"))
+      return fail(400, { action: "trash", error: "invalid", id });
+    const node = await repos.nodes.get(id);
+    if (node?.kind !== "forum") return fail(404, { action: "trash", error: "invalid", id });
+    if (
+      destination !== null &&
+      (!trashDestination.schema.safeParse(destination).success ||
+        destination === id ||
+        (await repos.nodes.get(destination))?.kind !== "forum")
+    )
+      return fail(400, { action: "trash", error: "trash-destination", id });
+    await event.locals.ctx.platform.fields.set(
+      trashDestination.key,
+      { perms: event.locals.perms, entityId: id, node, ownerId: null },
+      destination ?? undefined,
+    );
+    await adminAudit(event.locals, "node.trash-destination", "node", id, { destination });
+    return { action: "trash", done: id };
   },
   delete: async (event) => {
     const { form, repos } = await guarded(event);

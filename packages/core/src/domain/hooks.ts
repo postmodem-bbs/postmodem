@@ -45,7 +45,22 @@ export interface EditDraft {
   title: string | null;
 }
 
+export interface DeleteContext {
+  topic: Topic;
+  node: Node;
+  actor: User;
+  post?: Post;
+}
+
+export interface TrashRedirect {
+  nodeId: Id;
+  visibility: string;
+}
+
 export interface ContentHooks {
+  /** EP-3: packages can redirect an authorized content deletion to a private destination. */
+  beforeDelete?(event: DeleteContext, tx: Repositories): Promise<TrashRedirect | undefined>;
+
   /** EP-5 access filters, asked after the core's own grants allowed the action. */
   policy?(q: PolicyQuestion): PolicyVote;
   /** EP-3 before-filters on editing a post. */

@@ -140,6 +140,8 @@ export interface PackageDefinition {
   capabilities?: (CapabilityDef & { roles?: Record<string, Effect> })[];
   settings?: SettingDef<unknown>[];
   personalData?: { purpose: string };
+  /** EP-1a private topic states: excluded from ordinary reads, counts, and search. */
+  privateTopicStates?: readonly string[];
   /** Platform services (M2b slice 10), keys prefixed with the package key. */
   preferences?: PreferenceDef<unknown>[];
   fields?: FieldDef<unknown>[];
@@ -173,6 +175,7 @@ export const PROFILES = {
     "revisions",
     "edit-policy",
     "login-security",
+    "trash-bin",
   ] as PackageKey[],
 } as const;
 export type ProfileName = keyof typeof PROFILES;

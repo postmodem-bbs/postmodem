@@ -86,8 +86,9 @@ test.describe("as the administrator", () => {
     const item = row(title);
     await expect(item).toBeVisible();
     await item.locator("summary").click();
-    await item.getByLabel("Title").fill(`${title} (zmienione)`);
-    await item.getByRole("button", { name: "Save" }).click();
+    const edit = item.locator("form[action='?/update']");
+    await edit.getByLabel("Title").fill(`${title} (zmienione)`);
+    await edit.getByRole("button", { name: "Save" }).click();
     const renamed = row(`${title} (zmienione)`);
     await renamed.locator("summary").click();
     await renamed.getByRole("button", { name: "Delete (only when empty)" }).click();
@@ -97,6 +98,72 @@ test.describe("as the administrator", () => {
     await hydepark.locator("summary").click();
     await hydepark.getByRole("button", { name: "Delete (only when empty)" }).click();
     await expect(page.getByRole("alert")).toContainText("Only empty forums");
+  });
+
+  test("trash destinations hide moderator deletes until an administrator restores them", async ({
+    page,
+    browser,
+  }) => {
+    await asAdmin(page, "/admin/packages");
+    const enabled = page.getByRole("checkbox", { name: /Trash bin/ });
+    if (!(await enabled.isChecked())) {
+      await enabled.check();
+      await page.getByRole("button", { name: "Save" }).click();
+      await expect(page.getByRole("status")).toHaveText("Saved.");
+    }
+
+    await page.goto("/admin/forums");
+    const suffix = unique();
+    const source = `Trash source ${suffix}`;
+    const destination = `Trash destination ${suffix}`;
+    const row = (title: string) =>
+      page.locator(".admin-tree > li").filter({
+        has: page.locator("summary").getByText(title, { exact: true }),
+      });
+    for (const title of [source, destination]) {
+      const create = page.locator("form[action='?/create']");
+      await create.getByLabel("Title").fill(title);
+      await create.getByRole("button", { name: "Create" }).click();
+      await expect(row(title)).toBeVisible();
+    }
+    const sourceRow = row(source);
+    await sourceRow.locator("summary").click();
+    const settings = sourceRow.locator("form[action='?/trash']");
+    await settings.getByLabel("Trash destination").selectOption({ label: destination });
+    await settings.getByRole("button", { name: "Save" }).click();
+    await expect(page.getByRole("status")).toHaveText("Saved.");
+
+    const sourceTrash = await sourceRow.locator("a[href^='/admin/forums/trash?']").getAttribute("href");
+    const destinationTrash = await row(destination)
+      .locator("a[href^='/admin/forums/trash?']")
+      .getAttribute("href");
+    const sourceId = new URL(sourceTrash!, page.url()).searchParams.get("forum")!;
+    const topicTitle = `Recover this ${suffix}`;
+    await page.goto(`/posting.php?mode=newtopic&f=${sourceId}`);
+    await page.getByLabel("Topic title").fill(topicTitle);
+    await page.getByLabel("Message").fill("This text should survive the trip.");
+    await page.getByRole("button", { name: "Post" }).click();
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(topicTitle);
+    const topicUrl = page.url();
+    await page.getByRole("link", { name: "Moderate" }).first().click();
+    await page.getByRole("checkbox", { name: /delete this topic/ }).check();
+    await page.getByRole("button", { name: "Delete topic" }).click();
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText(source);
+    const guest = await browser.newContext({ javaScriptEnabled: false });
+    try {
+      const publicPage = await guest.newPage();
+      expect((await publicPage.goto(topicUrl))?.status()).toBe(404);
+    } finally {
+      await guest.close();
+    }
+
+    await page.goto(destinationTrash!);
+    await expectNoAxeViolations(page);
+    await page.getByLabel(`Restore “${topicTitle}” to`).selectOption(sourceId);
+    await page.getByRole("button", { name: "Restore topic" }).click();
+    await expect(page.getByRole("status")).toHaveText("Topic restored.");
+    expect((await page.goto(topicUrl))?.status()).toBe(200);
+    await expect(page.getByText("This text should survive the trip.")).toBeVisible();
   });
 
   test("groups and permissions, with the simulator", async ({ page }) => {
