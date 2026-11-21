@@ -138,8 +138,10 @@ jobs:
           echo "compressed amd64 size: $((size / 1048576)) MB"
           test "$size" -lt $((150 * 1048576))
 
+  # One runner per board and browser, each with a board of its own. The `E2E` job below sums
+  # them up and is the required check, so this matrix can change without a ruleset edit.
   e2e:
-    name: E2E + accessibility (${{ matrix.name }})
+    name: E2E + accessibility (${{ matrix.name }}, ${{ matrix.browser }})
     env:
       # Only for the throwaway CI board; the e2e admin tests sign in with it.
       PM_ADMIN_PASSWORD: ci-admin-passphrase-not-secret
@@ -153,18 +155,48 @@ jobs:
       # Both shipped profiles (PACKAGES.md §5): the full suite on `essentials`, the default, in
       # solo and stack mode; once more on a `vanilla` board (no packages), where the tests of a
       # package's own behaviour skip themselves (e2e/helpers.ts, PROFILE).
+      # browser: the full suite · url-browsers: the other URL styles (ADR 0012), if any ·
+      # install: every browser the job uses · load-test: the k6 alarm, run once per CI run.
       matrix:
         include:
-          - { name: solo, mode: solo, profile: essentials }
-          - { name: stack, mode: stack, profile: essentials }
-          - { name: vanilla, mode: solo, profile: vanilla }
+          - name: solo
+            mode: solo
+            profile: essentials
+            browser: chromium
+            url-browsers: chromium
+            install: chromium
+            load-test: true
+          - name: solo
+            mode: solo
+            profile: essentials
+            browser: firefox
+            url-browsers: firefox
+            install: firefox
+          - { name: solo, mode: solo, profile: essentials, browser: webkit, install: webkit }
+          - name: stack
+            mode: stack
+            profile: essentials
+            browser: chromium
+            url-browsers: chromium,firefox
+            install: chromium firefox
+          - { name: vanilla, mode: solo, profile: vanilla, browser: chromium, install: chromium }
+          - { name: vanilla, mode: solo, profile: vanilla, browser: firefox, install: firefox }
+          - { name: vanilla, mode: solo, profile: vanilla, browser: webkit, install: webkit }
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v7
         with: { node-version-file: .node-version, cache: pnpm }
       - run: pnpm install --frozen-lockfile
-      - run: pnpm exec playwright install --with-deps chromium firefox webkit
+      - name: Playwright version
+        id: pw
+        run: echo "version=$(pnpm exec playwright --version | awk '{print $2}')" >> "$GITHUB_OUTPUT"
+      # Browser builds are cached per Playwright version; the system libraries come from apt each run.
+      - uses: actions/cache@v6
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ steps.pw.outputs.version }}-${{ matrix.install }}
+      - run: pnpm exec playwright install --with-deps ${{ matrix.install }}
       - name: Get the image under test
         run: |
           if [ "$CAN_PUSH" = "true" ]; then
@@ -244,17 +276,17 @@ jobs:
       - name: Run Playwright
         env:
           PM_BASE_URL: ${{ matrix.mode == 'solo' && 'http://localhost:8080' || 'https://localhost' }}
-          PW_BROWSERS: chromium,firefox,webkit
+          PW_BROWSERS: ${{ matrix.browser }}
           PM_IGNORE_HTTPS_ERRORS: ${{ matrix.mode == 'stack' && '1' || '0' }}
           PM_MAILPIT_URL: http://localhost:8025
           PM_PROFILE: ${{ matrix.profile }}
-        run: pnpm exec playwright test ${{ matrix.mode == 'stack' && '--project=chromium' || '' }}
+        run: pnpm exec playwright test
       - name: Permalinks in the other URL styles (ADR 0012)
-        if: matrix.profile == 'essentials'
+        if: matrix.url-browsers
         working-directory: deploy
         env:
           PM_BASE_URL: ${{ matrix.mode == 'solo' && 'http://localhost:8080' || 'https://localhost' }}
-          PW_BROWSERS: chromium,firefox
+          PW_BROWSERS: ${{ matrix.url-browsers }}
           PM_IGNORE_HTTPS_ERRORS: ${{ matrix.mode == 'stack' && '1' || '0' }}
         # The setting changes from the CLI while the board runs; the spec waits for it to apply.
         run: |
@@ -269,7 +301,7 @@ jobs:
           done
           pm settings set core.urls.style classic
       - name: Load test (DESIGN §5.1 CI alarm, deep pages included)
-        if: matrix.name == 'solo'
+        if: matrix.load-test
         working-directory: deploy
         run: |
           pm() { docker compose -f compose.solo.yaml -f ci/mailpit.yaml exec -T postmodem /nodejs/bin/node /app/postmodem.js "$@"; }
@@ -286,7 +318,26 @@ jobs:
         run: docker compose logs --no-color || docker compose -f compose.solo.yaml -f ci/mailpit.yaml logs --no-color
       - uses: actions/upload-artifact@v7
         if: failure()
-        with: { name: "playwright-report-${{ matrix.name }}", path: var/playwright-report, retention-days: 7 }
+        with:
+          name: playwright-report-${{ matrix.name }}-${{ matrix.browser }}
+          path: var/playwright-report
+          retention-days: 7
+
+  # The required check for the e2e matrix (.github/rulesets/main.json). It runs even when an
+  # e2e job fails or the image job never ran, and passes only if every e2e job passed.
+  e2e-gate:
+    name: E2E
+    needs: [image, e2e]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Every e2e job passed
+        env:
+          IMAGE_RESULT: ${{ needs.image.result }}
+          E2E_RESULT: ${{ needs.e2e.result }}
+        run: |
+          echo "image: $IMAGE_RESULT, e2e: $E2E_RESULT"
+          test "$IMAGE_RESULT" = success && test "$E2E_RESULT" = success
 
   publish:
     name: Promote tested image
