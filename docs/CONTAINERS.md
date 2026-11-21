@@ -495,7 +495,7 @@ runtime image never compiles anything:
    │        ├─ image scan (Trivy/Grype), SBOM, size budget check
    │        ├─ integration matrix  {sqlite, postgres 16/17/18} × counters/channels {memory, postgres, valkey}
    │        ├─ package matrix      {vanilla, essentials, przemo} (+ random subsets nightly)
-   │        ├─ e2e + axe a11y      {solo compose, full stack compose} × {Classic, Modern theme}
+   │        ├─ e2e + axe a11y      solo and stack (Classic), plus solo in each shipped theme and scheme
    │        ├─ upgrade test        previous release → this image (migrations, rollback one version)
    │        └─ importer test       Przemo dump → this image
    │
