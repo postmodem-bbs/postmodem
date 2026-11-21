@@ -7,9 +7,9 @@ works without JavaScript, and ships as one Docker image.
 
 > **Status: 0.1.0, an early preview. Not ready for production.** It is already a usable
 > board: reading, posting, moderation, private messages, notifications, search, an admin
-> panel, spam protection, and an importer for phpBB2 / Przemo boards that keeps their links
-> working. Data formats may still change before 1.0. Migrations carry a board forward, but
-> there is no downgrade. The project doesn't run a public board of its own yet; that waits
+> panel, spam protection, and an **experimental** importer for phpBB2 / Przemo boards that
+> keeps their links working (it's finished in the Beta phase before 1.0). Data formats may
+> still change before 1.0. Migrations carry a board forward, but there is no downgrade. The project doesn't run a public board of its own yet; that waits
 > for a more complete build ([M2.md, decision 5](docs/milestones/M2.md)). See the
 > [0.1.0 release notes](docs/releases/0.1.0.md) for what's in it and what isn't yet, and
 > the [milestones](docs/milestones/) and [design](docs/DESIGN.md) for where it's going.
@@ -49,19 +49,19 @@ To run your own build instead, run
 
 The image's entrypoint is the `postmodem` CLI. One image, many roles:
 
-| Command                        | Purpose                                                                  |
-| ------------------------------ | ------------------------------------------------------------------------ |
-| `run`                          | web + worker + scheduler in one process (default, solo mode)             |
-| `web` / `worker` / `scheduler` | single roles for stack mode                                              |
-| `migrate`                      | apply database migrations (safe to run concurrently)                     |
-| `init`                         | create the first administrator from `POSTMODEM_ADMIN_*` (idempotent)     |
-| `seed-demo`                    | fill an empty board with demo content (refuses if forums exist)          |
-| `import przemo`                | move a phpBB2 / Przemo board over ([guide](docs/IMPORTING.md))           |
-| `perms explain`                | why a user may or may not do something in a forum                        |
-| `user set-password <name>`     | set a password (prompted without echo, or `--password-file`)             |
-| `doctor`                       | check configuration, data directory, database, migrations                |
-| `healthcheck`                  | used by Docker's `HEALTHCHECK`                                           |
-| `config print`                 | effective configuration and where each value came from, secrets redacted |
+| Command                        | Purpose                                                                      |
+| ------------------------------ | ---------------------------------------------------------------------------- |
+| `run`                          | web + worker + scheduler in one process (default, solo mode)                 |
+| `web` / `worker` / `scheduler` | single roles for stack mode                                                  |
+| `migrate`                      | apply database migrations (safe to run concurrently)                         |
+| `init`                         | create the first administrator from `POSTMODEM_ADMIN_*` (idempotent)         |
+| `seed-demo`                    | fill an empty board with demo content (refuses if forums exist)              |
+| `import przemo`                | move a phpBB2 / Przemo board over, experimental ([guide](docs/IMPORTING.md)) |
+| `perms explain`                | why a user may or may not do something in a forum                            |
+| `user set-password <name>`     | set a password (prompted without echo, or `--password-file`)                 |
+| `doctor`                       | check configuration, data directory, database, migrations                    |
+| `healthcheck`                  | used by Docker's `HEALTHCHECK`                                               |
+| `config print`                 | effective configuration and where each value came from, secrets redacted     |
 
 ```bash
 docker exec postmodem /nodejs/bin/node /app/postmodem.js doctor

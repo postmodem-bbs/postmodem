@@ -440,6 +440,9 @@ pm.search.filter('seeker:author-since', { params: { userId: 'id', since: 'date' 
 
 ## 13. Importer slices — EP-12
 
+> Built in the [Beta phase](milestones/Beta.md), after the SDK freeze, as an additive change
+> ([ADR 0024](adr/0024-importer-work-in-the-beta-phase.md)).
+
 ```ts
 pm.importer.slice({
   source: 'przemo-1.12',

@@ -438,12 +438,18 @@ disabled, which is how we keep feature parity with Przemo.
    tier A package that needs it. CI starts the `vanilla` vs `essentials` matrix here.
 4. **M3 — The Przemo packages** by priority ([ADR 0019](adr/0019-package-tiers-and-essentials-profile.md),
    PACKAGES.md §2.11): the rest of tier A first (attachments, warnings, bans-plus, helpful,
-   polls-plus, …), then tier B. Tier C is left to third parties. Each package ships with its
-   importer slice. Any gap a package hits is fixed in the platform, never with a special case.
+   polls-plus, …), then tier B. Tier C is left to third parties. Importer slices wait for the
+   Beta phase ([ADR 0024](adr/0024-importer-work-in-the-beta-phase.md)). Any gap a package hits
+   is fixed in the platform, never with a special case.
 5. **M4 — Extension SDK v1** frozen and documented: tier-1 add-on guide plus
    ACP add-on editor, tier-2 module SDK, `postmodem ext graduate`, one third-party
    sample of each tier.
-6. **M5 — Federation module** (phase 1: local forums as followable Groups;
+6. **Beta — Import and 1.0** ([milestones/Beta.md](milestones/Beta.md),
+   [ADR 0024](adr/0024-importer-work-in-the-beta-phase.md)): starts when every feature planned
+   for 1.0 is built and tested. Extension point #12 and every package's importer slice, the
+   import summary and real-board imports, then hardening. Ships as `1.0.0-beta.N`, ends
+   with **1.0.0**. Until then the importer built in M1 is kept, tested and marked experimental.
+7. **M5 — Federation module**, after 1.0 (phase 1: local forums as followable Groups;
    phase 2: following remote communities), **WASM sandbox, theme marketplace.**
    The federation-ready core items from §5.2 land in **M1**.
 
@@ -467,7 +473,8 @@ permission resolution: never, nearest scope, most specific subject ([ADR 0015](a
 accounts and sessions: Argon2id, opaque server-side sessions, delays not lockouts ([ADR 0016](adr/0016-accounts-and-sessions.md)),
 job queue v0 in the database, and mail only through it ([ADR 0017](adr/0017-job-queue-v0-and-mail.md)),
 the Przemo importer: keep ids, decode per value, self-contained forum grants ([ADR 0018](adr/0018-przemo-importer.md)),
-package tiers with `essentials` as the default profile ([ADR 0019](adr/0019-package-tiers-and-essentials-profile.md)).
+package tiers with `essentials` as the default profile ([ADR 0019](adr/0019-package-tiers-and-essentials-profile.md)),
+importer work in the Beta phase, before 1.0 ([ADR 0024](adr/0024-importer-work-in-the-beta-phase.md)).
 
 No architecture decisions are open. Owner actions before going public:
 register `postmodem.app`, create the `postmodem-bbs` GitHub and `@postmodem`

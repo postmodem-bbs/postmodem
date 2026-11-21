@@ -223,7 +223,8 @@ every package earns the same effort, so each one has a priority. These are judge
 adopters' report bundles (see below).
 
 **A: must-have.** Why people chose Przemo, or what a public board needs to be run. Built by
-the project, enabled by the default `essentials` profile (§5), each with its importer slice.
+the project, enabled by the default `essentials` profile (§5). Their importer slices follow in
+the [Beta phase](milestones/Beta.md) ([ADR 0024](adr/0024-importer-work-in-the-beta-phase.md)).
 
 | Package | Why |
 |---|---|
@@ -301,7 +302,8 @@ here will force a core patch later, the exact failure that killed Przemo.
 Point 12 means the Przemo importer isn't a monolith: core imports the vanilla
 phpBB2 data, and each package imports its own part of the uninstaller's list.
 A board can be imported with only some packages enabled; data for missing
-packages is reported and skipped.
+packages is reported and skipped. Point 12 is built in the
+[Beta phase](milestones/Beta.md) ([ADR 0024](adr/0024-importer-work-in-the-beta-phase.md)).
 
 Point 4 is the hardest performance problem: rendered posts can no longer be
 cached once for everyone. The design is to cache per content version, with a
@@ -357,7 +359,7 @@ virus scanning.
   against in-memory, Postgres and Valkey backends in integration tests.
 - **Importer fixture:** the legacy MariaDB container (CONTAINERS §4.1) gets a
   dump that touches every uninstaller table/column, so each importer slice
-  has data to test against.
+  has data to test against (Beta phase, ADR 0024).
 - **Load test** (k6, nightly) on the counter-heavy packages, solo and stack,
   feeding the soft resource budget in DESIGN §5.1.
 

@@ -1,5 +1,11 @@
 # Moving a phpBB2 / Przemo board to Postmodem
 
+> **Experimental.** The importer moves the core phpBB2 / Przemo data, and it is tested in CI
+> against a generated Przemo board. It gets no new features until the
+> [Beta phase](milestones/Beta.md) before 1.0
+> ([ADR 0024](adr/0024-importer-work-in-the-beta-phase.md)), when every package's own data
+> follows. Until then, try it on a copy and keep your old board running.
+
 The importer reads your old board's MySQL/MariaDB database directly and fills a **fresh**
 Postmodem board. Your old board stays untouched: run the import as often as you like.
 

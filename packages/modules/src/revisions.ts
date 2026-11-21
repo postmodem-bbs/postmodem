@@ -3,7 +3,8 @@
 // it replaced, written in the edit's own transaction (extension point #3, in-transaction hook),
 // so a post's history can't miss an edit or record one that didn't happen. Moderators (and,
 // if the board allows, authors) read a post's earlier versions. Old versions can expire after
-// `revisions.keepDays`. Importing Przemo's history: the importer slice (#39).
+// `revisions.keepDays`. Importing Przemo's history:
+// an importer slice in the Beta phase (#110, ADR 0024).
 import {
   defineSetting,
   type Id,
