@@ -3,6 +3,7 @@
 import type { PackageDefinition } from "@postmodem/core";
 import { editPolicy } from "./edit-policy.ts";
 import { hideUntilReply } from "./hide-until-reply.ts";
+import { ipLogging } from "./ip-logging.ts";
 import { loginSecurity } from "./login-security.ts";
 import { quickReply } from "./quick-reply.ts";
 import { reports } from "./reports.ts";
@@ -39,6 +40,8 @@ export const INSTALLED_PACKAGES: PackageDefinition[] = [
   loginSecurity,
   trashBin,
   hideUntilReply,
+  ipLogging,
 ];
 
+export { IP_LOG_RETENTION_DAYS, ipLogStore } from "./ip-logging.ts";
 export { loginSecuritySettings } from "./login-security.ts";

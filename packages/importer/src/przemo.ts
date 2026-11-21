@@ -48,6 +48,11 @@ export interface ImportOptions {
   batchSize?: number;
   /** Read and map everything, write nothing (one rolled-back transaction). */
   dryRun?: boolean;
+  ipLogging?: {
+    earliest: number;
+    now: number;
+    record(tx: Repositories, entry: { userId: Id; ip: string; at: number; kind: "legacy" }): Promise<void>;
+  };
   log?: (message: string, fields?: Record<string, unknown>) => void;
 }
 
@@ -560,6 +565,54 @@ export async function importPrzemo(
         await setCheckpoint(tx, "groups", DONE);
       });
 
+    // The package owns the sink. Commit each batch with its checkpoint for safe resume.
+    const ipLogging = opts.ipLogging;
+    if (ipLogging) {
+      const importAddresses = async (
+        table: "users" | "logs",
+        key: string,
+        userKey: string,
+        timeKey: string,
+      ) => {
+        const step = `ip-logging:${table}`;
+        for (let after = (await checkpoint(step)) ?? 0; after !== DONE; ) {
+          const batch = await source.batch(table, key, after, batchSize);
+          await r.transaction(async (tx) => {
+            const users = await tx.users.getMany(
+              batch.map((row) => num(row[userKey])).filter((id) => id > 0),
+            );
+            for (const row of batch) {
+              const encoded = plain(row.user_ip);
+              if (!encoded || /^0+$/.test(encoded)) continue;
+              count("ip-logging", "read");
+              const at = ms(row[timeKey]);
+              const userId = num(row[userKey]);
+              if (
+                !at ||
+                at < ipLogging.earliest ||
+                at > ipLogging.now ||
+                !users.has(userId) ||
+                !/^[\da-f]{8}$/i.test(encoded)
+              ) {
+                count("ip-logging", "skipped");
+                continue;
+              }
+              const ip = encoded
+                .match(/../g)!
+                .map((octet) => Number.parseInt(octet, 16))
+                .join(".");
+              await ipLogging.record(tx, { userId, ip, at, kind: "legacy" });
+              count("ip-logging", "imported");
+            }
+            after = batch.length < batchSize ? DONE : num(batch.at(-1)![key]);
+            await setCheckpoint(tx, step, after);
+          });
+        }
+      };
+      await importAddresses("users", "user_id", "user_id", "user_lastvisit");
+      if (has("logs")) await importAddresses("logs", "id_log", "user_id", "time");
+    }
+
     // ── categories & forums → nodes, with permissions ────────────────────────
     const categories = await source.all("categories", "cat_id");
     const forums = await source.all("forums", "forum_id");
@@ -956,11 +1009,14 @@ export async function importPrzemo(
     // ── what the core didn't read ────────────────────────────────────────────
     for (const t of tables) {
       const name = t.slice(source.prefix.length);
-      if (!t.startsWith(source.prefix) || !USED[name]) {
+      const used = ipLogging && name === "logs" ? ["id_log", "user_id", "user_ip", "time"] : USED[name];
+      if (!t.startsWith(source.prefix) || !used) {
         report.notImported.tables.push(t);
         continue;
       }
-      const unused = (await source.columns(name)).filter((c) => !USED[name]!.includes(c));
+      const unused = (await source.columns(name)).filter(
+        (column) => !used.includes(column) && !(ipLogging && name === "users" && column === "user_ip"),
+      );
       if (unused.length) report.notImported.columns[t] = unused;
     }
     report.notImported.tables.sort();

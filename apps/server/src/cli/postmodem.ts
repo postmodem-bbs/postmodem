@@ -20,7 +20,7 @@ import {
   usernameProblem,
 } from "@postmodem/core";
 import { anonymise, importPrzemo, type LegacySource, openMysqlSource, summarise } from "@postmodem/importer";
-import { loginSecuritySettings } from "@postmodem/modules";
+import { IP_LOG_RETENTION_DAYS, ipLogStore, loginSecuritySettings } from "@postmodem/modules";
 import { backup, restore } from "../lib/server/backup.ts";
 import { type AppContext, createContext, readConfig } from "../lib/server/bootstrap.ts";
 import { DEMO_PASSWORD, seedDemo, seedLongTopic } from "../lib/server/demo.ts";
@@ -288,7 +288,15 @@ async function importBoard(args: string[]): Promise<number> {
   try {
     source = await openMysqlSource(sourceUrl, flag(args, "prefix") ?? "phpbb_");
     ctx.log.info(dryRun ? "import dry run started" : "import started", { prefix: source.prefix });
+    const now = Date.now();
     const report = await importPrzemo(ctx.db.repos, source, {
+      ipLogging: ctx.packages.isEnabled("ip-logging")
+        ? {
+            now,
+            earliest: now - IP_LOG_RETENTION_DAYS * 86_400_000,
+            record: (tx, entry) => ipLogStore(tx.raw).add(entry),
+          }
+        : undefined,
       dryRun,
       charset: charset as "latin2" | "cp1250" | "utf8" | undefined,
       log: (msg, fields) => ctx.log.info(`import: ${msg}`, fields),

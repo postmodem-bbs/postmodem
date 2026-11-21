@@ -4,4 +4,7 @@
 import { privacyNotice } from "@postmodem/core";
 import type { PageServerLoad } from "./$types";
 
-export const load: PageServerLoad = ({ locals }) => ({ custom: locals.ctx.settings.get(privacyNotice) });
+export const load: PageServerLoad = ({ locals }) => ({
+  custom: locals.ctx.settings.get(privacyNotice),
+  packages: locals.ctx.packages.personalData(),
+});

@@ -25,6 +25,7 @@ import {
   packageRoleGrants,
   type RenderReader,
   type Repositories,
+  type RequestContext,
   type Session,
   type Settings,
   type SlotArgs,
@@ -49,9 +50,10 @@ export interface PackageHost {
   isEnabled(key: PackageKey): boolean;
   enabled(): PackageKey[];
   privacyUnavailable(key: PackageKey): boolean;
+  emit<E extends BoardEvent>(event: E, payload: BoardEvents[E], request?: RequestContext): Promise<void>;
   exportPersonal(userId: Id): Promise<Record<string, unknown>>;
   erasePersonal(userId: Id, tx: Repositories): Promise<void>;
-  emit<E extends BoardEvent>(event: E, payload: BoardEvents[E]): Promise<void>;
+  personalData(): NonNullable<PackageDefinition["personalData"]>[];
   decorateTopics(viewer: Viewer, topics: Topic[]): Promise<Map<Id, Decoration[]>>;
   decorateForums(viewer: Viewer, nodes: Node[]): Promise<Map<Id, Decoration[]>>;
   slot(name: SlotName, args: SlotArgs): Promise<SlotItem[]>;
@@ -116,12 +118,15 @@ export async function createPackageHost(opts: {
         })) ?? {};
       if (p.personalData && (!runtime.privacy?.export || !runtime.privacy.erase))
         throw new Error("personal data requires export and erasure handlers");
+      if (p.personalData?.retentionDays !== undefined && !runtime.housekeeping)
+        throw new Error("personal data retention requires a housekeeping handler");
       runtimes.set(p.key, runtime);
     } catch (e) {
       log.error("package failed to start; it stays off", { package: p.key, error: (e as Error).message });
     }
   }
   const privacyUnavailable = (key: PackageKey) => !runtimes.get(key)?.privacy;
+  const manifests = new Map(installed.map((pkg) => [pkg.key, pkg]));
   function* privacyHandlers() {
     for (const pkg of installed) {
       const privacy = runtimes.get(pkg.key)?.privacy;
@@ -256,11 +261,27 @@ export async function createPackageHost(opts: {
       );
       return visible;
     },
-    async emit(event, payload) {
+    async emit(event, payload, request) {
       for (const [key, r] of active()) {
-        const handler = r.on?.[event] as ((p: typeof payload) => Promise<void> | void) | undefined;
-        if (handler) await guarded(key, `event ${event}`, () => handler(payload), undefined);
+        const handler = r.on?.[event] as
+          | ((p: typeof payload, context?: RequestContext) => Promise<void> | void)
+          | undefined;
+        if (!handler) continue;
+        const reads = manifests.get(key)?.personalData?.reads ?? [];
+        const context = request && {
+          via: request.via,
+          locale: request.locale,
+          timezone: request.timezone,
+        };
+        if (context) for (const field of reads) Object.assign(context, { [field]: request[field] });
+        await guarded(key, `event ${event}`, () => handler(payload, context), undefined);
       }
+    },
+    personalData() {
+      return [...runtimes.keys()].flatMap((key) => {
+        const data = manifests.get(key)?.personalData;
+        return data ? [data] : [];
+      });
     },
     decorateTopics: (viewer, topics) => decorate(topics, (r) => r.decorateTopics, viewer),
     decorateForums: (viewer, nodes) => decorate(nodes, (r) => r.decorateForums, viewer),
@@ -289,8 +310,12 @@ export async function createPackageHost(opts: {
     },
     async housekeeping(now) {
       let removed = 0;
-      for (const [key, r] of active())
-        if (r.housekeeping) removed += await guarded(key, "housekeeping", () => r.housekeeping!(now), 0);
+      const on = enabled();
+      for (const [key, r] of runtimes) {
+        const prune = r.housekeeping;
+        if (prune && (on.has(key) || manifests.get(key)?.personalData))
+          removed += await guarded(key, "housekeeping", () => prune(now), 0);
+      }
       return removed;
     },
     contentHooks() {
