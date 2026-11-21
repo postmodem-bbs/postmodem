@@ -4,7 +4,7 @@
 // Nothing here bans or resets a demo member (other specs sign in as them in parallel).
 import { isIP } from "node:net";
 import { expect, type Page, test } from "@playwright/test";
-import { expectNoAxeViolations, guardCsp, signIn } from "./helpers.ts";
+import { ESSENTIALS, expectNoAxeViolations, guardCsp, signIn } from "./helpers.ts";
 
 guardCsp();
 test.use({ locale: "en-US" });
@@ -152,7 +152,7 @@ test.describe("as the administrator", () => {
     await expect(page.getByRole("alert")).toHaveText("You can't ban yourself.");
 
     await page.goto("/admin/packages");
-    await expect(page.getByRole("checkbox", { name: /Reports/ })).toBeChecked();
+    await expect(page.getByRole("checkbox", { name: /Reports/ })).toBeChecked({ checked: ESSENTIALS });
     await expectNoAxeViolations(page);
   });
 });

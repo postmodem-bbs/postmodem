@@ -96,8 +96,9 @@ that passed CI, and its history is never rewritten.
   branch by hand. A pull request whose group fails leaves the queue and stays
   open.
 - **Required checks:** `Lint, typecheck, unit tests, licences`, `Build image`,
-  `E2E + accessibility (solo)`, `E2E + accessibility (stack)` and `dco`, on the
-  pull request and again on its merge-queue group.
+  `E2E + accessibility (solo)`, `E2E + accessibility (stack)`,
+  `E2E + accessibility (vanilla)` and `dco`, on the pull request and again on
+  its merge-queue group.
 - **Code scanning:** CodeQL (GitHub's default setup) must have analysed the
   pull request, and the pull request must not introduce a high or critical
   security alert, or an error-level alert. Fix the alert, or have a maintainer

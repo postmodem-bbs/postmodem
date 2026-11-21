@@ -139,7 +139,7 @@ jobs:
           test "$size" -lt $((150 * 1048576))
 
   e2e:
-    name: E2E + accessibility (${{ matrix.mode }})
+    name: E2E + accessibility (${{ matrix.name }})
     env:
       # Only for the throwaway CI board; the e2e admin tests sign in with it.
       PM_ADMIN_PASSWORD: ci-admin-passphrase-not-secret
@@ -150,8 +150,14 @@ jobs:
       packages: read # pull the sha-tagged image built by the previous job
     strategy:
       fail-fast: false
+      # Both shipped profiles (PACKAGES.md §5): the full suite on `essentials`, the default, in
+      # solo and stack mode; once more on a `vanilla` board (no packages), where the tests of a
+      # package's own behaviour skip themselves (e2e/helpers.ts, PROFILE).
       matrix:
-        mode: [solo, stack]
+        include:
+          - { name: solo, mode: solo, profile: essentials }
+          - { name: stack, mode: stack, profile: essentials }
+          - { name: vanilla, mode: solo, profile: vanilla }
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
@@ -180,6 +186,7 @@ jobs:
           POSTMODEM_MAIL_URL: smtp://mailpit:1025
           # Every test browser registers from the same address.
           POSTMODEM_REGISTRATIONS_PER_IP_HOUR: "0"
+          POSTMODEM_PROFILE: ${{ matrix.profile }}
         run: |
           docker compose -f compose.solo.yaml -f ci/mailpit.yaml up -d --wait
           # The e2e suite browses the demo board (index, forums, topics).
@@ -203,6 +210,7 @@ jobs:
           POSTMODEM_DOMAIN=localhost
           POSTMODEM_MAIL_URL=smtp://mailpit:1025
           POSTMODEM_REGISTRATIONS_PER_IP_HOUR=0
+          POSTMODEM_PROFILE=${{ matrix.profile }}
           EOF
           docker compose -f compose.yaml -f ci/mailpit.yaml up -d --wait web worker mailpit
           docker compose up -d proxy
@@ -239,8 +247,10 @@ jobs:
           PW_BROWSERS: chromium,firefox,webkit
           PM_IGNORE_HTTPS_ERRORS: ${{ matrix.mode == 'stack' && '1' || '0' }}
           PM_MAILPIT_URL: http://localhost:8025
+          PM_PROFILE: ${{ matrix.profile }}
         run: pnpm exec playwright test ${{ matrix.mode == 'stack' && '--project=chromium' || '' }}
       - name: Permalinks in the other URL styles (ADR 0012)
+        if: matrix.profile == 'essentials'
         working-directory: deploy
         env:
           PM_BASE_URL: ${{ matrix.mode == 'solo' && 'http://localhost:8080' || 'https://localhost' }}
@@ -259,7 +269,7 @@ jobs:
           done
           pm settings set core.urls.style classic
       - name: Load test (DESIGN §5.1 CI alarm, deep pages included)
-        if: matrix.mode == 'solo'
+        if: matrix.name == 'solo'
         working-directory: deploy
         run: |
           pm() { docker compose -f compose.solo.yaml -f ci/mailpit.yaml exec -T postmodem /nodejs/bin/node /app/postmodem.js "$@"; }
@@ -276,7 +286,7 @@ jobs:
         run: docker compose logs --no-color || docker compose -f compose.solo.yaml -f ci/mailpit.yaml logs --no-color
       - uses: actions/upload-artifact@v7
         if: failure()
-        with: { name: "playwright-report-${{ matrix.mode }}", path: var/playwright-report, retention-days: 7 }
+        with: { name: "playwright-report-${{ matrix.name }}", path: var/playwright-report, retention-days: 7 }
 
   publish:
     name: Promote tested image
