@@ -5,7 +5,7 @@
 // core.posting.perHour = 0 (CI sets both after seed-demo): those limits are covered by the
 // core's tests, and every browser posting as the same demo users would trip them here.
 import { expect, type Page, test } from "@playwright/test";
-import { expectNoAxeViolations, guardCsp, signIn } from "./helpers.ts";
+import { ESSENTIALS, expectNoAxeViolations, guardCsp, signIn } from "./helpers.ts";
 
 guardCsp();
 test.use({ locale: "en-US" });
@@ -71,6 +71,7 @@ test("hide blocks unlock for the reader who replied and stay private for guests"
   page,
   browser,
 }) => {
+  test.skip(!ESSENTIALS, "hide-until-reply is off on a vanilla board");
   await signIn(page, "retro_fan", PASSWORD);
   const marker = `Protected ${unique()}`;
   await newTopic(page, `Hidden content ${unique()}`, `Public introduction. [hide][b]${marker}[/b][/hide]`);
