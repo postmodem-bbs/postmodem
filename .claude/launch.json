@@ -50,6 +50,12 @@
       "port": 8099
     },
     {
+      "name": "pages-site",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "8093", "--directory", "var/site"],
+      "port": 8093
+    },
+    {
       "name": "island-spike",
       "runtimeExecutable": "node",
       "runtimeArgs": ["tools/spikes/island-origin/server.mjs"],

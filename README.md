@@ -1,9 +1,51 @@
-# Postmodem
+<h1 align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/brand/banner-dark.svg">
+    <img src="docs/brand/banner-light.svg" alt="Postmodem: classic forum layout, modern internals" width="100%">
+  </picture>
+</h1>
 
-A modern bulletin board in the tradition of phpBB2 "modified by Przemo":
-batteries included, every battery removable, trivially self-hosted.
-Classic forum layout, modern internals: accessible, themeable, extensible,
-works without JavaScript, and ships as one Docker image.
+<p align="center">
+  <a href="https://github.com/postmodem-bbs/postmodem/releases"><img alt="Release" src="https://img.shields.io/github/v/release/postmodem-bbs/postmodem?include_prereleases&style=for-the-badge&label=release&color=006699"></a>
+  <a href="https://github.com/postmodem-bbs/postmodem/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/github/actions/workflow/status/postmodem-bbs/postmodem/ci.yml?branch=main&style=for-the-badge&logo=githubactions&logoColor=white&label=CI"></a>
+  <a href="https://github.com/postmodem-bbs/postmodem/actions/workflows/dco.yml"><img alt="DCO" src="https://img.shields.io/badge/DCO-sign--off_required-4a5560?style=for-the-badge"></a>
+  <a href="#licence"><img alt="Licence: AGPL-3.0-or-later" src="https://img.shields.io/badge/licence-AGPL--3.0--or--later-2b333a?style=for-the-badge"></a>
+  <a href="https://postmodem-bbs.github.io/postmodem/"><img alt="Website" src="https://img.shields.io/badge/website-postmodem--bbs.github.io-6cb8e6?style=for-the-badge&logo=githubpages&logoColor=white"></a>
+</p>
+
+<p align="center">
+  <img alt="Status: early preview" src="https://img.shields.io/badge/status-early_preview-ec8a2c?style=for-the-badge">
+  <a href="https://github.com/postmodem-bbs/postmodem/pkgs/container/postmodem"><img alt="Container: ghcr.io" src="https://img.shields.io/badge/ghcr.io-one_image-006699?style=for-the-badge&logo=docker&logoColor=white"></a>
+  <img alt="Signed with cosign" src="https://img.shields.io/badge/signed-cosign-4a5560?style=for-the-badge&logo=sigstore&logoColor=white">
+  <img alt="WCAG 2.2 AA" src="https://img.shields.io/badge/WCAG_2.2-AA-006699?style=for-the-badge">
+  <img alt="Works without JavaScript" src="https://img.shields.io/badge/works_without-JavaScript-2b333a?style=for-the-badge">
+  <img alt="Languages: English, Polish" src="https://img.shields.io/badge/i18n-EN_·_PL-4a5560?style=for-the-badge">
+</p>
+
+<p align="center">
+  <img alt="Node.js 24" src="https://img.shields.io/badge/Node.js-24-2b333a?style=for-the-badge&logo=nodedotjs&logoColor=white">
+  <img alt="pnpm 12" src="https://img.shields.io/badge/pnpm-12-2b333a?style=for-the-badge&logo=pnpm&logoColor=white">
+  <img alt="SvelteKit" src="https://img.shields.io/badge/SvelteKit-3-2b333a?style=for-the-badge&logo=svelte&logoColor=white">
+  <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-2b333a?style=for-the-badge&logo=typescript&logoColor=white">
+  <img alt="SQLite" src="https://img.shields.io/badge/SQLite-2b333a?style=for-the-badge&logo=sqlite&logoColor=white">
+  <img alt="PostgreSQL" src="https://img.shields.io/badge/PostgreSQL-2b333a?style=for-the-badge&logo=postgresql&logoColor=white">
+</p>
+
+<p align="center">
+  A modern bulletin board in the tradition of phpBB2 "modified by Przemo":<br>
+  <b>batteries included, every battery removable, trivially self-hosted.</b><br>
+  Classic forum layout, modern internals: accessible, themeable, extensible,
+  works without JavaScript, and ships as one Docker image.
+</p>
+
+<p align="center">
+  <a href="#run-it">Run it</a> ·
+  <a href="#develop">Develop</a> ·
+  <a href="docs/DESIGN.md">Design</a> ·
+  <a href="docs/milestones/">Milestones</a> ·
+  <a href="docs/releases/0.1.0.md">0.1.0 notes</a> ·
+  <a href="https://postmodem-bbs.github.io/postmodem/">Website</a>
+</p>
 
 > **Status: 0.1.0, an early preview. Not ready for production.** It is already a usable
 > board: reading, posting, moderation, private messages, notifications, search, an admin
@@ -22,6 +64,19 @@ works without JavaScript, and ships as one Docker image.
 > their e-mail address: set `POSTMODEM_MAIL_URL` (the dev stack's Mailpit at
 > http://localhost:8025 shows every message), or find the link in the log with the
 > default `log://`.
+
+## What's in the box
+
+|                     |                                                                                       |
+| ------------------- | ------------------------------------------------------------------------------------- |
+| 📖 **Reading**      | phpBB2-style index, forums, topics and profiles; old phpBB2/Przemo links keep working |
+| ✍️ **Writing**      | topics, replies, quotes, preview, BBCode toolbar, signatures                          |
+| 🛡️ **Moderating**   | lock, move, split, merge, sticky; bans by member, IP and e-mail; everything audited   |
+| 💬 **Members**      | private messages, watches with e-mail notifications, search, data export              |
+| 🧹 **Anti-spam**    | self-hosted proof-of-work, e-mail confirmation, invite-only mode, rate limits         |
+| 🧳 **Importing**    | phpBB2 / Przemo boards, passwords included (experimental, [guide](docs/IMPORTING.md)) |
+| 🐳 **Running it**   | one signed image; solo (SQLite) or stack (Postgres + Caddy); web admin and CLI        |
+| ♿ **For everyone** | WCAG 2.2 AA, light and dark themes, English and Polish, no JavaScript required        |
 
 ## Run it
 

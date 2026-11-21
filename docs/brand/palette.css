@@ -1,0 +1,14 @@
+/* Postmodem brand palette. SPDX-License-Identifier: CC-BY-4.0 */
+:root {
+  --pm-blue: #006699;
+  --pm-blue-light: #6cb8e6;
+  --pm-orange: #ec8a2c;
+  --pm-ink: #2b333a;
+  --pm-ink-light: #c4ccd3;
+  --pm-slate: #4a5560;
+  --pm-slate-light: #a9b4bd;
+  --pm-paper: #ffffff;
+  --pm-night: #1c2329;
+  --pm-edge: #98aab1;
+  --pm-edge-dark: #3a4a55;
+}

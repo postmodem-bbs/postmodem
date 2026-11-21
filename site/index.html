@@ -1,0 +1,221 @@
+<!doctype html>
+<!-- SPDX-License-Identifier: CC-BY-4.0 -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Postmodem</title>
+  <meta name="description" content="A modern bulletin board in the tradition of phpBB2 &quot;modified by Przemo&quot;: classic forum layout, modern internals, one Docker image.">
+  <meta name="theme-color" content="#006699" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#1c2329" media="(prefers-color-scheme: dark)">
+
+  <link rel="icon" href="brand/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="brand/png/favicon-32.png" type="image/png" sizes="32x32">
+  <link rel="alternate icon" href="brand/png/favicon.ico" sizes="16x16 32x32 48x48">
+  <link rel="apple-touch-icon" href="brand/png/favicon-180.png">
+
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Postmodem">
+  <meta property="og:description" content="Classic forum layout, modern internals. A self-hosted bulletin board in one Docker image.">
+  <meta property="og:url" content="https://postmodem-bbs.github.io/postmodem/">
+  <meta property="og:image" content="https://postmodem-bbs.github.io/postmodem/brand/png/social-preview.png">
+  <meta property="og:image:width" content="1280">
+  <meta property="og:image:height" content="640">
+  <meta property="og:image:alt" content="Postmodem: classic forum layout, modern internals">
+  <meta name="twitter:card" content="summary_large_image">
+
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="topbar">
+    <div class="wrap">
+      <a class="brand" href="./"><img src="brand/favicon.svg" alt="" width="32" height="32">Postmodem</a>
+      <nav aria-label="Site">
+        <a href="#features">Features</a>
+        <a href="#run">Run it</a>
+        <a href="#develop">Develop</a>
+        <a href="#palette">Brand</a>
+        <a href="https://github.com/postmodem-bbs/postmodem">GitHub</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main">
+    <div class="wrap hero">
+      <h1 style="margin:0">
+        <picture>
+          <source media="(prefers-color-scheme: dark)" srcset="brand/banner-dark.svg">
+          <img src="brand/banner-light.svg" alt="Postmodem: classic forum layout, modern internals" width="1280" height="320">
+        </picture>
+      </h1>
+
+      <p class="lede">
+        A modern bulletin board in the tradition of phpBB2 “modified by Przemo”:
+        <strong>batteries included, every battery removable, trivially self-hosted.</strong>
+        Accessible, themeable, extensible, works without JavaScript, and ships as one Docker image.
+      </p>
+
+      <div class="cta">
+        <a class="btn btn-primary" href="#run">Run it in one command</a>
+        <a class="btn btn-ghost" href="https://github.com/postmodem-bbs/postmodem">Source on GitHub</a>
+      </div>
+
+      <div class="badges">
+        <a href="https://github.com/postmodem-bbs/postmodem/releases"><img alt="Release" src="https://img.shields.io/github/v/release/postmodem-bbs/postmodem?include_prereleases&amp;style=for-the-badge&amp;label=release&amp;color=006699"></a>
+        <a href="https://github.com/postmodem-bbs/postmodem/actions/workflows/ci.yml"><img alt="CI status" src="https://img.shields.io/github/actions/workflow/status/postmodem-bbs/postmodem/ci.yml?branch=main&amp;style=for-the-badge&amp;logo=githubactions&amp;logoColor=white&amp;label=CI"></a>
+        <img alt="Status: early preview" src="https://img.shields.io/badge/status-early_preview-ec8a2c?style=for-the-badge">
+        <img alt="Licence: AGPL-3.0-or-later" src="https://img.shields.io/badge/licence-AGPL--3.0--or--later-2b333a?style=for-the-badge">
+        <img alt="WCAG 2.2 AA" src="https://img.shields.io/badge/WCAG_2.2-AA-006699?style=for-the-badge">
+        <img alt="Signed with cosign" src="https://img.shields.io/badge/signed-cosign-4a5560?style=for-the-badge&amp;logo=sigstore&amp;logoColor=white">
+      </div>
+    </div>
+
+    <div class="wrap">
+      <div class="notice" role="note">
+        <p><strong>0.1.0 is an early preview, not ready for production.</strong>
+          It is already a usable board, but data formats may still change before 1.0. Migrations carry a board
+          forward; there is no downgrade. See the
+          <a href="https://github.com/postmodem-bbs/postmodem/blob/main/docs/releases/0.1.0.md">release notes</a>.</p>
+      </div>
+    </div>
+
+    <section id="features">
+      <div class="wrap">
+        <h2>What's in the box</h2>
+        <table class="forum">
+          <caption>Board index · 8 forums · everything below ships in 0.1.0</caption>
+          <thead>
+            <tr>
+              <th scope="col" colspan="2">Forum</th>
+              <th scope="col" class="meta">Since</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td class="icon" aria-hidden="true">📖</td>
+              <td><span class="name">Reading</span><span class="desc">phpBB2-style index, forums, topics and profiles. Old phpBB2/Przemo links keep working, in classic, numbered or slug URL styles.</span></td>
+              <td class="meta">M1</td>
+            </tr>
+            <tr>
+              <td class="icon" aria-hidden="true">✍️</td>
+              <td><span class="name">Writing</span><span class="desc">New topics, replies, quotes, editing and deleting with phpBB2's rules, preview, a BBCode toolbar, signatures.</span></td>
+              <td class="meta">0.1.0</td>
+            </tr>
+            <tr>
+              <td class="icon" aria-hidden="true">🛡️</td>
+              <td><span class="name">Moderating</span><span class="desc">Lock, move, split, merge, delete, sticky and announcement, all audited with a reason. Bans by member, IP and e-mail.</span></td>
+              <td class="meta">0.1.0</td>
+            </tr>
+            <tr>
+              <td class="icon" aria-hidden="true">💬</td>
+              <td><span class="name">Members</span><span class="desc">Private messages, topic watching with e-mail notifications, search where diacritics don't matter, data export and account deletion.</span></td>
+              <td class="meta">0.1.0</td>
+            </tr>
+            <tr>
+              <td class="icon" aria-hidden="true">🧹</td>
+              <td><span class="name">Spam protection</span><span class="desc">A self-hosted proof-of-work check, e-mail confirmation, invite-only registration, limits for new members, rate limits.</span></td>
+              <td class="meta">0.1.0</td>
+            </tr>
+            <tr>
+              <td class="icon" aria-hidden="true">🧳</td>
+              <td><span class="name">Importing</span><span class="desc">Move a phpBB2 / Przemo board over from MySQL/MariaDB, old passwords included. Experimental until the Beta phase.</span></td>
+              <td class="meta">0.1.0</td>
+            </tr>
+            <tr>
+              <td class="icon" aria-hidden="true">🐳</td>
+              <td><span class="name">Running it</span><span class="desc">One signed image. Solo with SQLite or a stack with Postgres and Caddy. A web admin panel and the <code>postmodem</code> CLI.</span></td>
+              <td class="meta">0.1.0</td>
+            </tr>
+            <tr>
+              <td class="icon" aria-hidden="true">♿</td>
+              <td><span class="name">For everyone</span><span class="desc">WCAG 2.2 AA, light and dark themes, English and Polish, and every page works without JavaScript.</span></td>
+              <td class="meta">M1</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section id="run">
+      <div class="wrap">
+        <h2>Run it</h2>
+        <div class="grid">
+          <div class="card">
+            <h3>Solo</h3>
+            <p>One container, SQLite, data in a named volume.</p>
+            <pre><code><span class="prompt">$ </span>docker run -d --name postmodem \
+    -p 8080:8080 -v postmodem-data:/data \
+    --read-only --tmpfs /tmp \
+    ghcr.io/postmodem-bbs/postmodem:0.1</code></pre>
+          </div>
+          <div class="card">
+            <h3>Stack</h3>
+            <p>Postgres, Caddy with automatic HTTPS, several web replicas.</p>
+            <pre><code><span class="prompt">$ </span>cd deploy
+<span class="prompt">$ </span>docker compose up -d</code></pre>
+            <p style="margin:12px 0 0">See <a href="https://github.com/postmodem-bbs/postmodem/blob/main/deploy/compose.yaml">compose.yaml</a> and <a href="https://github.com/postmodem-bbs/postmodem/blob/main/docs/CONTAINERS.md">CONTAINERS.md</a>.</p>
+          </div>
+          <div class="card">
+            <h3>Try the demo</h3>
+            <p>Fill an empty board with demo content, then sign in as a demo member.</p>
+            <pre><code><span class="prompt">$ </span>docker exec postmodem \
+    /nodejs/bin/node /app/postmodem.js \
+    seed-demo</code></pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="develop">
+      <div class="wrap">
+        <h2>Develop</h2>
+        <div class="grid">
+          <div class="card">
+            <h3>With Docker only</h3>
+            <p>The board on :5173 with live sync, Postgres, and Mailpit on :8025. Also opens as a Dev Container.</p>
+            <pre><code><span class="prompt">$ </span>docker compose \
+    -f deploy/dev/compose.dev.yaml \
+    up --build --watch</code></pre>
+          </div>
+          <div class="card">
+            <h3>With Node 24 and pnpm 12</h3>
+            <p>SvelteKit, TypeScript, SQLite or Postgres. Every commit is signed off (DCO).</p>
+            <pre><code><span class="prompt">$ </span>pnpm install
+<span class="prompt">$ </span>pnpm dev
+<span class="prompt">$ </span>pnpm check</code></pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="palette">
+      <div class="wrap">
+        <h2>Brand palette</h2>
+        <p style="color:var(--text-muted);margin-top:-8px">From <a href="https://github.com/postmodem-bbs/postmodem/blob/main/docs/brand/palette.css"><code>docs/brand/palette.css</code></a>. This page is built from these tokens.</p>
+        <ul class="swatches">
+          <li class="swatch"><div class="chip" style="--c:var(--pm-blue)"></div><div><strong>Blue</strong><code>--pm-blue · #006699</code></div></li>
+          <li class="swatch"><div class="chip" style="--c:var(--pm-blue-light)"></div><div><strong>Blue light</strong><code>--pm-blue-light · #6cb8e6</code></div></li>
+          <li class="swatch"><div class="chip" style="--c:var(--pm-orange)"></div><div><strong>Orange</strong><code>--pm-orange · #ec8a2c</code></div></li>
+          <li class="swatch"><div class="chip" style="--c:var(--pm-ink)"></div><div><strong>Ink</strong><code>--pm-ink · #2b333a</code></div></li>
+          <li class="swatch"><div class="chip" style="--c:var(--pm-ink-light)"></div><div><strong>Ink light</strong><code>--pm-ink-light · #c4ccd3</code></div></li>
+          <li class="swatch"><div class="chip" style="--c:var(--pm-slate)"></div><div><strong>Slate</strong><code>--pm-slate · #4a5560</code></div></li>
+          <li class="swatch"><div class="chip" style="--c:var(--pm-slate-light)"></div><div><strong>Slate light</strong><code>--pm-slate-light · #a9b4bd</code></div></li>
+          <li class="swatch"><div class="chip" style="--c:var(--pm-paper)"></div><div><strong>Paper</strong><code>--pm-paper · #ffffff</code></div></li>
+          <li class="swatch"><div class="chip" style="--c:var(--pm-night)"></div><div><strong>Night</strong><code>--pm-night · #1c2329</code></div></li>
+          <li class="swatch"><div class="chip" style="--c:var(--pm-edge)"></div><div><strong>Edge</strong><code>--pm-edge · #98aab1</code></div></li>
+          <li class="swatch"><div class="chip" style="--c:var(--pm-edge-dark)"></div><div><strong>Edge dark</strong><code>--pm-edge-dark · #3a4a55</code></div></li>
+        </ul>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <p>AGPL-3.0-or-later for the board · CC-BY-4.0 for documentation and brand assets.</p>
+      <p><a href="https://github.com/postmodem-bbs/postmodem">github.com/postmodem-bbs/postmodem</a></p>
+    </div>
+  </footer>
+</body>
+</html>
