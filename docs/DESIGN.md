@@ -476,6 +476,6 @@ the Przemo importer: keep ids, decode per value, self-contained forum grants ([A
 package tiers with `essentials` as the default profile ([ADR 0019](adr/0019-package-tiers-and-essentials-profile.md)),
 importer work in the Beta phase, before 1.0 ([ADR 0024](adr/0024-importer-work-in-the-beta-phase.md)).
 
-No architecture decisions are open. Owner actions before going public:
-register `postmodem.app`, create the `postmodem-bbs` GitHub and `@postmodem`
-npm organisations, and get the licence's extension exception reviewed.
+No architecture decisions are open. Owner actions still open:
+register `postmodem.app` (#46), create the `@postmodem` npm organisation (#47), and get the
+licence's extension exception reviewed (#48). The `postmodem-bbs` GitHub organisation exists.
