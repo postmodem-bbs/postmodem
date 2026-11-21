@@ -4,8 +4,10 @@
 // `postmodem settings set core.urls.style <style>`; PM_URL_STYLE says which one is active.
 // Uses the demo board's fixed ids: topic 1 "Witamy na forum Postmodem!", topic 3 "Wasze
 // pierwsze komputery" (3 pages), forum 4 Hydepark (2 pages), category 1 Ogólne, user 2.
+// Pages load with `open`, which waits for the client to start: most of them arrive through a
+// redirect, and on WebKit the client's start can interrupt the next goto (#120).
 import { type APIRequestContext, expect, type Page, test } from "@playwright/test";
-import { expectNoAxeViolations, guardCsp } from "./helpers.ts";
+import { expectNoAxeViolations, guardCsp, open } from "./helpers.ts";
 
 guardCsp();
 test.use({ locale: "en-US" });
@@ -56,14 +58,14 @@ test.beforeAll(async ({ request }) => {
 test.describe(`permalinks with the ${STYLE} style`, () => {
   test("the same topic through all three styles", async ({ page }) => {
     for (const from of Object.values(CANONICAL).map((c) => c.topic)) {
-      await page.goto(from);
+      await open(page, from);
       expect(path(page), `from ${from}`).toBe(want.topic);
       await expect(page.getByRole("heading", { level: 1 })).toContainText("Witamy na forum Postmodem!");
     }
     // A wrong slug after the id, or phpBB2's session id, still finds it.
-    await page.goto("/t/1-old-title");
+    await open(page, "/t/1-old-title");
     expect(path(page)).toBe(want.topic);
-    await page.goto("/viewtopic.php?t=1&sid=0123456789abcdef0123456789abcdef");
+    await open(page, "/viewtopic.php?t=1&sid=0123456789abcdef0123456789abcdef");
     expect(path(page)).toBe(want.topic);
     await expect(page.locator('link[rel="canonical"]')).toHaveAttribute(
       "href",
@@ -74,20 +76,20 @@ test.describe(`permalinks with the ${STYLE} style`, () => {
 
   test("start= and page= convert both ways", async ({ page }) => {
     for (const c of Object.values(CANONICAL)) {
-      await page.goto(c.topicPage3);
+      await open(page, c.topicPage3);
       expect(path(page), `from ${c.topicPage3}`).toBe(want.topicPage3);
-      await page.goto(c.forumPage2);
+      await open(page, c.forumPage2);
       expect(path(page), `from ${c.forumPage2}`).toBe(want.forumPage2);
     }
     // Past the end lands on the last page; offset 0 is the plain URL.
-    await page.goto("/viewtopic.php?t=3&start=9999");
+    await open(page, "/viewtopic.php?t=3&start=9999");
     expect(path(page)).toBe(want.topicPage3);
-    await page.goto("/viewtopic.php?t=1&start=0");
+    await open(page, "/viewtopic.php?t=1&start=0");
     expect(path(page)).toBe(want.topic);
   });
 
   test("links on the page are in the current style", async ({ page }) => {
-    await page.goto(want.forumPage2);
+    await open(page, want.forumPage2);
     await expect(page.getByText("Page 2 of 2").first()).toBeVisible();
     const topicLink = page.locator("a.topic-title").first();
     const prev = page.getByRole("link", { name: "Previous" }).first();
@@ -103,11 +105,11 @@ test.describe(`permalinks with the ${STYLE} style`, () => {
   });
 
   test("post links find the post's page and anchor", async ({ page }) => {
-    await page.goto(want.topicPage3);
+    await open(page, want.topicPage3);
     const id = (await page.locator("article.post").first().getAttribute("id"))!.slice(1);
     for (const from of [`/viewtopic.php?p=${id}`, `/p/${id}`]) {
-      await page.goto("/");
-      await page.goto(from);
+      await open(page, "/");
+      await open(page, from);
       expect(path(page) + new URL(page.url()).hash, `from ${from}`).toBe(`${want.topicPage3}#p${id}`);
       await expect(page.locator(`#p${id}`)).toBeVisible();
     }
@@ -115,7 +117,7 @@ test.describe(`permalinks with the ${STYLE} style`, () => {
 
   test("categories, including phpBB2's index.php?c=", async ({ page }) => {
     for (const from of Object.values(CANONICAL).map((c) => c.category)) {
-      await page.goto(from);
+      await open(page, from);
       expect(path(page), `from ${from}`).toBe(want.category);
       await expect(page.getByRole("heading", { level: 1 })).toHaveText("Ogólne");
     }
@@ -123,11 +125,11 @@ test.describe(`permalinks with the ${STYLE} style`, () => {
 
   test("profiles, linked from posts", async ({ page }) => {
     for (const from of Object.values(CANONICAL).map((c) => c.user)) {
-      await page.goto(from);
+      await open(page, from);
       expect(path(page), `from ${from}`).toBe(want.user);
       await expect(page.getByRole("heading", { level: 1 })).toHaveText("Profile of Łukasz Żółć");
     }
-    await page.goto(want.topicPage3);
+    await open(page, want.topicPage3);
     await page.locator(".author-name a").first().click();
     await expect(page.getByRole("heading", { level: 1 })).toContainText("Profile of");
     await expectNoAxeViolations(page);
