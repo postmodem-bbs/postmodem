@@ -40,7 +40,11 @@ interface Frame {
   children: Node[];
 }
 
-const TAG_RE = /\[(\/?)(\*|[a-z]+)(?:=((?:"[^"\]\n]*"|[^\]\n])*))?\]/gi;
+// An argument runs up to the first "]" or line break. Quotes in it are ordinary characters
+// here (unquote() strips a surrounding pair). An earlier `(?:"…"|[^\]\n])*` matched the same
+// strings, but its alternatives overlapped on '"': an unclosed tag full of quotes backtracked
+// exponentially, and one post could stall the server (CodeQL js/redos).
+const TAG_RE = /\[(\/?)(\*|[a-z]+)(?:=([^\]\n]*))?\]/gi;
 
 function pushText(into: Node[], value: string) {
   if (!value) return;
