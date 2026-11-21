@@ -92,8 +92,12 @@ that passed CI, and its history is never rewritten.
   names its pull request (`… (#75)`).
 - **Required checks:** `Lint, typecheck, unit tests, licences`, `Build image`,
   `E2E + accessibility (solo)`, `E2E + accessibility (stack)` and `dco`, run
-  against the latest `main` (rebase or update the branch if it moved). Review
-  threads must be resolved. While the project has one maintainer, no approving
+  against the latest `main` (rebase or update the branch if it moved).
+- **Code scanning:** CodeQL (GitHub's default setup) must have analysed the
+  pull request, and the pull request must not introduce a high or critical
+  security alert, or an error-level alert. Fix the alert, or have a maintainer
+  dismiss it with a reason when it's a false positive.
+- **Reviews:** review threads must be resolved. While the project has one maintainer, no approving
   review is required; raise `required_approving_review_count` in the ruleset
   when that changes.
 - **Release tags** (`v*`) are created once and never moved or deleted.
