@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { defaultLocale, endSession, findBan, resolveSession, urlStyle } from "@postmodem/core";
+import { defaultLocale, defaultTheme, endSession, findBan, resolveSession, urlStyle } from "@postmodem/core";
 import { negotiate, translator } from "@postmodem/i18n";
 import type { Handle } from "@sveltejs/kit/hooks";
 import { clearSessionCookie, sessionCookieName } from "#lib/server/auth.ts";
 import { getContext } from "#lib/server/bootstrap.ts";
 import { urlsFor } from "#lib/server/links.ts";
-import { colorScheme, language } from "#lib/server/platform.ts";
+import { colorScheme, language, readerTheme } from "#lib/server/platform.ts";
 import { choose, guestPreferenceCookie } from "#lib/server/preferences.ts";
 
 const SECURITY_HEADERS: Record<string, string> = {
@@ -86,7 +86,9 @@ export const handle: Handle = async ({ event, resolve }) => {
       ? await ctx.platform.preferences.forReader(event.locals.user.id, guestPreferenceCookie(event.cookies))
       : guestPrefs;
   event.locals.locale = pickLocale(requested ?? event.locals.prefs.get(language));
-  event.locals.theme = event.locals.prefs.get(colorScheme);
+  const theme = event.locals.prefs.get(readerTheme);
+  event.locals.themeId = theme === "board" ? ctx.settings.get(defaultTheme) : theme;
+  event.locals.colorScheme = event.locals.prefs.get(colorScheme);
   event.locals.requestContext = {
     via: "web",
     ip,
@@ -99,12 +101,16 @@ export const handle: Handle = async ({ event, resolve }) => {
     transformPageChunk: ({ html }) =>
       html
         .replace("%pm.lang%", event.locals.locale)
-        .replace("%pm.theme%", event.locals.theme === "system" ? "" : event.locals.theme),
+        .replaceAll("%pm.themeId%", event.locals.themeId)
+        .replace("%pm.colorScheme%", event.locals.colorScheme === "system" ? "" : event.locals.colorScheme),
   });
   for (const [k, v] of Object.entries(SECURITY_HEADERS)) response.headers.set(k, v);
   // Pages rendered for a signed-in user must never land in a shared cache.
   if (event.locals.user && !response.headers.has("cache-control"))
     response.headers.set("cache-control", "private, no-cache");
+  if (response.headers.get("content-type")?.startsWith("text/html")) {
+    response.headers.append("vary", "Cookie");
+  }
   return response;
 };
 

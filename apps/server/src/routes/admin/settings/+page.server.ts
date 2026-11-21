@@ -2,6 +2,7 @@
 // /admin/settings: the board settings people actually change, as a form. Values are checked
 // by each setting's own schema (core settings.ts); running replicas pick changes up within
 // seconds, as with `postmodem settings set`.
+import { defaultTheme, THEME_IDS } from "@postmodem/core";
 import { fail } from "@sveltejs/kit";
 import { adminAudit, requireAdmin } from "#lib/server/admin.ts";
 import type { Actions, PageServerLoad } from "./$types";
@@ -18,6 +19,7 @@ const GROUPS: { label: string; fields: Field[] }[] = [
       { key: "core.board.name", type: "text" },
       { key: "core.board.description", type: "text" },
       { key: "core.board.defaultLocale", type: "select", options: ["en", "pl"] },
+      { key: defaultTheme.key, type: "select", options: [...THEME_IDS] },
       { key: "core.urls.style", type: "select", options: ["classic", "numbered", "slug"] },
       { key: "core.board.privacy", type: "textarea" },
       { key: "core.accounts.deletedPosts", type: "select", options: ["keep", "remove"] },

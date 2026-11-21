@@ -56,6 +56,7 @@ export interface Theme {
   baseSize: number;
   radius: string;
   density: "compact" | "comfortable";
+  listing?: { gap: string; shadow: string; background: string };
 }
 
 const kebab = (s: string) => s.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);
@@ -75,6 +76,9 @@ ${vars(t.light, t.bbColors.light)}
   --pm-font-mono: ${t.fonts.mono};
   --pm-font-size: ${t.baseSize}px;
   --pm-radius: ${t.radius};
+  --pm-listing-gap: ${t.listing?.gap ?? "0"};
+  --pm-listing-shadow: ${t.listing?.shadow ?? "none"};
+  --pm-listing-background: ${t.listing?.background ?? "var(--pm-color-surface)"};
 ${space.map((s, i) => `  --pm-space-${i + 1}: ${s}px;`).join("\n")}
   color-scheme: light;
 }

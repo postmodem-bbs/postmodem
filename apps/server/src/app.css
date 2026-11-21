@@ -134,6 +134,10 @@ button:disabled {
 .site-header a {
   color: var(--pm-color-header-text);
 }
+.site-header :focus-visible,
+.category-title :focus-visible {
+  outline-color: var(--pm-color-header-text);
+}
 .board-name {
   font-size: 1.6rem;
   font-weight: 700;
@@ -467,6 +471,29 @@ main:focus {
 .board-table .last-post {
   width: 15em;
   font-size: 0.9em;
+}
+/* Modern's listings use separated row surfaces while keeping their table structure. */
+:where([data-board-theme="modern"]) .board-table {
+  border-collapse: separate;
+  border-spacing: 0 var(--pm-listing-gap);
+  border: 0;
+  background: var(--pm-listing-background);
+}
+:where([data-board-theme="modern"]) .board-table tbody tr {
+  background: var(--pm-color-surface);
+  box-shadow: var(--pm-listing-shadow);
+  border-radius: var(--pm-radius);
+}
+:where([data-board-theme="modern"]) .board-table tbody :is(th, td) {
+  border: 0;
+}
+:where([data-board-theme="modern"]) .board-table tbody :is(th, td):first-child {
+  border-start-start-radius: var(--pm-radius);
+  border-end-start-radius: var(--pm-radius);
+}
+:where([data-board-theme="modern"]) .board-table tbody :is(th, td):last-child {
+  border-start-end-radius: var(--pm-radius);
+  border-end-end-radius: var(--pm-radius);
 }
 .forum-title,
 .topic-title {
