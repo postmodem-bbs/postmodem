@@ -37,6 +37,7 @@ import { type Database, openDatabase } from "@postmodem/db";
 import { createRenderer, type Renderer } from "./content.ts";
 import { Worker } from "./jobs.ts";
 import { createMailer, defaultSender, type Mailer, type MailMessage } from "./mail.ts";
+import { Meilisearch } from "./meilisearch.ts";
 import {
   createPackageHost,
   INSTALLED_PACKAGES,
@@ -64,6 +65,7 @@ export interface AppContext {
     posting: Pick<Throttle, "wait" | "fail" | "reset">;
   };
   mailer: Mailer;
+  externalSearch: Meilisearch | null;
   /** Queues an e-mail; the worker sends it (with retries), never the web request. */
   sendMail(message: MailMessage): Promise<void>;
   /** This process's job worker; started only by roles that run one (run, worker, dev). */
@@ -216,6 +218,7 @@ export async function createContext(opts: {
       mailIp: new Throttle(MAIL_IP_POLICY, db.repos.throttle, "mail-ip"),
     },
     mailer,
+    externalSearch: config.searchUrl === "builtin://" ? null : new Meilisearch(config, db, log),
     worker,
     ...banCache(db),
     packages,
@@ -289,6 +292,7 @@ declare global {
 export function getContext(): Promise<AppContext> {
   globalThis.__postmodem ??= createContext({ migrate: true, live: true }).then((ctx) => {
     ctx.worker.start();
+    ctx.externalSearch?.start();
     ctx.watchSettings();
     ctx.platform.counters.start();
     return ctx;

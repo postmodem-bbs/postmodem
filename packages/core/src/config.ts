@@ -13,6 +13,8 @@ const FIELDS = {
   host: { env: "HOST", toml: "host", secret: false },
   port: { env: "PORT", toml: "port", secret: false },
   databaseUrl: { env: "DATABASE_URL", toml: "database_url", secret: false },
+  searchUrl: { env: "SEARCH_URL", toml: "search_url", secret: false },
+  searchKey: { env: "SEARCH_KEY", toml: "search_key", secret: true },
   databasePassword: { env: "DATABASE_PASSWORD", toml: "database_password", secret: true },
   secretKey: { env: "SECRET_KEY", toml: "secret_key", secret: true },
   trustedProxies: { env: "TRUSTED_PROXIES", toml: "trusted_proxies", secret: false },
@@ -42,7 +44,6 @@ const RESERVED = new Set([
   "CACHE_URL",
   "QUEUE",
   "STORAGE_URL",
-  "SEARCH_URL",
   "AV_URL",
   "EXTENSIONS",
   "ADMIN_EMAIL",
@@ -57,6 +58,21 @@ const ConfigSchema = z.object({
   databaseUrl: z
     .string()
     .regex(/^(sqlite|postgres|postgresql):\/\//, "must start with sqlite:// or postgres://"),
+  searchUrl: z.union([
+    z.literal("builtin://"),
+    z.url({ protocol: /^meilisearchs?$/ }).refine((value) => {
+      const url = new URL(value);
+      return (
+        !!url.hostname &&
+        !url.username &&
+        !url.password &&
+        !url.search &&
+        !url.hash &&
+        /^\/?[a-zA-Z0-9_-]*$/.test(url.pathname)
+      );
+    }, "use meilisearch://host[:port][/index] or meilisearchs:// for TLS"),
+  ]),
+  searchKey: z.string().optional(),
   databasePassword: z.string().optional(),
   secretKey: z.string().min(32, "must be at least 32 characters").optional(),
   trustedProxies: z.array(z.union([z.ipv4(), z.ipv6(), z.cidrv4(), z.cidrv6()])),
@@ -117,6 +133,7 @@ export function loadConfig(io: ConfigIo): LoadedConfig {
     host: "0.0.0.0",
     port: 8080,
     databaseUrl: `sqlite://${dataDir}/db/postmodem.sqlite`,
+    searchUrl: "builtin://",
     trustedProxies: [],
     proxyHops: undefined,
     logLevel: "info",

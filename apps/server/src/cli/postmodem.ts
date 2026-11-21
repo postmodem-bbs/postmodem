@@ -391,6 +391,7 @@ async function startWeb(ctx: AppContext): Promise<Server> {
 function startRole(ctx: AppContext, role: "worker" | "scheduler") {
   if (role === "worker") {
     ctx.worker.start();
+    ctx.externalSearch?.start();
     return;
   }
   ctx.log.info("scheduler started");
@@ -494,7 +495,11 @@ function onShutdown(ctx: AppContext, servers: Server[]) {
     }, SHUTDOWN_GRACE_MS);
     force.unref();
     ctx.platform.endStreams(); // live streams would otherwise hold the server open
-    await Promise.all([...servers.map((s) => new Promise((r) => s.close(r))), ctx.worker.stop()]);
+    await Promise.all([
+      ...servers.map((s) => new Promise((r) => s.close(r))),
+      ctx.worker.stop(),
+      ctx.externalSearch?.stop(),
+    ]);
     await ctx.platform.close();
     await ctx.db.close();
     ctx.log.info("bye");
@@ -694,6 +699,7 @@ async function main(argv: string[]): Promise<number> {
           ctx.db.repos,
           (done) => done % 20_000 === 0 && console.log(`${done} posts…`),
         );
+        await ctx.externalSearch?.rebuild();
         console.log(`search index rebuilt: ${n} posts`);
         return 0;
       } finally {

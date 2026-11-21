@@ -565,5 +565,77 @@ export function migrations(dialect: Dialect): Record<string, Migration> {
           .execute();
       },
     },
+    "0017_meilisearch_sync": {
+      async up(db: Db) {
+        const schema = db.schema;
+        await schema
+          .createTable("search_sync")
+          .addColumn("id", "integer", (c) => c.primaryKey())
+          .addColumn("ready", "integer", zero)
+          .addColumn("lease_until", "bigint", zero)
+          .execute();
+        await schema
+          .createTable("search_dirty")
+          .addColumn("post_id", "bigint", (c) => c.primaryKey())
+          .addColumn("revision", "bigint", (c) => c.notNull().defaultTo(1))
+          .execute();
+
+        // Only boards that have started an external rebuild have a search_sync row.
+        // Track persisted changes in the same transaction, including imports and erasure.
+        const sync = sql`exists (select 1 from search_sync where id = 1)`;
+        const bump = sql`on conflict (post_id) do update set revision = search_dirty.revision + 1`;
+        const post = (row: "new" | "old") => sql`
+          insert into search_dirty (post_id) select ${sql.ref(`${row}.id`)} where ${sync} ${bump}`;
+        const topic = (row: "new" | "old") => sql`
+          insert into search_dirty (post_id)
+          select id from posts where topic_id = ${sql.ref(`${row}.id`)} and ${sync} order by id ${bump}`;
+        const postColumns = sql`topic_id, author_id, source, subject, format, visibility, created_at`;
+        const topicColumns = sql`node_id, visibility, title, first_post_id`;
+        const changed = (columns: string[]) =>
+          sql.join(
+            columns.map((column) => {
+              const old = sql.ref(`old.${column}`);
+              const next = sql.ref(`new.${column}`);
+              return dialect === "sqlite" ? sql`${old} is not ${next}` : sql`${old} is distinct from ${next}`;
+            }),
+            sql` or `,
+          );
+        const topicChanged = changed(["node_id", "visibility", "title", "first_post_id"]);
+        if (dialect === "sqlite") {
+          await sql`create trigger search_post_insert after insert on posts begin ${post("new")}; end`.execute(
+            db,
+          );
+          await sql`create trigger search_post_update after update of ${postColumns} on posts begin ${post("new")}; end`.execute(
+            db,
+          );
+          await sql`create trigger search_post_delete after delete on posts begin ${post("old")}; end`.execute(
+            db,
+          );
+          await sql`create trigger search_topic_update after update of ${topicColumns} on topics when ${topicChanged} begin ${topic("new")}; end`.execute(
+            db,
+          );
+          await sql`create trigger search_topic_delete after delete on topics begin ${topic("old")}; end`.execute(
+            db,
+          );
+        } else {
+          await sql`create function pm_search_dirty_post() returns trigger language plpgsql as $$
+            begin
+              if TG_OP = 'DELETE' then ${post("old")}; else ${post("new")}; end if;
+              return null;
+            end $$`.execute(db);
+          await sql`create function pm_search_dirty_topic() returns trigger language plpgsql as $$
+            begin
+              if TG_OP = 'DELETE' then ${topic("old")};
+              elsif ${topicChanged} then ${topic("new")};
+              end if;
+              return null;
+            end $$`.execute(db);
+          await sql`create trigger search_post_changed after insert or update of ${postColumns} or delete on posts
+            for each row execute function pm_search_dirty_post()`.execute(db);
+          await sql`create trigger search_topic_changed after update of ${topicColumns} or delete on topics
+            for each row execute function pm_search_dirty_topic()`.execute(db);
+        }
+      },
+    },
   };
 }

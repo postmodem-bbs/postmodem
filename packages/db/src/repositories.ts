@@ -1641,9 +1641,9 @@ export function createRepositories(db: Db, dialect: "sqlite" | "pg"): Repositori
         : sql`m.document @@ to_tsquery('simple', ${terms.map((t) => `${t}:*`).join(" & ")})`;
       const base = sql`from search_meta m
         join posts p on p.id = m.post_id and p.visibility = 'core:public'
-        join topics t on t.id = m.topic_id and t.visibility = 'core:public'
-        where ${match} and m.node_id in (${sql.join(q.nodeIds)})
-        ${q.authorId != null ? sql`and m.author_id = ${q.authorId}` : sql``}`;
+        join topics t on t.id = p.topic_id and t.visibility = 'core:public'
+        where ${match} and t.node_id in (${sql.join(q.nodeIds)})
+        ${q.authorId != null ? sql`and p.author_id = ${q.authorId}` : sql``}`;
       // Like phpBB2, results stop at SEARCH_RESULTS_MAX: counting 50,000 matches costs more
       // than anyone reads. The count says "more" with SEARCH_RESULTS_MAX + 1.
       const total = await sql<{

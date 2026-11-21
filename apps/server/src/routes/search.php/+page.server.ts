@@ -13,6 +13,7 @@ const PER_PAGE = 25;
 
 export const load: PageServerLoad = async ({ url, locals, getClientAddress, setHeaders }) => {
   const { repos } = locals.ctx.db;
+  const search = locals.ctx.externalSearch ?? repos.search;
   const keywords = (url.searchParams.get("search_keywords") ?? "").slice(0, 200);
   const authorName = (url.searchParams.get("search_author") ?? "").trim().slice(0, 100);
   const forumId = Number(url.searchParams.get("search_forum")) || 0;
@@ -67,9 +68,10 @@ export const load: PageServerLoad = async ({ url, locals, getClientAddress, setH
   // A forum includes its sub-forums.
   const scope = forumId ? readable.filter((n) => n.path.includes(`/${forumId}/`)) : readable;
   const start = normaliseStart(url.searchParams.get("start"), PER_PAGE, Number.MAX_SAFE_INTEGER);
-  const page = await repos.search.query({
+  const nodeIds = new Set(scope.map((n) => n.id));
+  const page = await search.query({
     terms,
-    nodeIds: scope.map((n) => n.id),
+    nodeIds: [...nodeIds],
     authorId: author?.id,
     page: { page: start / PER_PAGE + 1, perPage: PER_PAGE },
   });
@@ -83,7 +85,16 @@ export const load: PageServerLoad = async ({ url, locals, getClientAddress, setH
     const p = posts.get(id);
     const t = p && topics.get(p.topicId);
     const n = t && nodes.get(t.nodeId);
-    if (!p || !t || !n) return [];
+    if (
+      !p ||
+      !t ||
+      !n ||
+      !nodeIds.has(n.id) ||
+      p.visibility !== "core:public" ||
+      t.visibility !== "core:public" ||
+      (author && p.authorId !== author.id)
+    )
+      return [];
     return [
       {
         postId: p.id,

@@ -22,3 +22,14 @@ Search order and result limits are part of the board's search behavior.
 Each deployment can search with its existing database. Both engines need integration
 coverage to keep indexing and matching behavior aligned. Additional providers must
 preserve the same visibility and permission guarantees.
+
+## Optional Meilisearch provider
+
+Issue #45 adds Meilisearch as an opt-in derived index. The built-in index remains available
+when the external service is unavailable. A database queue records post and topic changes
+in the transaction that commits them. The worker acknowledges changes after indexing tasks
+succeed. The search route uses current forum access and the provider verifies the post,
+topic, author and matching text against the database to exclude stale hits.
+
+Meilisearch sorts by date and post ID, requires all query words, and treats the final word
+as a prefix. The database engines use prefixes for every word.
