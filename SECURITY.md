@@ -35,11 +35,11 @@ default, and we'll agree on a date with you.
 
 Until 1.0, only the latest release gets security fixes.
 
-| Version                               | Supported |
-| ------------------------------------- | --------- |
-| latest 0.x release (currently 0.1.x)  | yes       |
-| `edge` (latest tested build of main)  | yes       |
-| older releases                        | no        |
+| Version                              | Supported |
+| ------------------------------------ | --------- |
+| latest 0.x release (currently 0.1.x) | yes       |
+| `edge` (latest tested build of main) | yes       |
+| older releases                       | no        |
 
 ## Scope
 
