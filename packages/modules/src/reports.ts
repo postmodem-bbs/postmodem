@@ -2,7 +2,8 @@
 // reports (tier 2, PACKAGES.md §2.5): members report a post with a reason; moderators of its
 // forum see a count in the header, work through a queue and close each report with an
 // outcome. Przemo's report.php is the URL (apps/server/src/routes/report.php). Importing
-// Przemo's report_* data arrives with importer slices (extension point #12, M2b).
+// Przemo's report_* data arrives with importer slices (extension point #12) in the Beta
+// phase (ADR 0024).
 import {
   defineChannel,
   type Id,

@@ -997,7 +997,7 @@ function originLines(o: UnreadByOrigin | undefined): string[] {
   if (!o) return [];
   const cols = (c: Record<string, string[]>) => Object.values(c).flat().length;
   const lines = [
-    `  Przemo features (imported with their packages later): ${o.przemo.tables.length} tables, ${cols(o.przemo.columns)} columns, ${o.przemo.config.length} config keys`,
+    `  Przemo features (imported with their packages in the Beta phase, before 1.0): ${o.przemo.tables.length} tables, ${cols(o.przemo.columns)} columns, ${o.przemo.config.length} config keys`,
     `  stock phpBB2/Przemo data nothing needs: ${o.stock.tables.length} tables, ${cols(o.stock.columns)} columns`,
   ];
   if (o.unknown.tables.length || cols(o.unknown.columns))

@@ -61,8 +61,9 @@ Usage: postmodem <command>
                 (for performance tests of deep topic pages)
   import przemo --source mysql://user:pass@host/db [--prefix phpbb_] [--charset latin2|cp1250|utf8]
                 [--files <old board directory>] [--dry-run] [--report <file>] [--report-bundle <file>]
-                import a phpBB2 / Przemo board into a fresh board (resumable); the
-                source URL can also come from POSTMODEM_IMPORT_SOURCE(_FILE); --files copies
+                experimental until the Beta phase (docs/IMPORTING.md): import a phpBB2 /
+                Przemo board into a fresh board (resumable); the source URL can also
+                come from POSTMODEM_IMPORT_SOURCE(_FILE); --files copies
                 smiley and avatar images from the old board's directory
   perms explain --user <name|guest> --capability <key> [--node <id>]
                 show whether a user may do something, and which grants decided it
@@ -281,6 +282,9 @@ async function importBoard(args: string[]): Promise<number> {
   const dryRun = args.includes("--dry-run");
   const ctx = await createContext({ migrate: true });
   let source: LegacySource | undefined;
+  ctx.log.warn("the importer is experimental until the Beta phase: try it on a copy and keep the old board", {
+    guide: "docs/IMPORTING.md",
+  });
   try {
     source = await openMysqlSource(sourceUrl, flag(args, "prefix") ?? "phpbb_");
     ctx.log.info(dryRun ? "import dry run started" : "import started", { prefix: source.prefix });

@@ -14,7 +14,8 @@
       "!tools/spikes",
       "!docs",
       "!LICENSES",
-      "!var"
+      "!var",
+      "!!.claude/worktrees"
     ]
   },
   "formatter": {
