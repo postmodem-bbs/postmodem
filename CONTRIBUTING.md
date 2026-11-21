@@ -88,11 +88,16 @@ docs say _what_ and _why_; the Project says _where it stands_.
 that passed CI, and its history is never rewritten.
 
 - **Pull requests only.** No direct pushes to `main`, no force-pushes, no
-  deleting it. Merge with **squash**, so `main` stays linear and each commit
-  names its pull request (`… (#75)`).
+  deleting it. Pull requests land through the **merge queue**, squashed, so
+  `main` stays linear and each commit names its pull request (`… (#75)`).
+- **Merge queue.** When a pull request is ready, choose "Merge when ready" (or
+  run `gh pr merge <n> --auto`). The queue tests it on top of `main` and of the
+  pull requests queued ahead of it, then merges it. Nobody needs to update a
+  branch by hand. A pull request whose group fails leaves the queue and stays
+  open.
 - **Required checks:** `Lint, typecheck, unit tests, licences`, `Build image`,
-  `E2E + accessibility (solo)`, `E2E + accessibility (stack)` and `dco`, run
-  against the latest `main` (rebase or update the branch if it moved).
+  `E2E + accessibility (solo)`, `E2E + accessibility (stack)` and `dco`, on the
+  pull request and again on its merge-queue group.
 - **Code scanning:** CodeQL (GitHub's default setup) must have analysed the
   pull request, and the pull request must not introduce a high or critical
   security alert, or an error-level alert. Fix the alert, or have a maintainer
