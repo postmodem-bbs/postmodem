@@ -18,6 +18,7 @@ export default defineConfig({
     ? [["list"], ["html", { open: "never", outputFolder: "var/playwright-report" }]]
     : "list",
   use: {
+    colorScheme: process.env.PM_COLOR_SCHEME === "dark" ? "dark" : "light",
     baseURL: process.env.PM_BASE_URL ?? "http://localhost:8080",
     // Stack mode behind Caddy uses a locally issued certificate in CI.
     ignoreHTTPSErrors: process.env.PM_IGNORE_HTTPS_ERRORS === "1",
