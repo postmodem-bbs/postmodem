@@ -45,6 +45,7 @@ export interface PackageHost {
   validateSession(session: Session, ip: string): boolean;
   isEnabled(key: PackageKey): boolean;
   enabled(): PackageKey[];
+  privacyUnavailable(key: PackageKey): boolean;
   exportPersonal(userId: Id): Promise<Record<string, unknown>>;
   erasePersonal(userId: Id, tx: Repositories): Promise<void>;
   emit<E extends BoardEvent>(event: E, payload: BoardEvents[E]): Promise<void>;
@@ -117,10 +118,11 @@ export async function createPackageHost(opts: {
       log.error("package failed to start; it stays off", { package: p.key, error: (e as Error).message });
     }
   }
+  const privacyUnavailable = (key: PackageKey) => !runtimes.get(key)?.privacy;
   function* privacyHandlers() {
     for (const pkg of installed) {
       const privacy = runtimes.get(pkg.key)?.privacy;
-      if (pkg.personalData && !privacy)
+      if (pkg.personalData && privacyUnavailable(pkg.key))
         throw new Error(`Privacy handlers unavailable for package ${pkg.key}`);
       if (privacy) yield [pkg.key, privacy] as const;
     }
@@ -171,6 +173,7 @@ export async function createPackageHost(opts: {
   }
   return {
     installed,
+    privacyUnavailable,
     async loginWait(attempt) {
       let wait = 0;
       for (const [key, { auth }] of active()) {

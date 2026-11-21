@@ -17,7 +17,7 @@
     {#each data.packages as p (p.key)}
       <label class="check">
         <input type="checkbox" name="on" value={p.key} checked={p.on} />
-        <span><strong>{p.name}</strong> <span class="muted">({p.key}, T{p.tier}, {p.version})</span><br />{p.description}</span>
+        <span><strong>{p.name}</strong> <span class="muted">({p.key}, T{p.tier}, {p.version})</span><br />{p.description}{#if p.privacyUnavailable}<br />{t("admin-packages-privacy-unavailable")}{/if}</span>
       </label>
     {/each}
   </fieldset>

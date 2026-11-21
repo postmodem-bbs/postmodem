@@ -611,6 +611,7 @@ admin-note = Notatka (dla Ciebie)
 admin-packages-profile = Profil: { $profile }.
 admin-packages-follows = Dopóki tu czegoś nie zmienisz, włączone pakiety wynikają z profilu.
 admin-packages-enabled = Włączone pakiety
+admin-packages-privacy-unavailable = Obsługa danych osobowych nie uruchomiła się. Eksport danych i usuwanie kont są zablokowane do czasu naprawy pakietu.
 admin-actor = Kto
 admin-action = Co
 admin-target = Czego dotyczy

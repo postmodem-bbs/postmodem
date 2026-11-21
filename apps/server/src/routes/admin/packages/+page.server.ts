@@ -18,6 +18,7 @@ export const load: PageServerLoad = ({ locals, url }) => {
       tier: p.tier,
       version: p.version,
       on: on.has(p.key),
+      privacyUnavailable: !!p.personalData && locals.ctx.packages.privacyUnavailable(p.key),
     })),
   };
 };

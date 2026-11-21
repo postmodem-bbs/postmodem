@@ -592,6 +592,7 @@ admin-note = Note (for you)
 admin-packages-profile = Profile: { $profile }.
 admin-packages-follows = Until you change something here, the enabled set follows it.
 admin-packages-enabled = Enabled packages
+admin-packages-privacy-unavailable = Privacy handlers did not start. Account export and deletion are blocked until this package is repaired.
 admin-actor = Who
 admin-action = What
 admin-target = On what
