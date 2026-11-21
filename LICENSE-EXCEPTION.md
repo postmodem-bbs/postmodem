@@ -1,9 +1,10 @@
 # Postmodem extension exception (DRAFT — pending legal review)
 
-> **Status: draft.** This text records the intent of
-> [ADR 0010](docs/adr/0010-agpl-core-apache-sdk.md). It must be reviewed by
-> someone with legal expertise before the first public release, and it has no
-> effect until that review is done and this notice is removed.
+> **Status: draft. Not in force.** This text records the intent of
+> [ADR 0010](docs/adr/0010-agpl-core-apache-sdk.md). No permission below has been granted
+> yet. Until someone with legal expertise has reviewed it ([#48](https://github.com/postmodem-bbs/postmodem/issues/48)) and this notice is removed,
+> Postmodem and every extension that uses it are under the AGPL alone. Don't rely on it
+> when choosing a licence for an extension.
 
 Additional permission under section 7 of the GNU Affero General Public License,
 version 3 ("AGPL"):

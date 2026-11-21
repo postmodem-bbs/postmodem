@@ -1,0 +1,57 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+name: Bug report
+description: Something in Postmodem doesn't work as it should.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Security problems go through [private reporting](https://github.com/postmodem-bbs/postmodem/security/advisories/new), never a public issue (SECURITY.md).
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Sign in as a member
+        2. Open …
+        3. …
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The image tag (e.g. `0.1.0`, `edge`) or the commit you built from.
+    validations:
+      required: true
+  - type: dropdown
+    id: deployment
+    attributes:
+      label: Deployment
+      options:
+        - Solo (one container, SQLite)
+        - Stack (Postgres, Caddy)
+        - Local development (pnpm dev or the dev compose file)
+        - Other
+    validations:
+      required: true
+  - type: dropdown
+    id: imported
+    attributes:
+      label: Was the board imported from phpBB2 / Przemo?
+      options:
+        - "No"
+        - "Yes"
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs or `postmodem doctor` output
+      description: Remove passwords, e-mail addresses and other personal data first.
+      render: text
