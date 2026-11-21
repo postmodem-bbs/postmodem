@@ -1,6 +1,7 @@
 # ADR 0019 — Package tiers, and `essentials` as the default profile
 
-- Status: accepted · 2026-11-18 · amends [PACKAGES.md §5](../PACKAGES.md#5-distribution-profiles)
+- Status: accepted · 2026-11-18 · amends [PACKAGES.md §5](../PACKAGES.md#5-distribution-profiles) ·
+  amended by [ADR 0024](0024-importer-work-in-the-beta-phase.md): importer slices move to the Beta phase
 
 ## Context
 PACKAGES.md splits Przemo into about 75 packages and made the `przemo` profile (every one of
