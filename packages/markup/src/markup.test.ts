@@ -123,6 +123,18 @@ describe("rendering", () => {
     expect(renderHtml("[unknown]x[/unknown]")).toBe("[unknown]x[/unknown]");
   });
 
+  it("parses tag arguments full of quotes in linear time", () => {
+    // Exponential backtracking took seconds at 40 quotes and minutes at 50.
+    for (const tail of ["", "x", "\n", "]"]) {
+      const source = `[url=${'"'.repeat(20_000)}${tail}`;
+      const started = performance.now();
+      renderHtml(source);
+      expect(performance.now() - started).toBeLessThan(500);
+    }
+    expect(renderHtml('[quote="Ola"]hi[/quote]')).toContain("Ola");
+    expect(renderHtml('[quote=""Ola""]hi[/quote]')).toContain("hi");
+  });
+
   it("survives pathological nesting", () => {
     const html = renderHtml(`${"[b]".repeat(500)}deep${"[/b]".repeat(500)}`);
     expect((html.match(/<strong>/g) ?? []).length).toBeLessThanOrEqual(24);
