@@ -67,7 +67,7 @@ test("a member starts a topic, previews and posts a reply, quotes, edits and del
   await expect(page.locator("article.post")).toHaveCount(1);
 });
 
-test("hide blocks unlock for the reader who replied and stay private for guests", async ({
+test("hide blocks show to the topic's author, unlock for a reader who replied, and stay private for guests", async ({
   page,
   browser,
 }) => {
@@ -76,16 +76,27 @@ test("hide blocks unlock for the reader who replied and stay private for guests"
   const marker = `Protected ${unique()}`;
   await newTopic(page, `Hidden content ${unique()}`, `Public introduction. [hide][b]${marker}[/b][/hide]`);
   const topicUrl = page.url();
-  const first = page.locator("article.post").first();
-  await expect(first).toContainText("This content is hidden.");
-  expect(await page.content()).not.toContain(marker);
+  // The author sees their own hidden text.
+  await expect(page.locator("article.post").first().locator("strong", { hasText: marker })).toBeVisible();
 
-  await first.getByRole("link", { name: "Quote" }).click();
-  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Reply");
-  await expect(page.getByLabel("Message")).not.toHaveValue(new RegExp(marker));
-  await page.getByLabel("Message").fill("A public reply.");
-  await page.getByRole("button", { name: "Post" }).click();
-  await expect(first.locator("strong", { hasText: marker })).toBeVisible();
+  const reader = await browser.newContext({ locale: "en-US" });
+  try {
+    const readerPage = await reader.newPage();
+    await signIn(readerPage, "Łukasz Żółć", PASSWORD);
+    await readerPage.goto(topicUrl);
+    const first = readerPage.locator("article.post").first();
+    await expect(first).toContainText("This content is hidden.");
+    expect(await readerPage.content()).not.toContain(marker);
+
+    await first.getByRole("link", { name: "Quote" }).click();
+    await expect(readerPage.getByRole("heading", { level: 1 })).toHaveText("Reply");
+    await expect(readerPage.getByLabel("Message")).not.toHaveValue(new RegExp(marker));
+    await readerPage.getByLabel("Message").fill("A public reply.");
+    await readerPage.getByRole("button", { name: "Post" }).click();
+    await expect(first.locator("strong", { hasText: marker })).toBeVisible();
+  } finally {
+    await reader.close();
+  }
 
   const guest = await browser.newContext({ javaScriptEnabled: false, locale: "en-US" });
   try {

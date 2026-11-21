@@ -221,7 +221,7 @@ it("reveals hide blocks only for eligible readers while the package is enabled",
   const visible = (userId: number | null, bypass = false) =>
     host.visibleRenderHoles(
       {
-        topic: { id: 7, firstPostId: 12 },
+        topic: { id: 7, firstPostId: 12, authorId: 3 },
         node: {},
         perms: {
           viewer: { userId },
@@ -235,6 +235,9 @@ it("reveals hide blocks only for eligible readers while the package is enabled",
   expect(lookups).toBe(0);
   expect(await visible(1)).toEqual(new Set());
   expect(await visible(2)).toEqual(new Set([key]));
+  expect(lookups).toBe(2);
+  // The topic's author reads their own hidden text without a reply.
+  expect(await visible(3)).toEqual(new Set([key]));
   expect(lookups).toBe(2);
   await settings.set(enabledPackagesSetting, []);
   expect(await visible(2, true)).toEqual(new Set());
