@@ -100,3 +100,21 @@ export async function signIn(page: Page, login: string, password: string) {
     expect(left || (await page.getByRole("alert").count()) > 0, "sign-in answered").toBe(true);
   }).toPass();
 }
+
+/** How often every board process re-reads settings (SETTINGS_REFRESH_MS, apps/server bootstrap.ts). */
+const SETTINGS_REFRESH_MS = 5_000;
+
+/**
+ * Turns a package on from /admin/packages, where an administrator's `page` already is. The
+ * stack board runs two web processes behind its proxy, and the one that didn't take the save
+ * keeps the old package list until it next reads settings. So after a change this waits out
+ * that refresh, and the test's next request finds the package on whichever process answers.
+ */
+export async function enablePackage(page: Page, name: RegExp) {
+  const box = page.getByRole("checkbox", { name });
+  if (await box.isChecked()) return;
+  await box.check();
+  await page.getByRole("button", { name: "Save" }).click();
+  await expect(page.getByRole("status")).toHaveText("Saved.");
+  await page.waitForTimeout(SETTINGS_REFRESH_MS + 1_000);
+}
