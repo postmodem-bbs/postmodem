@@ -87,7 +87,8 @@ export class Meilisearch {
       .select("ready")
       .where("id", "=", 1)
       .executeTakeFirst();
-    if (!state?.ready) return repos.search.query(q);
+    // Packages' search filters (#39) are applied by the database index only.
+    if (!state?.ready || q.filters?.length) return repos.search.query(q);
 
     let candidates: Id[];
     try {

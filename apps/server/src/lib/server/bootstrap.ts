@@ -46,6 +46,7 @@ import {
   packagePermissions,
 } from "./packages.ts";
 import { createPlatform, type Platform } from "./platform.ts";
+import { rebuildSearch, searchPlan } from "./search.ts";
 
 export interface AppContext {
   config: Config;
@@ -184,7 +185,20 @@ export async function createContext(opts: {
   const mailer = createMailer(config, log, () => defaultSender(config, settings.get(boardName)));
   if (mailer.kind === "log")
     log.warn("e-mail goes to the log (POSTMODEM_MAIL_URL=log://); set an smtp:// URL to deliver it");
-  const worker = new Worker(db.repos, { "mail.send": (payload) => mailer.send(payload as MailMessage) }, log);
+  const worker = new Worker(
+    db.repos,
+    {
+      "mail.send": (payload) => mailer.send(payload as MailMessage),
+      "search.rebuild": async (payload) => {
+        await settings.reload();
+        const plan = searchPlan(packages.searchContributions());
+        if ((payload as { version: string }).version !== plan.version) return;
+        const posts = await rebuildSearch(db.repos, undefined, plan, false);
+        log.info("rebuilt package search index", { posts });
+      },
+    },
+    log,
+  );
 
   return {
     config,
@@ -232,14 +246,18 @@ export async function createContext(opts: {
       return permissionsFor(capabilities, snapshot, viewer);
     },
     watchSettings(intervalMs = SETTINGS_REFRESH_MS) {
-      const timer = setInterval(async () => {
+      const refresh = async () => {
         if (!settingsLoaded) return;
         try {
           for (const p of await settings.reload()) log.warn(p);
+          const { version } = searchPlan(packages.searchContributions());
+          if (await db.repos.search.scheduleRebuild(version)) worker.nudge();
         } catch (e) {
-          log.warn("could not reload settings", { error: (e as Error).message });
+          log.warn("could not refresh settings and search schema", { error: (e as Error).message });
         }
-      }, intervalMs);
+      };
+      void refresh();
+      const timer = setInterval(refresh, intervalMs);
       timer.unref();
       return () => clearInterval(timer);
     },

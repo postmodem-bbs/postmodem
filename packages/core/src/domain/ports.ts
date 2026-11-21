@@ -145,7 +145,7 @@ export interface NewPost {
 export interface PostRepository {
   create(input: NewPost): Promise<Post>;
   get(id: Id): Promise<Post | undefined>;
-  getMany(ids: Id[]): Promise<Map<Id, Post>>;
+  getMany(ids: Id[], options?: { forUpdate?: boolean }): Promise<Map<Id, Post>>;
   /** Oldest first, as a classic board reads. */
   listByTopic(topicId: Id, page: PageRequest, opts?: { visibility?: VisibilityState[] }): Promise<Page<Post>>;
   /** 0-based position of a post within its topic (for `?p=` permalinks to the right page). */
@@ -448,6 +448,13 @@ export interface SearchDocument {
   body: string;
 }
 
+/** Provider-neutral conditions, ANDed with the core's access and visibility checks. */
+export interface SearchFilter {
+  field: "authorId" | "topicId" | "postId" | "createdAt";
+  op: "eq" | "gte" | "lte";
+  value: number;
+}
+
 /** Search provider (registry #7): the database's full-text index until another is installed. */
 export interface SearchRepository {
   /** Adds or replaces documents. */
@@ -460,7 +467,16 @@ export interface SearchRepository {
    * Public posts matching every term (prefixes too), in the given nodes, newest first.
    * Terms are folded words of [a-z0-9] only (see searchTerms).
    */
-  query(q: { terms: string[]; nodeIds: Id[]; authorId?: Id | null; page: PageRequest }): Promise<Page<Id>>;
+  query(q: {
+    terms: string[];
+    nodeIds: Id[];
+    authorId?: Id | null;
+    filters?: readonly SearchFilter[];
+    page: PageRequest;
+  }): Promise<Page<Id>>;
+  /** Atomically queue one rebuild when the configured package search schema has changed. */
+  scheduleRebuild(version: string): Promise<boolean>;
+  finishRebuild(version: string): Promise<void>;
 }
 
 export interface InviteRepository {

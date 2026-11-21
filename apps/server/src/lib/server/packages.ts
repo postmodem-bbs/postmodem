@@ -20,6 +20,7 @@ import {
   type PackageKey,
   type PackagePasswordPolicy,
   type PackageRuntime,
+  type PackageSearch,
   type Post,
   type ProfileName,
   packageRoleGrants,
@@ -54,6 +55,7 @@ export interface PackageHost {
   exportPersonal(userId: Id): Promise<Record<string, unknown>>;
   erasePersonal(userId: Id, tx: Repositories): Promise<void>;
   personalData(): NonNullable<PackageDefinition["personalData"]>[];
+  searchContributions(): readonly (readonly [PackageKey, PackageSearch])[];
   decorateTopics(viewer: Viewer, topics: Topic[]): Promise<Map<Id, Decoration[]>>;
   decorateForums(viewer: Viewer, nodes: Node[]): Promise<Map<Id, Decoration[]>>;
   slot(name: SlotName, args: SlotArgs): Promise<SlotItem[]>;
@@ -261,6 +263,8 @@ export async function createPackageHost(opts: {
       );
       return visible;
     },
+    searchContributions: () =>
+      active().flatMap(([key, runtime]) => (runtime.search ? [[key, runtime.search] as const] : [])),
     async emit(event, payload, request) {
       for (const [key, r] of active()) {
         const handler = r.on?.[event] as

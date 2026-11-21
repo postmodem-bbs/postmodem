@@ -17,6 +17,7 @@ export const hideUntilReply: PackageDefinition = {
     },
   ],
   setup: ({ repos }) => ({
+    search: { version: 1, omitTags: ["hide"] },
     renderHoles: [
       {
         tag: "hide",

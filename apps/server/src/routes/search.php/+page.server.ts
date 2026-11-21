@@ -4,9 +4,9 @@
 // Every word must match (as a prefix, diacritics ignored); results are permission-filtered by
 // the forums the reader may read, newest first, 25 a page.
 import { searchTerms } from "@postmodem/core";
-import { excerpt } from "@postmodem/markup";
 import { normaliseStart } from "#lib/pagination.ts";
 import { nodeRef, topicRef } from "#lib/server/board.ts";
+import { searchPlan } from "#lib/server/search.ts";
 import type { PageServerLoad } from "./$types";
 
 const PER_PAGE = 25;
@@ -68,10 +68,12 @@ export const load: PageServerLoad = async ({ url, locals, getClientAddress, setH
   // A forum includes its sub-forums.
   const scope = forumId ? readable.filter((n) => n.path.includes(`/${forumId}/`)) : readable;
   const start = normaliseStart(url.searchParams.get("start"), PER_PAGE, Number.MAX_SAFE_INTEGER);
+  const plan = searchPlan(locals.ctx.packages.searchContributions());
   const nodeIds = new Set(scope.map((n) => n.id));
   const page = await search.query({
     terms,
     nodeIds: [...nodeIds],
+    filters: plan.filters(url.searchParams),
     authorId: author?.id,
     page: { page: start / PER_PAGE + 1, perPage: PER_PAGE },
   });
@@ -102,7 +104,7 @@ export const load: PageServerLoad = async ({ url, locals, getClientAddress, setH
         forum: { ...nodeRef(n), title: n.title },
         author: (p.authorId && users.get(p.authorId)?.username) || p.authorName,
         at: p.createdAt,
-        excerpt: excerpt(p.source, 240),
+        excerpt: plan.excerpt(p.source, 240),
       },
     ];
   });

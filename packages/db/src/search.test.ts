@@ -26,6 +26,19 @@ describe.each(testEngines())("search on %s", (engine) => {
     await db.close();
   });
 
+  it("queues one rebuild per search version across concurrent checks", async () => {
+    expect(await r.search.scheduleRebuild("[]")).toBe(false);
+    const scheduled = await Promise.all([r.search.scheduleRebuild("v1"), r.search.scheduleRebuild("v1")]);
+    expect(scheduled.filter(Boolean)).toHaveLength(1);
+    const job = await r.jobs.claim(["search.rebuild"], "worker", Date.now(), 120_000);
+    expect(job?.payload).toEqual({ version: "v1" });
+    expect(await r.search.scheduleRebuild("v2")).toBe(false);
+    await r.search.finishRebuild("v1");
+    await r.jobs.complete(job!.id, Date.now());
+    expect(await r.search.scheduleRebuild("v1")).toBe(false);
+    expect(await r.search.scheduleRebuild("v2")).toBe(true);
+  });
+
   it("finds posts by every word, as prefixes, only in the given forums and public posts", async () => {
     const a = await r.nodes.create({ parentId: null, kind: "forum", title: "A" });
     const b = await r.nodes.create({ parentId: null, kind: "forum", title: "B" });
@@ -68,6 +81,21 @@ describe.each(testEngines())("search on %s", (engine) => {
     expect((await q("zasilacz", [])).items).toEqual([]);
     expect((await q("zasilacz", [a.id], 999)).items).toEqual([]);
     expect((await q("graficzna")).items).toEqual([p2.id]); // titles count
+
+    expect(
+      (
+        await r.search.query({
+          terms: ["zasil"],
+          nodeIds: [a.id],
+          filters: [{ field: "createdAt", op: "gte", value: 2000 }],
+          page,
+        })
+      ).items,
+    ).toEqual([p2.id]);
+    // A move to a private forum removes stale hits before the index has caught up.
+    await r.topics.moveTo(p2.topicId, b.id);
+    expect((await q("graficzna")).items).toEqual([]);
+    await r.topics.moveTo(p2.topicId, a.id);
 
     // Deleted posts drop out; re-indexing replaces a document.
     await r.posts.setVisibility(p1.id, "core:deleted");

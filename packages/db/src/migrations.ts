@@ -646,5 +646,16 @@ export function migrations(dialect: Dialect): Record<string, Migration> {
           .execute();
       },
     },
+    "0018_search_index_state": {
+      async up(db: Db) {
+        await db.schema
+          .createTable("search_index_state")
+          .addColumn("id", "integer", (column) => column.primaryKey())
+          .addColumn("applied_version", "text", (column) => column.notNull())
+          .addColumn("job_id", "bigint")
+          .execute();
+        await sql`insert into search_index_state (id, applied_version) values (1, '[]')`.execute(db);
+      },
+    },
   };
 }
