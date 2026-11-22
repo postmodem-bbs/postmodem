@@ -7,7 +7,7 @@ import type { RequestHandler } from "./$types";
 const cache = new Map<string, string>();
 
 export const GET: RequestHandler = ({ params }) => {
-  const theme = THEMES[params.id];
+  const theme = Object.hasOwn(THEMES, params.id) ? THEMES[params.id] : undefined;
   if (!theme) error(404, "unknown theme");
   let css = cache.get(theme.id);
   if (!css) {

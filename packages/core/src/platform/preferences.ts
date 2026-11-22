@@ -13,6 +13,8 @@ export interface PreferenceDef<T> {
   default: T;
   /** Where a guest's choice lives: one shared cookie (small scalars only), or nowhere. */
   guest: "cookie" | "none";
+  /** Whether the device's guest choice also applies to a signed-in member by default. */
+  inheritGuest?: boolean;
   /**
    * A page that lists the preference for members to change. "notifications": the
    * Notifications section of /account, labelled `pref-<key>` and, for each option of an enum,
@@ -106,7 +108,11 @@ export class Preferences {
     const take = (raw: Record<string, unknown>, guestOnly: boolean) => {
       for (const [key, value] of Object.entries(raw)) {
         const def = this.#defs.get(key);
-        if (!def || (guestOnly && def.guest !== "cookie")) continue;
+        if (
+          !def ||
+          (guestOnly && (def.guest !== "cookie" || (userId !== null && def.inheritGuest === false)))
+        )
+          continue;
         const parsed = def.schema.safeParse(value);
         if (parsed.success) values.set(key, parsed.data);
       }

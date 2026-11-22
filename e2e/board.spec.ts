@@ -287,10 +287,13 @@ test.describe("without JavaScript", () => {
     await openHydepark(page);
     await page.getByRole("link", { name: "Regulamin forum" }).click();
     await expect(page.locator("article.post")).toHaveCount(1);
-    await page.getByLabel("Theme").selectOption("dark");
+    await page.getByRole("combobox", { name: "Theme", exact: true }).selectOption("modern");
+    await page.getByRole("combobox", { name: "Colour scheme", exact: true }).selectOption("dark");
     await page.getByLabel("Language").selectOption("pl");
     await page.getByRole("button", { name: "OK" }).click();
     await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+    await expect(page.locator("html")).toHaveAttribute("data-board-theme", "modern");
+    await expect(page.locator('link[href="/theme/modern.css"]')).toHaveCount(1);
     await expect(page.locator("html")).toHaveAttribute("lang", "pl");
     await expect(page.getByRole("heading", { level: 1 })).toContainText("Regulamin forum");
     await expect(page.getByRole("navigation", { name: "Jesteś tutaj" })).toBeVisible();

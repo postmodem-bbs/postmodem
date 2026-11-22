@@ -1,5 +1,6 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
+  import { THEMES } from "@postmodem/ui";
   import Slot from "#lib/components/Slot.svelte";
   import "../app.css";
   import { SUPPORTED, translator } from "@postmodem/i18n";
@@ -85,10 +86,19 @@
       </label>
       <label>
         {t("theme-label")}
+        <select name="boardTheme">
+          <option value="board" selected={data.theme === "board"}>{t("theme-board-default")}</option>
+          {#each Object.values(THEMES) as theme (theme.id)}
+            <option value={theme.id} selected={data.theme === theme.id}>{theme.name}</option>
+          {/each}
+        </select>
+      </label>
+      <label>
+        {t("colour-scheme-label")}
         <select name="theme">
-          <option value="system" selected={data.theme === "system"}>{t("theme-system")}</option>
-          <option value="light" selected={data.theme === "light"}>{t("theme-light")}</option>
-          <option value="dark" selected={data.theme === "dark"}>{t("theme-dark")}</option>
+          <option value="system" selected={data.colorScheme === "system"}>{t("theme-system")}</option>
+          <option value="light" selected={data.colorScheme === "light"}>{t("theme-light")}</option>
+          <option value="dark" selected={data.colorScheme === "dark"}>{t("theme-dark")}</option>
         </select>
       </label>
       <button type="submit" class="secondary">OK</button>

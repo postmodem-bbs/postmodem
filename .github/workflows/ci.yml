@@ -188,6 +188,51 @@ jobs:
           - { name: vanilla, mode: solo, profile: vanilla, browser: chromium, install: chromium }
           - { name: vanilla, mode: solo, profile: vanilla, browser: firefox, install: firefox }
           - { name: vanilla, mode: solo, profile: vanilla, browser: webkit, install: webkit }
+          - {
+              name: classic-dark,
+              mode: solo,
+              profile: essentials,
+              browser: chromium,
+              install: chromium,
+              theme: classic,
+              scheme: dark,
+            }
+          - {
+              name: modern-light,
+              mode: solo,
+              profile: essentials,
+              browser: chromium,
+              install: chromium,
+              theme: modern,
+              scheme: light,
+            }
+          - {
+              name: modern-dark,
+              mode: solo,
+              profile: essentials,
+              browser: chromium,
+              install: chromium,
+              theme: modern,
+              scheme: dark,
+            }
+          - {
+              name: terminal-light,
+              mode: solo,
+              profile: essentials,
+              browser: chromium,
+              install: chromium,
+              theme: terminal,
+              scheme: light,
+            }
+          - {
+              name: terminal-dark,
+              mode: solo,
+              profile: essentials,
+              browser: chromium,
+              install: chromium,
+              theme: terminal,
+              scheme: dark,
+            }
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
@@ -233,6 +278,7 @@ jobs:
           docker compose -f compose.solo.yaml -f ci/mailpit.yaml exec -T postmodem /nodejs/bin/node /app/postmodem.js settings set core.posting.floodSeconds 0
           docker compose -f compose.solo.yaml -f ci/mailpit.yaml exec -T postmodem /nodejs/bin/node /app/postmodem.js settings set core.posting.perHour 0
           docker compose -f compose.solo.yaml -f ci/mailpit.yaml exec -T postmodem /nodejs/bin/node /app/postmodem.js settings set core.search.perMinute 0
+          docker compose -f compose.solo.yaml -f ci/mailpit.yaml exec -T postmodem /nodejs/bin/node /app/postmodem.js settings set core.board.defaultTheme "${{ matrix.theme || 'classic' }}"
           printf '%s' "$PM_ADMIN_PASSWORD" | docker compose -f compose.solo.yaml -f ci/mailpit.yaml exec -T postmodem /nodejs/bin/node /app/postmodem.js user set-password Admin
       - name: Start (stack)
         if: matrix.mode == 'stack'
@@ -289,7 +335,21 @@ jobs:
           PM_IGNORE_HTTPS_ERRORS: ${{ matrix.mode == 'stack' && '1' || '0' }}
           PM_MAILPIT_URL: http://localhost:8025
           PM_PROFILE: ${{ matrix.profile }}
-        run: pnpm exec playwright test
+          PM_BOARD_THEME: ${{ matrix.theme || 'classic' }}
+          PM_COLOR_SCHEME: ${{ matrix.scheme || 'light' }}
+        run: |
+          # Settings changed by the CLI are picked up by the running web process on its next refresh.
+          for attempt in $(seq 1 30); do
+            if curl -ksf "$PM_BASE_URL/" | grep -F "data-board-theme=\"$PM_BOARD_THEME\"" >/dev/null; then
+              break
+            fi
+            if [ "$attempt" = 30 ]; then
+              echo "Board did not load the expected theme: $PM_BOARD_THEME" >&2
+              exit 1
+            fi
+            sleep 1
+          done
+          pnpm exec playwright test
       - name: Permalinks in the other URL styles (ADR 0012)
         if: matrix.url-browsers
         working-directory: deploy
@@ -321,6 +381,12 @@ jobs:
             -e BASE_URL=http://localhost:8080 -e P95_MS=400 -e DURATION=20s \
             -e FORUM=4 -e FORUM_TOPICS=33 -e TOPIC="$topic" -e TOPIC_POSTS=10000 \
             grafana/k6:1.3.0 run --quiet /scripts/smoke.js
+      - name: Change the board theme in the admin panel
+        if: matrix.name == 'solo' && matrix.browser == 'chromium'
+        env:
+          PM_BASE_URL: http://localhost:8080
+          PM_TEST_THEME_SETTING: "1"
+        run: pnpm exec playwright test e2e/themes.spec.ts --grep "admin changes the board default"
       - name: Container logs
         if: failure()
         working-directory: deploy

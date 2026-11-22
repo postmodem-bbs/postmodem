@@ -14,6 +14,7 @@ const TEXT_PAIRS: [ColorToken, ColorToken][] = [
   ["link", "surface"],
   ["link", "surfaceAlt"],
   ["linkHover", "surface"],
+  ["linkHover", "surfaceAlt"],
   // Header bars, and the links on them (site header, category titles), use headerText.
   ["headerText", "headerBg"],
   ["danger", "surface"],
@@ -27,6 +28,7 @@ const TEXT_PAIRS: [ColorToken, ColorToken][] = [
 const UI_PAIRS: [ColorToken, ColorToken][] = [
   ["focus", "bg"],
   ["focus", "surface"],
+  ["focus", "surfaceAlt"],
   ["focus", "controlBg"],
   // A control's boundary and a checked box must stand out from the control and the page.
   ["controlBorder", "controlBg"],
@@ -34,6 +36,7 @@ const UI_PAIRS: [ColorToken, ColorToken][] = [
   ["controlBorder", "surface"],
   ["controlBorder", "surfaceAlt"],
   ["accent", "controlBg"],
+  ["accent", "bg"],
   ["accent", "surface"],
   ["accent", "surfaceAlt"],
 ];

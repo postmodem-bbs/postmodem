@@ -19,11 +19,20 @@ import {
   MemoryCounterBuffer,
   type PackageDefinition,
   Preferences,
+  THEME_IDS,
 } from "@postmodem/core";
 import type { Database } from "@postmodem/db";
 import { SUPPORTED } from "@postmodem/i18n/locales";
 import { z } from "zod";
 import { ValkeyBus, ValkeyCounterBuffer } from "./valkey.ts";
+
+export const readerTheme = definePreference({
+  key: "core.theme",
+  schema: z.enum(["board", ...THEME_IDS]),
+  default: "board" as const,
+  guest: "cookie",
+  inheritGuest: false,
+});
 
 /** The reader's colour scheme (the footer's light/dark switch). */
 export const colorScheme = definePreference({
@@ -165,7 +174,12 @@ export function createPlatform(opts: {
     }),
   );
 
-  const preferences = new Preferences(db.platform.preferences, [colorScheme, language, replyMail]);
+  const preferences = new Preferences(db.platform.preferences, [
+    readerTheme,
+    colorScheme,
+    language,
+    replyMail,
+  ]);
   const fields = new Fields(db.platform.fields);
   const collections = new Collections(db.platform.docs, (def, event, doc) => {
     if (def.channel)

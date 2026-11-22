@@ -24,6 +24,15 @@ export const defaultLocale = defineSetting<Locale>({
   default: "en",
 });
 
+export const THEME_IDS = ["classic", "modern", "terminal"] as const;
+export type ThemeId = (typeof THEME_IDS)[number];
+
+export const defaultTheme = defineSetting<ThemeId>({
+  key: "core.board.defaultTheme",
+  schema: z.enum(THEME_IDS),
+  default: "classic",
+});
+
 export const registrationOpen = defineSetting({
   key: "core.registration.open",
   schema: z.boolean(),
@@ -176,6 +185,7 @@ export function coreSettings(): SettingsRegistry {
     boardName,
     boardDescription,
     defaultLocale,
+    defaultTheme,
     registrationOpen,
     registrationInviteOnly,
     newMemberPosts,
