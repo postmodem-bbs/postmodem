@@ -436,20 +436,25 @@ disabled, which is how we keep feature parity with Przemo.
    runtime with its first tier A packages (`quick-reply`, `reports`, `unread-tracking`).
    **M2b** completes platform services v0 and the extension points, each landing with the
    tier A package that needs it. CI starts the `vanilla` vs `essentials` matrix here.
-4. **M3 — The Przemo packages** by priority ([ADR 0019](adr/0019-package-tiers-and-essentials-profile.md),
+4. **M2c — Vanilla parity** ([milestones/M2c.md](milestones/M2c.md)): everything vanilla
+   phpBB2 had and Postmodem still lacks, in core (ADR 0004): ranks, polls, avatars, word
+   censor, smilies admin, group control panel, who's online, search shortcuts, pruning, mass
+   e-mail, the remaining profile fields and preferences. A `vanilla` board then does what
+   phpBB2 did, before the Przemo packages build on it.
+5. **M3 — The Przemo packages** by priority ([ADR 0019](adr/0019-package-tiers-and-essentials-profile.md),
    PACKAGES.md §2.11): the rest of tier A first (attachments, warnings, bans-plus, helpful,
    polls-plus, …), then tier B. Tier C is left to third parties. Importer slices wait for the
    Beta phase ([ADR 0024](adr/0024-importer-work-in-the-beta-phase.md)). Any gap a package hits
    is fixed in the platform, never with a special case.
-5. **M4 — Extension SDK v1** frozen and documented: tier-1 add-on guide plus
+6. **M4 — Extension SDK v1** frozen and documented: tier-1 add-on guide plus
    ACP add-on editor, tier-2 module SDK, `postmodem ext graduate`, one third-party
    sample of each tier.
-6. **Beta — Import and 1.0** ([milestones/Beta.md](milestones/Beta.md),
+7. **Beta — Import and 1.0** ([milestones/Beta.md](milestones/Beta.md),
    [ADR 0024](adr/0024-importer-work-in-the-beta-phase.md)): starts when every feature planned
    for 1.0 is built and tested. Extension point #12 and every package's importer slice, the
    import summary and real-board imports, then hardening. Ships as `1.0.0-beta.N`, ends
    with **1.0.0**. Until then the importer built in M1 is kept, tested and marked experimental.
-7. **M5 — Federation module**, after 1.0 (phase 1: local forums as followable Groups;
+8. **M5 — Federation module**, after 1.0 (phase 1: local forums as followable Groups;
    phase 2: following remote communities), **WASM sandbox, theme marketplace.**
    The federation-ready core items from §5.2 land in **M1**.
 

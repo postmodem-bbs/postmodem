@@ -12,7 +12,8 @@ it can be released as **1.0.0**. Releases in this phase are `1.0.0-beta.N`.
 
 ## Starts when
 
-- M2b (platform v0), M3 (tier A, then tier B packages) and M4 (Extension SDK v1) are done.
+- M2b (platform v0), [M2c](M2c.md) (vanilla parity), M3 (tier A, then tier B packages) and M4
+  (Extension SDK v1) are done.
 - Every package planned for 1.0 has e2e and axe coverage and can be enabled and disabled
   without breaking the core.
 

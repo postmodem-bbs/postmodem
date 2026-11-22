@@ -70,7 +70,7 @@ Progress is tracked in the
 GitHub Project. The
 docs say _what_ and _why_; the Project says _where it stands_.
 
-- Each milestone (M0–M5) is a repository milestone with one `epic` issue. Its
+- Each milestone (M0–M5, with M2a–M2c, and Beta) is a repository milestone with one `epic` issue. Its
   slices and packages are sub-issues of that epic.
 - Plans come from [`docs/milestones/`](docs/milestones/). When a plan changes,
   update the doc and its issues in the same change.
@@ -79,6 +79,10 @@ docs say _what_ and _why_; the Project says _where it stands_.
 - Pull requests list their scope as the Project lays it out (milestone, epic,
   issues closed or advanced, dependencies). The
   [pull request template](.github/pull_request_template.md) asks for it.
+- Feature issues say which side of [ADR 0004](docs/adr/0004-core-is-vanilla-phpbb2.md) they
+  are on: `scope: vanilla` for what vanilla phpBB2 had (core, in every profile), and
+  `scope: przemo` for what Przemo added (a package). Platform, ops and theming work takes
+  neither.
 - Owner-only tasks carry the `owner-action` label. Open questions carry
   `decision`, and are settled in an ADR.
 

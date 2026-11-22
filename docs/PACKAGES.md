@@ -20,6 +20,9 @@ meaning wasn't obvious, it was checked in the code that uses it.
 
 ### 0.1 Core baseline (vanilla phpBB2, modernised)
 
+What of this is still missing is planned in [M2c](milestones/M2c.md); issues carry the label
+`scope: vanilla`, and package issues `scope: przemo`.
+
 Categories/forums · topics (normal/sticky/announcement) · posts · single-choice
 polls · BBCode (vanilla tag set) · smilies · word censor · users, profiles with
 the vanilla fields · avatars · signatures · ranks (post-count & special) ·
