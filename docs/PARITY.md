@@ -18,7 +18,9 @@ and everything above Core must be switchable off, as in Przemo.
 > the same features strictly as "core = vanilla phpBB2, everything Przemo added
 > = a package", using Przemo's uninstaller as the source of truth. Where the two
 > disagree (e.g. revisions, read tracking and lockout were "Core" here),
-> PACKAGES.md wins.
+> PACKAGES.md wins. In particular, prune, mass e-mail, word censor, who's online
+> (with the record), ranks, avatars, signatures and the vanilla profile fields are
+> core, and the vanilla parts still missing are planned in [M2c](milestones/M2c.md).
 
 ---
 
