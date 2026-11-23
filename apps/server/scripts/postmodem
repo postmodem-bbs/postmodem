@@ -1,0 +1,5 @@
+#!/nodejs/bin/node
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// `postmodem <command>` inside the image (#161): the same CLI as the entrypoint. Distroless has
+// no shell, so this runs through its shebang.
+import("/app/postmodem.js");

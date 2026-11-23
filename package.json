@@ -13,7 +13,7 @@
     "dev": "pnpm --filter @postmodem/server dev",
     "build": "pnpm --filter @postmodem/server build",
     "typecheck": "pnpm -r --parallel typecheck",
-    "lint": "biome check . && node scripts/check-links.mjs && depcruise --config .dependency-cruiser.cjs packages apps/server/src",
+    "lint": "biome check . && node scripts/check-links.mjs && node scripts/check-dockerfile.mjs && depcruise --config .dependency-cruiser.cjs packages apps/server/src",
     "format": "biome format --write .",
     "test": "vitest run",
     "test:watch": "vitest",
