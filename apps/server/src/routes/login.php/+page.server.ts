@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // /login.php — phpBB2's URL. Named actions: ?/login, ?/logout, ?/logoutAll. Sign-out is POST
 // only (phpBB2's GET ?logout=true was a CSRF hole); SvelteKit rejects cross-origin form posts.
-import { authenticate, endSession, findBan, nameKey, startSession } from "@postmodem/core";
+import { authenticate, demoBoard, endSession, findBan, nameKey, startSession } from "@postmodem/core";
 import { fail, redirect } from "@sveltejs/kit";
 import { clearSessionCookie, sessionCookieName, setSessionCookie } from "#lib/server/auth.ts";
+import { DEMO_PASSWORD } from "#lib/server/demo.ts";
+import { DEMO_ACCOUNTS } from "#lib/server/demo-setup.ts";
 import { mayMail, sendAccountMail } from "#lib/server/emails.ts";
 import { safeReturnPath } from "#lib/server/preferences.ts";
 import type { Actions, PageServerLoad } from "./$types";
@@ -14,6 +16,8 @@ export const load: PageServerLoad = async ({ locals, url }) => ({
   otherSessions: locals.user
     ? (await locals.ctx.db.repos.sessions.listForUser(locals.user.id)).length - 1
     : 0,
+  // A demo board (#162) offers its accounts; they all share the published demo password.
+  demo: locals.ctx.settings.get(demoBoard) ? { accounts: DEMO_ACCOUNTS, password: DEMO_PASSWORD } : null,
 });
 
 export const actions: Actions = {

@@ -33,6 +33,8 @@ const FIELDS = {
   // Valkey for counters and live updates (the `scale` profile); passwords shown redacted.
   countersUrl: { env: "COUNTERS_URL", toml: "counters_url", secret: false },
   realtimeUrl: { env: "REALTIME_URL", toml: "realtime_url", secret: false },
+  // A demo board (#162): `run` and `migrate` fill an empty board with the demo.
+  demo: { env: "DEMO", toml: "demo", secret: false },
 } as const;
 type FieldName = keyof typeof FIELDS;
 
@@ -49,6 +51,16 @@ const RESERVED = new Set([
   "ADMIN_EMAIL",
   "ADMIN_PASSWORD",
 ]);
+
+/** On/off values for flags set from the environment, where everything is a string. */
+const FLAGS: Record<string, boolean> = {
+  "1": true,
+  true: true,
+  yes: true,
+  "0": false,
+  false: false,
+  no: false,
+};
 
 const ConfigSchema = z.object({
   dataDir: z.string().min(1),
@@ -87,6 +99,11 @@ const ConfigSchema = z.object({
   /** Registrations one IP address can make per hour before delays start; 0 = unlimited. */
   registrationsPerIpHour: z.coerce.number().int().min(0),
   profile: z.enum(["vanilla", "essentials", "przemo"]),
+  /** Set up an empty board as the demo on start (`postmodem demo`); never for a real board. */
+  demo: z.preprocess(
+    (v) => (typeof v === "string" ? (FLAGS[v.trim().toLowerCase()] ?? v) : v),
+    z.boolean({ error: "must be 1, true or yes (or 0, false, no)" }),
+  ),
   /** Counters' buffer: memory:// (each process, the default) or a shared Valkey. */
   countersUrl: z
     .string()
@@ -140,6 +157,7 @@ export function loadConfig(io: ConfigIo): LoadedConfig {
     mailUrl: "log://",
     registrationsPerIpHour: 10,
     profile: "essentials",
+    demo: false,
     version: env[`${ENV_PREFIX}VERSION`] ?? "0.0.0-dev",
     revision: env[`${ENV_PREFIX}REVISION`] ?? "unknown",
   };

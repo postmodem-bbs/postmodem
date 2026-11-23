@@ -250,6 +250,16 @@ export const memberlistForGuests = defineSetting({
   default: true,
 });
 
+/**
+ * A demo board (#162), set by `postmodem demo`: the sign-in page offers the demo accounts and
+ * their shared password. Never on a real board; `postmodem doctor` warns about a public one.
+ */
+export const demoBoard = defineSetting({
+  key: "core.demo.enabled",
+  schema: z.boolean(),
+  default: false,
+});
+
 export function coreSettings(): SettingsRegistry {
   return new SettingsRegistry().register(
     boardName,
@@ -283,5 +293,6 @@ export function coreSettings(): SettingsRegistry {
     searchesPerMinute,
     deletedMemberPosts,
     privacyNotice,
+    demoBoard,
   );
 }

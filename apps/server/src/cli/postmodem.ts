@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // The `postmodem` CLI: one image, many roles (CONTAINERS.md §2.2).
-import { accessSync, constants, mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
+import { accessSync, constants, mkdirSync, readFileSync, rmSync, unlinkSync, writeFileSync } from "node:fs";
 import { createServer, type RequestListener, type Server } from "node:http";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -17,6 +17,7 @@ import {
   ConfigError,
   cleanUsername,
   defaultLocale,
+  demoBoard,
   describeConfig,
   emailProblem,
   hashPassword,
@@ -30,6 +31,7 @@ import { IP_LOG_RETENTION_DAYS, ipLogStore, loginSecuritySettings } from "@postm
 import { backup, restore } from "../lib/server/backup.ts";
 import { type AppContext, createContext, readConfig } from "../lib/server/bootstrap.ts";
 import { DEMO_PASSWORD, seedDemo, seedLongTopic } from "../lib/server/demo.ts";
+import { demoAccountsTable, isDemoBoard, setupDemo } from "../lib/server/demo-setup.ts";
 import { sendDigests } from "../lib/server/notifications.ts";
 import { INSTALLED_PACKAGES, packageMigrations, packagePermissions } from "../lib/server/packages.ts";
 import { seedDefaultRanks } from "../lib/server/ranks.ts";
@@ -62,6 +64,13 @@ Usage: postmodem <command>
   migrate       apply database migrations and exit
   doctor        check configuration, data directory and database
   init          create the first administrator from POSTMODEM_ADMIN_* (idempotent)
+  demo [--reset]
+                make this board the demo: on an empty board, the demo content; then
+                every demo account's password (postmodem-demo, Admin included) and the
+                demo settings, again on an existing demo board (forgotten passwords);
+                refuses a board that isn't a demo. --reset (SQLite, board stopped)
+                deletes the demo board and builds it again. POSTMODEM_DEMO=1 makes
+                \`run\` and \`migrate\` set up an empty board this way
   seed-demo     fill an empty board with demo content (refuses if forums exist)
   seed-demo --long-topic <posts>
                 add one topic with that many posts, in its own forum, to any board
@@ -598,12 +607,79 @@ async function doctor(): Promise<number> {
           ? "log:// (messages go to the log, nothing is delivered)"
           : "SMTP server answers";
       });
+      if (ctx!.settings.get(demoBoard))
+        await check("demo board", () => {
+          const host = new URL(config.publicUrl).hostname;
+          if (!["localhost", "127.0.0.1", "[::1]"].includes(host))
+            throw new Error(
+              `the sign-in page offers the demo accounts, Admin included, at ${config.publicUrl}; turn it off with \`postmodem settings set core.demo.enabled false\` and change the passwords`,
+            );
+          return "the sign-in page offers the demo accounts (local address only)";
+        });
     }
     await ctx?.db.close();
   }
 
   for (const [ok, line] of results) console.log(`${ok ? "✓" : "✗"} ${line}`);
   return results.every(([ok]) => ok) ? 0 : 1;
+}
+
+/** POSTMODEM_DEMO: an empty board becomes the demo on start; any other board is left alone. */
+async function demoOnStart(ctx: AppContext) {
+  if (!ctx.config.demo || (await ctx.db.repos.nodes.tree()).length) return;
+  const done = await setupDemo(ctx);
+  if (done.outcome === "created")
+    ctx.log.info("demo board created (POSTMODEM_DEMO)", {
+      accounts: demoAccountsTable(ctx.config.publicUrl),
+    });
+}
+
+async function demoCommand(args: string[]): Promise<number> {
+  if (args.includes("--reset")) {
+    const ctx = await createContext({ migrate: true });
+    try {
+      if (ctx.db.dialect !== "sqlite") {
+        console.error(
+          "demo --reset: only for SQLite boards. On a stack, remove its volumes instead (docker compose down -v).",
+        );
+        return 2;
+      }
+      if ((await ctx.db.repos.nodes.tree()).length && !(await isDemoBoard(ctx))) {
+        console.error("demo --reset: this board isn't a demo board; nothing was deleted");
+        return 2;
+      }
+      if ((await healthcheck()) === 0) {
+        console.error(
+          `demo --reset: a board answers on port ${ctx.config.port}, so this one may be running; stop it first (or set POSTMODEM_PORT to this board's port), then run this again`,
+        );
+        return 2;
+      }
+    } finally {
+      await ctx.db.close();
+    }
+    const { config } = readConfig();
+    const file = config.databaseUrl.slice("sqlite://".length);
+    for (const f of [file, `${file}-wal`, `${file}-shm`]) rmSync(f, { force: true });
+    rmSync(uploadsDir(config.dataDir), { recursive: true, force: true });
+    console.log("demo board deleted; building it again");
+  }
+  const ctx = await createContext({ migrate: true });
+  try {
+    const done = await setupDemo(ctx);
+    if (done.outcome === "not-a-demo") {
+      console.error(
+        "demo: this board has content and isn't a demo board; nothing was changed (for demo content, start from an empty data directory)",
+      );
+      return 1;
+    }
+    console.log(
+      done.outcome === "created" ? "demo board created" : "demo board: passwords and settings reset",
+    );
+    console.log(demoAccountsTable(ctx.config.publicUrl));
+    return 0;
+  } finally {
+    await ctx.db.close();
+  }
 }
 
 async function healthcheck(): Promise<number> {
@@ -621,6 +697,7 @@ async function main(argv: string[]): Promise<number> {
   switch (cmd) {
     case "run": {
       const ctx = await createContext({ migrate: true, live: true });
+      await demoOnStart(ctx);
       const web = await startWeb(ctx);
       startRole(ctx, "worker");
       startRole(ctx, "scheduler");
@@ -651,9 +728,12 @@ async function main(argv: string[]): Promise<number> {
       ctx.log.info(ran.length || pkg.length ? "migrations applied" : "database is up to date", {
         migrations: [...ran, ...pkg],
       });
+      await demoOnStart(ctx);
       await ctx.db.close();
       return 0;
     }
+    case "demo":
+      return demoCommand(argv.slice(1));
     case "seed-demo": {
       const ctx = await createContext({ migrate: true });
       const longTopic = flag(argv.slice(1), "long-topic");

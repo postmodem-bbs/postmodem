@@ -94,7 +94,7 @@ export async function signIn(page: Page, login: string, password: string) {
   await page.getByRole("link", { name: "Sign in" }).click();
   await page.getByLabel("Username or e-mail address").fill(login);
   await page.getByLabel("Password").fill(password);
-  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(async () => {
     const left = !new URL(page.url()).pathname.startsWith("/login");
     expect(left || (await page.getByRole("alert").count()) > 0, "sign-in answered").toBe(true);
