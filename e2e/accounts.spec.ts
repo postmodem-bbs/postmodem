@@ -301,7 +301,7 @@ test("a member sets an avatar without JavaScript: limits, metadata, links, remov
 }) => {
   const context = await browser.newContext({ javaScriptEnabled: false, locale: "en-US" });
   const page = await context.newPage();
-  const section = page.getByRole("region", { name: "Avatar" });
+  const section = page.locator(".avatar-panel");
   const upload = page.locator("form[action='?/avatarUpload']");
   try {
     await signIn(page, "Ola", DEMO_PASSWORD);

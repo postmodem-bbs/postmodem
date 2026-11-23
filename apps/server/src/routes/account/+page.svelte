@@ -111,7 +111,9 @@
   <div class="actions"><button type="submit">{t("posting-save")}</button></div>
 </form>
 
-<section class="panel" aria-labelledby="avatar">
+<!-- A plain block with a heading, not a <section> landmark: Firefox crashes when axe runs over
+     a landmark Playwright has looked inside (commit 03ee522). -->
+<div class="panel avatar-panel">
   <h2 id="avatar">{t("account-avatar")}</h2>
   {#if form?.section === "avatar" && "saved" in form}<p class="notice" role="status">{t("account-saved")}</p>{/if}
   {#if avError}
@@ -167,7 +169,7 @@
       <div class="actions"><button type="submit">{t("account-avatar-use")}</button></div>
     </form>
   {/if}
-</section>
+</div>
 
 {#if data.emailChanged}
   <p class="notice" role="status">{t("account-email-changed")}</p>

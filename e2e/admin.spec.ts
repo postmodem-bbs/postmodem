@@ -286,7 +286,7 @@ test.describe("as the administrator", () => {
         join(import.meta.dirname, "../apps/server/src/lib/server/fixtures/images/anim-32x32.gif"),
       );
     await add.getByRole("button", { name: "Create" }).click();
-    const section = page.getByRole("region", { name: category });
+    const section = page.locator(".panel", { has: page.getByRole("heading", { name: category }) });
     await expect(section.getByRole("img")).toHaveCount(1);
     await expectNoAxeViolations(page);
 
@@ -295,16 +295,14 @@ test.describe("as the administrator", () => {
     const pick = page.locator("form[action='?/avatarGallery']");
     await pick.getByRole("radio").first().check();
     await pick.getByRole("button", { name: "Use this avatar" }).click();
-    await expect(
-      page.getByRole("region", { name: "Avatar" }).getByRole("img", { name: "Your avatar" }),
-    ).toBeVisible();
+    await expect(page.locator(".avatar-panel").getByRole("img", { name: "Your avatar" })).toBeVisible();
 
     await page.goto("/admin/avatars");
     await expect(section).toContainText("used by 1 member");
     await section.getByRole("button", { name: /^Delete / }).click();
-    await expect(page.getByRole("region", { name: category })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: category })).toHaveCount(0);
     await page.goto("/account");
-    await expect(page.getByRole("region", { name: "Avatar" }).getByText("You have no avatar.")).toBeVisible();
+    await expect(page.locator(".avatar-panel").getByText("You have no avatar.")).toBeVisible();
   });
 
   test("bans and invites", async ({ page }) => {

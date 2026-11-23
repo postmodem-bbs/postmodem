@@ -20,7 +20,8 @@
 {/if}
 
 {#each data.categories as c (c.name)}
-  <section class="panel" aria-label={c.name}>
+  <!-- Plain blocks, not landmarks: see the Firefox note in app.css (commit 03ee522). -->
+  <div class="panel">
     <h2>{c.name}</h2>
     <ul class="avatar-gallery">
       {#each c.images as img (img.value)}
@@ -34,7 +35,7 @@
         </li>
       {/each}
     </ul>
-  </section>
+  </div>
 {:else}
   <p class="panel muted">{t("admin-avatars-none")}</p>
 {/each}
