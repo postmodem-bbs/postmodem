@@ -32,7 +32,7 @@ it can be released as **1.0.0**. Releases in this phase are `1.0.0-beta.N`.
   CI with every package enabled and with only `essentials`.
 - **Real boards:** imports of volunteer boards (anonymised report bundles), fixes from what
   they turn up, and performance checks on the largest of them.
-- **IMPORTING.md** is finished, and the importer loses its "experimental" label.
+- **The import guide** ([guide/importing.md](../guide/importing.md)) is finished, and the importer loses its "experimental" label.
 
 ## Done when
 

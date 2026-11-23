@@ -3,6 +3,10 @@
 Status: **draft** · 2026-11-17 · derived from [PACKAGES.md §3](PACKAGES.md) ·
 builds on [DESIGN.md §6](DESIGN.md)
 
+> **Design document.** It describes where Postmodem is going, so parts of it are planned, not
+> built. For installing, running and developing the board as it is today, see the
+> [guides](README.md).
+
 This is the contract between the core and every tier-2 module, and the
 foundation the tier-1 platform services are built on. If a Przemo package in
 PACKAGES.md can't be written against this document without touching the core,
