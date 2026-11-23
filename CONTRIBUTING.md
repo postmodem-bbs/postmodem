@@ -104,6 +104,12 @@ that passed CI, and its history is never rewritten.
   `E2E` passes only when every e2e job passed. There is one job per board and
   browser (`E2E + accessibility (vanilla, webkit)` and so on), so a failing
   browser shows on its own and can be re-run alone.
+- **Where CI runs what:** a pull request runs the checks, an amd64 image and a
+  few e2e jobs (solo, stack and vanilla on Chromium) for quick feedback. Its
+  merge-queue group runs the whole matrix against the multi-arch image it
+  pushes as `sha-<sha>`, so Firefox, WebKit and theme failures can first show
+  up there. The push to `main` builds and tests nothing: the queue already
+  tested that commit, and the push only re-tags its image as `:edge`.
 - **Code scanning:** CodeQL (GitHub's default setup) must have analysed the
   pull request, and the pull request must not introduce a high or critical
   security alert, or an error-level alert. Fix the alert, or have a maintainer

@@ -486,7 +486,7 @@ runtime image never compiles anything:
 ## 6. CI/CD pipeline
 
 ```
- PR / push
+ merge queue (pull requests: amd64 only, nothing pushed, a few e2e jobs)
    │
    ├─ lint · typecheck · unit                    (dev target, cached)
    │
@@ -499,12 +499,15 @@ runtime image never compiles anything:
    │        ├─ upgrade test        previous release → this image (migrations, rollback one version)
    │        └─ importer test       Przemo dump → this image
    │
- tag vX.Y.Z
+ push to main (the queue fast-forwards main to the commit it tested)
+   └─ re-tag that commit's sha-<sha> digest → :edge · cosign sign   (no rebuild, no tests)
+
+ tag vX.Y.Z (the full pipeline above, built with the release version)
    └─ re-tag tested digest → :X.Y.Z :X.Y :X :latest · cosign sign · attest provenance
       publish compose bundle (deploy/*) as release asset · changelog
 ```
 
-- Nightly: `:edge` from main, Renovate updates for base images and services
+- Nightly: Renovate updates for base images and services
   pinned in `deploy/compose.yaml`, full matrix run.
 - Registry: GHCR primary, Docker Hub mirror (discoverability for hobbyists).
 

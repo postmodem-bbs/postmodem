@@ -1,5 +1,11 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Build once, test that exact image, promote the tested digest (CONTAINERS.md §6).
+# Each change runs the full pipeline once, in the merge queue:
+# - pull request: checks, an amd64 image and a few e2e jobs, for quick feedback;
+# - merge queue: checks, the multi-arch sha-<sha> image pushed to GHCR, every e2e job against it;
+# - push to main: re-tag the digest the queue tested as :edge. The queue fast-forwards main to
+#   the commit it tested, so nothing is built or tested again;
+# - v* tag: the full pipeline once more, since the release image carries its version.
 name: CI
 
 on:
@@ -19,12 +25,14 @@ concurrency:
 
 env:
   IMAGE: ghcr.io/postmodem-bbs/postmodem
-  # Pushes to the registry only happen for this repository, never for forks.
-  CAN_PUSH: ${{ github.event_name == 'push' && github.repository == 'postmodem-bbs/postmodem' }}
+  # The merge queue and release tags push the image they test; pull requests (forks included)
+  # never push.
+  CAN_PUSH: ${{ (github.event_name == 'merge_group' || startsWith(github.ref, 'refs/tags/v')) && github.repository == 'postmodem-bbs/postmodem' }}
 
 jobs:
   checks:
     name: Lint, typecheck, unit tests, licences
+    if: github.ref != 'refs/heads/main' || github.event_name != 'push'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -90,13 +98,14 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: docker/setup-qemu-action@v4
+        if: env.CAN_PUSH == 'true'
       - uses: docker/setup-buildx-action@v4
       - name: Version
         id: v
         run: |
           if [[ "$GITHUB_REF" == refs/tags/v* ]]; then echo "version=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT";
           else echo "version=0.0.0-dev+${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"; fi
-      # Pull requests: single-arch image handed to the e2e jobs as an artifact.
+      # Pull requests and forks: single-arch image handed to the e2e jobs as an artifact.
       - name: Build (pull request)
         if: env.CAN_PUSH != 'true'
         uses: docker/build-push-action@v7
@@ -114,7 +123,8 @@ jobs:
       - if: env.CAN_PUSH != 'true'
         uses: actions/upload-artifact@v7
         with: { name: postmodem-image, path: /tmp/postmodem-image.tar, retention-days: 3 }
-      # Pushes: multi-arch image pushed once as sha-<sha>; later stages only re-tag this digest.
+      # Merge queue and release tags: multi-arch image pushed once as sha-<sha>. The group's
+      # head commit is the one main is fast-forwarded to, so the push to main only re-tags it.
       - if: env.CAN_PUSH == 'true'
         uses: docker/login-action@v4
         with: { registry: ghcr.io, username: "${{ github.actor }}", password: "${{ secrets.GITHUB_TOKEN }}" }
@@ -144,6 +154,51 @@ jobs:
           echo "compressed amd64 size: $((size / 1048576)) MB"
           test "$size" -lt $((150 * 1048576))
 
+  # The e2e matrix. Both shipped profiles (PACKAGES.md §5): the full suite on `essentials`, the
+  # default, in solo and stack mode; once more on a `vanilla` board (no packages), where the
+  # tests of a package's own behaviour skip themselves (e2e/helpers.ts, PROFILE).
+  # browser: the full suite · url-browsers: the other URL styles (ADR 0012), if any ·
+  # install: every browser the job uses · load-test: the k6 alarm, run once per CI run ·
+  # pr: also runs on pull requests (the merge queue runs every entry).
+  plan:
+    name: E2E plan
+    if: github.ref != 'refs/heads/main' || github.event_name != 'push'
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - id: matrix
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          jq -c --arg event "$EVENT" \
+            '{include: [.[] | select($event != "pull_request" or .pr) | del(.pr)]}' <<'EOF' > matrix.json
+          [
+            { "name": "solo", "mode": "solo", "profile": "essentials", "browser": "chromium",
+              "url-browsers": "chromium", "install": "chromium", "load-test": true, "pr": true },
+            { "name": "solo", "mode": "solo", "profile": "essentials", "browser": "firefox",
+              "url-browsers": "firefox", "install": "firefox" },
+            { "name": "solo", "mode": "solo", "profile": "essentials", "browser": "webkit", "install": "webkit" },
+            { "name": "stack", "mode": "stack", "profile": "essentials", "browser": "chromium",
+              "url-browsers": "chromium,firefox", "install": "chromium firefox", "pr": true },
+            { "name": "vanilla", "mode": "solo", "profile": "vanilla", "browser": "chromium", "install": "chromium", "pr": true },
+            { "name": "vanilla", "mode": "solo", "profile": "vanilla", "browser": "firefox", "install": "firefox" },
+            { "name": "vanilla", "mode": "solo", "profile": "vanilla", "browser": "webkit", "install": "webkit" },
+            { "name": "classic-dark", "mode": "solo", "profile": "essentials", "browser": "chromium",
+              "install": "chromium", "theme": "classic", "scheme": "dark" },
+            { "name": "modern-light", "mode": "solo", "profile": "essentials", "browser": "chromium",
+              "install": "chromium", "theme": "modern", "scheme": "light" },
+            { "name": "modern-dark", "mode": "solo", "profile": "essentials", "browser": "chromium",
+              "install": "chromium", "theme": "modern", "scheme": "dark" },
+            { "name": "terminal-light", "mode": "solo", "profile": "essentials", "browser": "chromium",
+              "install": "chromium", "theme": "terminal", "scheme": "light" },
+            { "name": "terminal-dark", "mode": "solo", "profile": "essentials", "browser": "chromium",
+              "install": "chromium", "theme": "terminal", "scheme": "dark" }
+          ]
+          EOF
+          echo "matrix=$(cat matrix.json)" >> "$GITHUB_OUTPUT"
+          jq -r '.include[] | "\(.name), \(.browser)"' matrix.json
+
   # One runner per board and browser, each with a board of its own. The `E2E` job below sums
   # them up and is the required check, so this matrix can change without a ruleset edit.
   e2e:
@@ -151,88 +206,14 @@ jobs:
     env:
       # Only for the throwaway CI board; the e2e admin tests sign in with it.
       PM_ADMIN_PASSWORD: ci-admin-passphrase-not-secret
-    needs: image
+    needs: [plan, image]
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: read # pull the sha-tagged image built by the previous job
     strategy:
       fail-fast: false
-      # Both shipped profiles (PACKAGES.md §5): the full suite on `essentials`, the default, in
-      # solo and stack mode; once more on a `vanilla` board (no packages), where the tests of a
-      # package's own behaviour skip themselves (e2e/helpers.ts, PROFILE).
-      # browser: the full suite · url-browsers: the other URL styles (ADR 0012), if any ·
-      # install: every browser the job uses · load-test: the k6 alarm, run once per CI run.
-      matrix:
-        include:
-          - name: solo
-            mode: solo
-            profile: essentials
-            browser: chromium
-            url-browsers: chromium
-            install: chromium
-            load-test: true
-          - name: solo
-            mode: solo
-            profile: essentials
-            browser: firefox
-            url-browsers: firefox
-            install: firefox
-          - { name: solo, mode: solo, profile: essentials, browser: webkit, install: webkit }
-          - name: stack
-            mode: stack
-            profile: essentials
-            browser: chromium
-            url-browsers: chromium,firefox
-            install: chromium firefox
-          - { name: vanilla, mode: solo, profile: vanilla, browser: chromium, install: chromium }
-          - { name: vanilla, mode: solo, profile: vanilla, browser: firefox, install: firefox }
-          - { name: vanilla, mode: solo, profile: vanilla, browser: webkit, install: webkit }
-          - {
-              name: classic-dark,
-              mode: solo,
-              profile: essentials,
-              browser: chromium,
-              install: chromium,
-              theme: classic,
-              scheme: dark,
-            }
-          - {
-              name: modern-light,
-              mode: solo,
-              profile: essentials,
-              browser: chromium,
-              install: chromium,
-              theme: modern,
-              scheme: light,
-            }
-          - {
-              name: modern-dark,
-              mode: solo,
-              profile: essentials,
-              browser: chromium,
-              install: chromium,
-              theme: modern,
-              scheme: dark,
-            }
-          - {
-              name: terminal-light,
-              mode: solo,
-              profile: essentials,
-              browser: chromium,
-              install: chromium,
-              theme: terminal,
-              scheme: light,
-            }
-          - {
-              name: terminal-dark,
-              mode: solo,
-              profile: essentials,
-              browser: chromium,
-              install: chromium,
-              theme: terminal,
-              scheme: dark,
-            }
+      matrix: ${{ fromJSON(needs.plan.outputs.matrix) }}
     steps:
       - uses: actions/checkout@v7
       - uses: pnpm/action-setup@v6
@@ -402,22 +383,27 @@ jobs:
   # e2e job fails or the image job never ran, and passes only if every e2e job passed.
   e2e-gate:
     name: E2E
-    needs: [image, e2e]
-    if: always()
+    needs: [plan, image, e2e]
+    if: always() && (github.ref != 'refs/heads/main' || github.event_name != 'push')
     runs-on: ubuntu-latest
     steps:
       - name: Every e2e job passed
         env:
+          PLAN_RESULT: ${{ needs.plan.result }}
           IMAGE_RESULT: ${{ needs.image.result }}
           E2E_RESULT: ${{ needs.e2e.result }}
         run: |
-          echo "image: $IMAGE_RESULT, e2e: $E2E_RESULT"
-          test "$IMAGE_RESULT" = success && test "$E2E_RESULT" = success
+          echo "plan: $PLAN_RESULT, image: $IMAGE_RESULT, e2e: $E2E_RESULT"
+          test "$PLAN_RESULT" = success && test "$IMAGE_RESULT" = success && test "$E2E_RESULT" = success
 
+  # Main: the merge queue built, tested and pushed sha-<sha> for this exact commit, so this
+  # only re-tags it. Release tags: the digest this run built and tested.
   publish:
     name: Promote tested image
     needs: [image, e2e]
-    if: github.event_name == 'push' && github.repository == 'postmodem-bbs/postmodem'
+    if: >-
+      always() && github.event_name == 'push' && github.repository == 'postmodem-bbs/postmodem' &&
+      (github.ref == 'refs/heads/main' || needs.e2e.result == 'success')
     runs-on: ubuntu-latest
     permissions:
       packages: write
@@ -436,7 +422,12 @@ jobs:
             v="${GITHUB_REF#refs/tags/v}"
             tags+=("$IMAGE:$v" "$IMAGE:${v%.*}" "$IMAGE:${v%%.*}" "$IMAGE:latest")
           else
+            if ! DIGEST=$(docker buildx imagetools inspect "$IMAGE:sha-$GITHUB_SHA" --format '{{ .Manifest.Digest }}'); then
+              echo "::error::$IMAGE:sha-$GITHUB_SHA does not exist: only commits that passed the merge queue are promoted."
+              exit 1
+            fi
             tags+=("$IMAGE:edge")
           fi
+          test -n "$DIGEST"
           for t in "${tags[@]}"; do docker buildx imagetools create --tag "$t" "$IMAGE@$DIGEST"; done
           cosign sign --yes "$IMAGE@$DIGEST"
