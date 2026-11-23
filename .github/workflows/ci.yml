@@ -150,6 +150,18 @@ jobs:
           provenance: mode=max
           cache-from: type=gha
           cache-to: type=gha,mode=max
+      # The CLI as users run it in the image, through `postmodem` on the PATH (#161).
+      - name: Smoke-test the image's CLI
+        run: |
+          if [ "$CAN_PUSH" = "true" ]; then img="$IMAGE@${{ steps.push.outputs.digest }}"; docker pull -q "$img";
+          else docker load -i /tmp/postmodem-image.tar; img=postmodem:ci; fi
+          pm() { docker run --rm --read-only --tmpfs /tmp -v pm-smoke:/data --entrypoint postmodem "$img" "$@"; }
+          pm seed-demo
+          pm doctor
+          pm config print
+          # The importer and its MySQL driver load (nothing listens there, so it must fail to connect).
+          pm import przemo --source mysql://smoke:smoke@127.0.0.1:9/none --dry-run 2>&1 | tee /tmp/import.log || true
+          grep -q ECONNREFUSED /tmp/import.log
       - name: Image size budget (< 150 MB compressed, DESIGN §5.1)
         if: env.CAN_PUSH == 'true'
         run: |

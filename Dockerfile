@@ -12,10 +12,15 @@ ENV PNPM_HOME=/pnpm PATH=/pnpm:$PATH CI=true
 RUN npm install --global --no-fund --no-audit --allow-scripts=pnpm pnpm@12.19.0
 WORKDIR /src
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+# Every workspace manifest, or its package gets no dependencies (#161). `pnpm lint` checks
+# this list against pnpm-workspace.yaml (scripts/check-dockerfile.mjs).
 COPY apps/server/package.json apps/server/
 COPY packages/core/package.json packages/core/
 COPY packages/db/package.json packages/db/
 COPY packages/i18n/package.json packages/i18n/
+COPY packages/importer/package.json packages/importer/
+COPY packages/markup/package.json packages/markup/
+COPY packages/modules/package.json packages/modules/
 COPY packages/ui/package.json packages/ui/
 COPY tools/fixtures/package.json tools/fixtures/
 # No BuildKit cache mount on purpose: the legacy builder must work too (Docker without buildx).
@@ -33,7 +38,8 @@ CMD ["pnpm", "--filter", "@postmodem/server", "dev"]
 FROM deps AS build
 COPY . .
 RUN pnpm --filter @postmodem/server build \
- && mkdir -p /out/data && cp -r apps/server/build /out/app && cp -r LICENSE LICENSE-EXCEPTION.md LICENSES /out/app/
+ && mkdir -p /out/data /out/bin && cp -r apps/server/build /out/app && cp -r LICENSE LICENSE-EXCEPTION.md LICENSES /out/app/ \
+ && cp apps/server/scripts/postmodem /out/bin/postmodem && chmod 755 /out/bin/postmodem
 
 # ── PostgreSQL backup client ──
 # Keep the client and its matching loader/libraries private to the backup subprocess.
@@ -65,6 +71,8 @@ ENV NODE_ENV=production \
     POSTMODEM_VERSION=${POSTMODEM_VERSION} \
     POSTMODEM_REVISION=${POSTMODEM_REVISION}
 COPY --from=build /out/app /app
+# `postmodem <command>` on the PATH, e.g. `docker exec <container> postmodem doctor`.
+COPY --from=build /out/bin/postmodem /usr/local/bin/postmodem
 COPY --from=pg-client /out/pg /opt/postmodem/pg
 # /data is created owned by the runtime user so named volumes inherit the ownership.
 COPY --from=build --chown=10001:10001 /out/data /data
