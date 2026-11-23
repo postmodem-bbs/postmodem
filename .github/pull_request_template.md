@@ -22,5 +22,6 @@ Use the Project's own names for the milestone, epic and issues.
 - [ ] Every commit is signed off (`git commit -s`) and references its issue
 - [ ] `pnpm check` passes
 - [ ] `pnpm e2e` passes, if pages or flows changed
+- [ ] Something visible changed? The demo board shows it (`demo-content.ts` + `e2e/demo-tour.spec.ts`, [CONTRIBUTING](../CONTRIBUTING.md#demo-board))
 - [ ] Docs match the change (`docs/milestones/`, ADR if a decision was made or changed)
 - [ ] The issues' Status on the Project is current

@@ -50,38 +50,29 @@ alias pm='POSTMODEM_DATA_DIR=var/live-demo node apps/server/build/postmodem.js'
 From here on, the commands are the same for both.
 
 ```bash
-pm seed-demo
+pm demo
 ```
 
-Give the demo administrator a password (it has none, on purpose):
+That fills the board with the demo content, gives every demo account the password
+`postmodem-demo` (Admin included) and makes it demo-friendly: registering without e-mail,
+posting as fast as you like. The running board picks the settings up within five seconds.
+Forgot a password, or changed a setting? Run `pm demo` again: it puts them back.
 
-```bash
-printf 'demo-admin-password' | pm user set-password Admin
-```
-
-Make it demo-friendly (registering without e-mail, posting as fast as you like). The running
-board picks these up within five seconds:
-
-```bash
-pm settings set core.registration.verifyEmail false
-```
-
-```bash
-pm settings set core.posting.floodSeconds 0
-```
-
-```bash
-pm settings set core.newMembers.posts 0
-```
+(With Docker, `-e POSTMODEM_DEMO=1` on the `docker run` in step 1 does all of this when the
+board starts, and you can skip this step.)
 
 ## 3. Who you can be
 
-| Sign in as | Password | Shows |
-|---|---|---|
-| `Admin` | `demo-admin-password` | the admin panel (**Admin** in the header) |
-| `Ola` | `postmodem-demo` | a moderator of "Gry retro" and the hidden "Moderatornia" |
-| `Łukasz Żółć` | `postmodem-demo` | a regular member |
-| `retro_fan` | `postmodem-demo` | another member, for private messages and reports |
+The sign-in page lists every account with a **Sign in as …** button. They all use the
+password `postmodem-demo`.
+
+| Sign in as | Shows |
+|---|---|
+| `Admin` | the admin panel (**Admin** in the header) |
+| `Ola` | a moderator of "Gry retro" and the hidden "Moderatornia" |
+| `Łukasz Żółć` | a regular member |
+| `retro_fan` | another member, for private messages and reports |
+| `Kasia` | a member with everything filled in: avatar, signature, special rank, messages |
 
 Use a normal window and a private window to be two people at once.
 
@@ -113,6 +104,11 @@ Use a normal window and a private window to be two people at once.
    which grants decide it.
 10. **Joining.** Sign out and **Register** a new account: the anti-bot check runs invisibly
     (no puzzles to solve) and you're in.
+11. **The feature tour.** The **Pokaz funkcji · Feature tour** category on the index has a place
+    for each feature: avatars (uploaded and from the gallery), signatures and a special rank in
+    "Przedstaw się", a poll and members in other time zones in "English corner", a locked
+    topic, a banned member's post and an open report in "Moderacja na pokaz". Sign in as
+    `Admin` for an unread message and the report, or as `Kasia` for her conversation with Tom.
 
 E-mails the board would send (notifications, password resets) go to its log instead: the
 first terminal for B, or for A:

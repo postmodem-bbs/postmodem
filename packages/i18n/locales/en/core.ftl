@@ -184,6 +184,7 @@ login-demo-as = Sign in as { $name }
 login-demo-admin = The admin panel: settings, forums, groups, members, permissions.
 login-demo-moderator = A moderator: the reports queue, locking, moving, splitting and merging topics.
 login-demo-member = A member: posting, private messages, watches, reports and their own profile.
+login-demo-showcase = A member with everything filled in: avatar, signature, special rank, private messages.
 reset-title = Reset your password
 reset-request-text = Enter the e-mail address of your account and we’ll send you a link to choose a new password.
 reset-request-submit = Send the link

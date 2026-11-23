@@ -101,6 +101,17 @@ export async function signIn(page: Page, login: string, password: string) {
   }).toPass();
 }
 
+/**
+ * Opens the sign-in page of a demo board (#162). `postmodem demo` turns demo mode on while the
+ * board runs, so this waits until the board has read the setting (SETTINGS_REFRESH_MS).
+ */
+export async function openDemoSignIn(page: Page) {
+  await expect(async () => {
+    await page.goto("/login.php");
+    await expect(page.getByRole("heading", { name: "Demo board" })).toBeVisible({ timeout: 1_000 });
+  }).toPass({ timeout: 20_000 });
+}
+
 /** How often every board process re-reads settings (SETTINGS_REFRESH_MS, apps/server bootstrap.ts). */
 const SETTINGS_REFRESH_MS = 5_000;
 

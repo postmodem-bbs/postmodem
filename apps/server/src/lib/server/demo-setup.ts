@@ -16,6 +16,7 @@ import {
   searchesPerMinute,
   verifyEmailOnRegistration,
 } from "@postmodem/core";
+import { avatarLimits } from "./avatars.ts";
 import type { AppContext } from "./bootstrap.ts";
 import { DEMO_PASSWORD, type SeedResult, seedDemo } from "./demo.ts";
 import { rebuildSearch, searchPlan } from "./search.ts";
@@ -26,6 +27,7 @@ export const DEMO_ACCOUNTS = [
   { username: "Ola", role: "moderator" },
   { username: "Łukasz Żółć", role: "member" },
   { username: "retro_fan", role: "member" },
+  { username: "Kasia", role: "showcase" },
 ] as const;
 export type DemoRole = (typeof DEMO_ACCOUNTS)[number]["role"];
 
@@ -63,13 +65,13 @@ export async function isDemoBoard(ctx: Pick<AppContext, "db" | "settings">): Pro
  * demo settings back (the way to recover forgotten demo passwords). Refuses any other board.
  */
 export async function setupDemo(
-  ctx: Pick<AppContext, "db" | "settings" | "packages" | "externalSearch">,
+  ctx: Pick<AppContext, "config" | "db" | "settings" | "packages" | "externalSearch">,
   now = Date.now(),
 ): Promise<DemoSetup> {
   const { repos } = ctx.db;
   let result: DemoSetup;
   if (!(await repos.nodes.tree()).length) {
-    const seed = await seedDemo(repos, now, ctx.settings.get(defaultLocale));
+    const seed = await seedDemo(repos, now, ctx.settings.get(defaultLocale), demoFiles(ctx));
     await rebuildSearch(repos, undefined, searchPlan(ctx.packages.searchContributions()));
     await ctx.externalSearch?.rebuild();
     result = { outcome: "created", seed };
@@ -80,6 +82,12 @@ export async function setupDemo(
   for (const apply of DEMO_SETTINGS) await apply(ctx.settings);
   return result;
 }
+
+/** Where the demo's avatar images go: the board's own uploads, within its avatar limits. */
+export const demoFiles = (ctx: Pick<AppContext, "config" | "settings">) => ({
+  dataDir: ctx.config.dataDir,
+  limits: avatarLimits(ctx.settings),
+});
 
 async function setDemoPasswords(repos: Repositories) {
   const { scheme, hash } = await hashPassword(DEMO_PASSWORD);
