@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="120" height="22" viewBox="0 0 120 22" role="img" aria-label="Mod">
+  <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
+  <title>Mod</title>
+  <defs>
+    <linearGradient id="g-mod" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2f8f2f"/>
+      <stop offset="1" stop-color="#006600"/>
+    </linearGradient>
+  </defs>
+  <rect x="0.5" y="0.5" width="119" height="21" rx="3" fill="url(#g-mod)" stroke="#004400"/>
+  <rect x="1.5" y="1.5" width="117" height="9.5" rx="2" fill="#ffffff" fill-opacity="0.18"/>
+  <line x1="22.5" y1="3" x2="22.5" y2="19" stroke="#004400" stroke-opacity="0.55"/>
+  <line x1="23.5" y1="3" x2="23.5" y2="19" stroke="#ffffff" stroke-opacity="0.25"/>
+  <g transform="translate(5 5)" fill="#ffffff"><g transform="rotate(-45 6 5.5)"><rect x="2" y="1" width="8" height="3.6" rx="0.8"/><rect x="5.2" y="4" width="1.6" height="7.5" rx="0.6"/></g><rect x="0.5" y="10.6" width="5.5" height="1.4" rx="0.4"/></g>
+  <text x="72.0" y="15" text-anchor="middle" font-family="Verdana, Tahoma, 'DejaVu Sans', Arial, sans-serif" font-size="10" font-weight="bold" letter-spacing="1" fill="#004400" fill-opacity="0.6">MOD</text>
+  <text x="72.0" y="14.2" text-anchor="middle" font-family="Verdana, Tahoma, 'DejaVu Sans', Arial, sans-serif" font-size="10" font-weight="bold" letter-spacing="1" fill="#ffffff">MOD</text>
+</svg>

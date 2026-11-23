@@ -26,6 +26,7 @@ import { type AppContext, createContext, readConfig } from "../lib/server/bootst
 import { DEMO_PASSWORD, seedDemo, seedLongTopic } from "../lib/server/demo.ts";
 import { sendDigests } from "../lib/server/notifications.ts";
 import { INSTALLED_PACKAGES, packageMigrations, packagePermissions } from "../lib/server/packages.ts";
+import { seedDefaultRanks } from "../lib/server/ranks.ts";
 import { rebuildSearch, searchPlan } from "../lib/server/search.ts";
 import { copyLegacyFiles, uploadsDir } from "../lib/server/uploads.ts";
 import {
@@ -476,6 +477,10 @@ async function init(env: Record<string, string | undefined>): Promise<number> {
       const u = await r.users.create({ username, email });
       await r.credentials.set(u.id, scheme, hash);
       await r.grants.create(adminRole!.id, { type: "user", id: u.id }, null);
+      // A new board starts with phpBB2-style ranks; its first admin is the owner.
+      const ranks = await seedDefaultRanks(r, ctx.settings.get(defaultLocale));
+      const owner = ranks?.get("owner");
+      if (owner) await r.users.update(u.id, { rankId: owner.id });
       await r.audit.append({
         actorId: null,
         action: "board.initialised",
@@ -645,7 +650,7 @@ async function main(argv: string[]): Promise<number> {
         await ctx.db.close();
         return 0;
       }
-      const result = await seedDemo(ctx.db.repos);
+      const result = await seedDemo(ctx.db.repos, Date.now(), ctx.settings.get(defaultLocale));
       if (result.created)
         await rebuildSearch(ctx.db.repos, undefined, searchPlan(ctx.packages.searchContributions()));
       if (result.created)

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="120" height="22" viewBox="0 0 120 22" role="img" aria-label="Admin">
+  <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
+  <title>Admin</title>
+  <defs>
+    <linearGradient id="g-admin" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#d23a3a"/>
+      <stop offset="1" stop-color="#a00000"/>
+    </linearGradient>
+  </defs>
+  <rect x="0.5" y="0.5" width="119" height="21" rx="3" fill="url(#g-admin)" stroke="#6e0000"/>
+  <rect x="1.5" y="1.5" width="117" height="9.5" rx="2" fill="#ffffff" fill-opacity="0.18"/>
+  <line x1="22.5" y1="3" x2="22.5" y2="19" stroke="#6e0000" stroke-opacity="0.55"/>
+  <line x1="23.5" y1="3" x2="23.5" y2="19" stroke="#ffffff" stroke-opacity="0.25"/>
+  <g transform="translate(5 5)" fill="#ffffff"><path d="M6 0.8 L11 2.6 L11 6 C11 8.8 8.8 10.6 6 11.6 C3.2 10.6 1 8.8 1 6 L1 2.6 Z"/></g>
+  <text x="72.0" y="15" text-anchor="middle" font-family="Verdana, Tahoma, 'DejaVu Sans', Arial, sans-serif" font-size="10" font-weight="bold" letter-spacing="1" fill="#6e0000" fill-opacity="0.6">ADMIN</text>
+  <text x="72.0" y="14.2" text-anchor="middle" font-family="Verdana, Tahoma, 'DejaVu Sans', Arial, sans-serif" font-size="10" font-weight="bold" letter-spacing="1" fill="#ffffff">ADMIN</text>
+</svg>

@@ -109,7 +109,7 @@ The image's entrypoint is the `postmodem` CLI. One image, many roles:
 | `run`                          | web + worker + scheduler in one process (default, solo mode)                 |
 | `web` / `worker` / `scheduler` | single roles for stack mode                                                  |
 | `migrate`                      | apply database migrations (safe to run concurrently)                         |
-| `init`                         | create the first administrator from `POSTMODEM_ADMIN_*` (idempotent)         |
+| `init`                         | first administrator from `POSTMODEM_ADMIN_*`, default ranks (idempotent)     |
 | `seed-demo`                    | fill an empty board with demo content (refuses if forums exist)              |
 | `import przemo`                | move a phpBB2 / Przemo board over, experimental ([guide](docs/IMPORTING.md)) |
 | `perms explain`                | why a user may or may not do something in a forum                            |
