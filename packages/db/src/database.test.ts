@@ -71,6 +71,38 @@ describe.each(testEngines())("%s", (engine) => {
     expect(s2.get(boardName)).toBe("Kącik Retro");
   });
 
+  describe("ranks (#130)", () => {
+    it("are edited and deleted, and a deleted special rank leaves its members", async () => {
+      const stars = await r.ranks.create({
+        title: "Stars",
+        titleKey: null,
+        minPosts: 10,
+        special: false,
+        image: null,
+      });
+      const crew = await r.ranks.create({
+        title: "Crew",
+        titleKey: null,
+        minPosts: null,
+        special: true,
+        image: "upload/a.png",
+      });
+      const ola = await r.users.create({ username: "Ola", email: null, rankId: crew.id });
+      await r.users.create({ username: "Bob", email: null, rankId: crew.id });
+      expect(await r.ranks.memberCounts()).toEqual(new Map([[crew.id, 2]]));
+      expect(await r.ranks.update(stars.id, { title: "Gwiazdy", minPosts: 20 })).toEqual({
+        ...stars,
+        title: "Gwiazdy",
+        minPosts: 20,
+      });
+      expect((await r.ranks.update(crew.id, { image: null }))?.image).toBeNull();
+      await r.ranks.delete(crew.id);
+      expect(await r.ranks.get(crew.id)).toBeUndefined();
+      expect((await r.users.get(ola.id))?.rankId).toBeNull();
+      expect((await r.ranks.all()).map((k) => k.title)).toEqual(["Gwiazdy"]);
+    });
+  });
+
   describe("node tree", () => {
     it("builds paths, depth-first order and unique Polish-transliterated slugs", async () => {
       const cat = await r.nodes.create({
@@ -364,8 +396,8 @@ describe.each(testEngines())("%s", (engine) => {
         action: "import.finished",
         details: { posts: 3 },
       });
-      await r.ranks.create({ title: "Nowicjusz", minPosts: 0, special: false, image: null });
-      await r.ranks.create({ title: "Admin", minPosts: null, special: true, image: null });
+      await r.ranks.create({ title: "Nowicjusz", titleKey: null, minPosts: 0, special: false, image: null });
+      await r.ranks.create({ title: "Admin", titleKey: null, minPosts: null, special: true, image: null });
       expect((await r.ranks.all()).map((x) => x.title)).toEqual(["Admin", "Nowicjusz"]);
       await r.smilies.create({ code: ":-)", image: "icon_smile.gif", emotion: "Smile", position: 1 });
       await expect(

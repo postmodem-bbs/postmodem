@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { expect, it } from "vitest";
-import { legacyAvatar, legacyMessageView, postSubject, safeRelativePath } from "./przemo.ts";
+import { legacyAvatar, legacyMessageView, legacyRankImage, postSubject, safeRelativePath } from "./przemo.ts";
 
 it("keeps a post's own subject and drops ones that only repeat the topic title", () => {
   expect(postSubject("", "Nowy komputer")).toBe("");
@@ -30,4 +30,13 @@ it("maps phpBB2's private message types to who still sees each row", () => {
   expect(legacyMessageView(2)).toEqual({ sender: true, recipient: false, read: true });
   expect(legacyMessageView(4)).toEqual({ sender: true, recipient: false, read: true });
   expect(legacyMessageView(9)).toBeNull();
+});
+
+it("rank images keep their path under uploads/ranks, or an https URL (#130)", () => {
+  expect(legacyRankImage("images/ranks/star.gif")).toBe("images/ranks/star.gif");
+  expect(legacyRankImage("https://example.org/r.png")).toBe("https://example.org/r.png");
+  expect(legacyRankImage("http://example.org/r.png")).toBeNull();
+  expect(legacyRankImage("../config.php")).toBeNull();
+  expect(legacyRankImage("/etc/passwd")).toBeNull();
+  expect(legacyRankImage("")).toBeNull();
 });

@@ -187,6 +187,7 @@ export interface PostsTable {
 export interface RanksTable {
   id: Generated<number>;
   title: string;
+  titleKey: string | null;
   minPosts: number | null;
   special: Bool;
   image: string | null;

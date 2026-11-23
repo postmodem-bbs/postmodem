@@ -92,6 +92,13 @@
         <strong id={`p${post.id}-author`} class="author-name">
           {#if post.authorRef}<a href={urls.user(post.authorRef)}>{post.author}</a>{:else}{post.author || t("guest")}{/if}
         </strong>
+        {#if post.authorRank}
+          <p class="rank">
+            <span class="visually-hidden">{t("rank-label")}:</span>
+            {post.authorRank.title}
+            {#if post.authorRank.image}<img src={post.authorRank.image} alt="" referrerpolicy="no-referrer" />{/if}
+          </p>
+        {/if}
         {#if post.authorAvatar}
           <img class="avatar" src={post.authorAvatar} alt="" width="80" height="80" loading="lazy" referrerpolicy="no-referrer" />
         {/if}

@@ -359,6 +359,12 @@ export interface AuditLog {
 export interface RankRepository {
   create(rank: WithOptionalId<Rank>): Promise<Rank>;
   all(): Promise<Rank[]>;
+  get(id: Id): Promise<Rank | undefined>;
+  update(id: Id, patch: Partial<Omit<Rank, "id">>): Promise<Rank | undefined>;
+  /** Deletes the rank; members it was given to fall back to their post-count rank. */
+  delete(id: Id): Promise<void>;
+  /** How many members were given each special rank. */
+  memberCounts(): Promise<Map<Id, number>>;
 }
 
 export interface SmileyRepository {

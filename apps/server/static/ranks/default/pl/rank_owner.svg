@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="120" height="22" viewBox="0 0 120 22" role="img" aria-label="Właściciel">
+  <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
+  <title>Właściciel</title>
+  <defs>
+    <linearGradient id="g-owner" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f6a65a"/>
+      <stop offset="1" stop-color="#d4731a"/>
+    </linearGradient>
+  </defs>
+  <rect x="0.5" y="0.5" width="119" height="21" rx="3" fill="url(#g-owner)" stroke="#9c4f0b"/>
+  <rect x="1.5" y="1.5" width="117" height="9.5" rx="2" fill="#ffffff" fill-opacity="0.18"/>
+  <line x1="22.5" y1="3" x2="22.5" y2="19" stroke="#9c4f0b" stroke-opacity="0.55"/>
+  <line x1="23.5" y1="3" x2="23.5" y2="19" stroke="#ffffff" stroke-opacity="0.25"/>
+  <g transform="translate(5 5)" fill="#ffffff"><path d="M1 9 L1 3 L4 6 L6 1.5 L8 6 L11 3 L11 9 Z"/><rect x="1" y="10" width="10" height="1.6"/></g>
+  <text x="72.0" y="15" text-anchor="middle" font-family="Verdana, Tahoma, 'DejaVu Sans', Arial, sans-serif" font-size="9" font-weight="bold" letter-spacing="0.4" fill="#9c4f0b" fill-opacity="0.6">WŁAŚCICIEL</text>
+  <text x="72.0" y="14.2" text-anchor="middle" font-family="Verdana, Tahoma, 'DejaVu Sans', Arial, sans-serif" font-size="9" font-weight="bold" letter-spacing="0.4" fill="#ffffff">WŁAŚCICIEL</text>
+</svg>

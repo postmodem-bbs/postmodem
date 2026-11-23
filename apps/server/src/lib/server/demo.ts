@@ -3,7 +3,9 @@
 // nested forums, announcements and stickies, long paginated topics, guest posts, and posts
 // exercising every BBCode feature. Refuses to touch a board that already has forums.
 import { hashPassword, type Id, installCorePermissions, type Repositories } from "@postmodem/core";
+import type { SupportedLocale } from "@postmodem/i18n";
 import { INSTALLED_PACKAGES, packagePermissions } from "./packages.ts";
+import { seedDefaultRanks } from "./ranks.ts";
 
 /**
  * Demo members (not Admin) can sign in with this password, to try what registered users and
@@ -63,7 +65,11 @@ export interface SeedResult {
   posts: number;
 }
 
-export async function seedDemo(repos: Repositories, now = Date.now()): Promise<SeedResult> {
+export async function seedDemo(
+  repos: Repositories,
+  now = Date.now(),
+  locale: SupportedLocale = "en",
+): Promise<SeedResult> {
   if ((await repos.nodes.tree()).length) return { created: false, forums: 0, topics: 0, posts: 0 };
 
   const demoCredential = await hashPassword(DEMO_PASSWORD);
@@ -109,6 +115,15 @@ export async function seedDemo(repos: Repositories, now = Date.now()): Promise<S
       createdAt: t,
     });
     await r.groups.addMember({ groupId: moderators.id, userId: ola.id, role: "member", pending: false });
+    // The default ranks (#130): Admin owns the board, Ola moderates it, the rest are users.
+    const ranks = await seedDefaultRanks(r, locale);
+    for (const [user, rank] of [
+      [admin, "owner"],
+      [ola, "mod"],
+    ] as const) {
+      const given = ranks?.get(rank);
+      if (given) await r.users.update(user.id, { rankId: given.id });
+    }
 
     const general = await r.nodes.create({ parentId: null, kind: "category", title: "Ogólne", position: 1 });
     const hardware = await r.nodes.create({

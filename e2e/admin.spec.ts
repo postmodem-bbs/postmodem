@@ -211,6 +211,68 @@ test.describe("as the administrator", () => {
     await expect(page.getByRole("status")).toContainText("Allowed");
   });
 
+  test("ranks: an image upload, a special rank on posts and profiles (#130)", async ({ page }) => {
+    const title = `Crew ${unique()}`;
+    const member = "Łukasz Żółć";
+    // A 1×1 PNG.
+    const png = Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
+      "base64",
+    );
+    await asAdmin(page, "/admin/ranks");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Ranks");
+    await expectNoAxeViolations(page);
+
+    const create = page.locator("form[action='?/create']");
+    await create.getByLabel("Title").fill(title);
+    await create.getByLabel("Special: given to members one by one").check();
+    await create
+      .getByLabel("Image", { exact: true })
+      .setInputFiles({ name: "crew.png", mimeType: "image/png", buffer: png });
+    await create.getByRole("button", { name: "Create" }).click();
+    const section = page.getByRole("region", { name: title });
+    await expect(section.getByRole("heading")).toContainText("special, 0 members");
+
+    try {
+      // Something that only claims to be an image is refused.
+      await section.getByText("Edit", { exact: true }).click();
+      await section.getByLabel("Image", { exact: true }).setInputFiles({
+        name: "evil.png",
+        mimeType: "image/png",
+        buffer: Buffer.from("<svg onload=alert(1)>"),
+      });
+      await section.getByRole("button", { name: "Save" }).click();
+      await expect(page.getByRole("region", { name: title }).getByRole("alert")).toHaveText(
+        "The image must be a PNG, GIF, JPEG or WebP file.",
+      );
+
+      const assign = page.locator("form[action='?/assign']");
+      await assign.getByLabel("Member (username)").fill(member);
+      await assign.getByLabel("Rank", { exact: true }).selectOption({ label: title });
+      await assign.getByRole("button", { name: "Give rank" }).click();
+      await expect(page.getByRole("status")).toHaveText(`${member} now has the rank ${title}.`);
+
+      // The profile, and the author card of a topic the member started, show the rank and its image.
+      await page.goto("/memberlist.php");
+      await page.getByRole("link", { name: member, exact: true }).click();
+      await expect(page.locator(".profile-facts .rank")).toHaveText(title);
+      const image = page.locator(".profile-facts .rank img");
+      const src = (await image.getAttribute("src")) ?? "";
+      expect(src).toMatch(/^\/ranks\/upload\/[0-9a-f]{32}\.png$/);
+      const served = await page.request.get(src);
+      expect(served.headers()["content-type"]).toBe("image/png");
+      await page.locator(".recent-topics a").first().click();
+      await expect(page.locator(".post").first().locator(".post-author .rank")).toContainText(title);
+    } finally {
+      await page.goto("/admin/ranks");
+      await page
+        .getByRole("region", { name: title })
+        .getByRole("button", { name: `Delete the rank ${title}` })
+        .click();
+      await expect(page.getByRole("region", { name: title })).toHaveCount(0);
+    }
+  });
+
   test("bans and invites", async ({ page }) => {
     await asAdmin(page, "/admin/access");
     await expectNoAxeViolations(page);

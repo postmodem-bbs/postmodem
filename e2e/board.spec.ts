@@ -324,3 +324,21 @@ test.describe("language negotiation", () => {
     await expect(page.getByRole("link", { name: "Przejdź do treści" })).toBeAttached();
   });
 });
+
+test.describe("default ranks (#130)", () => {
+  test("a member's rank is the same for every reader, in each reader's language", async ({ page }) => {
+    // The demo's first topic is the Admin's, who owns the board.
+    await page.goto("/viewtopic.php?t=1&lang=en");
+    const rank = page.locator(".post").first().locator(".post-author .rank");
+    // Screen readers hear "Rank: Owner"; the label is visually hidden.
+    await expect(rank).toHaveText("Rank: Owner");
+    await expect(rank.locator("img")).toHaveAttribute("src", "/ranks/default/en/rank_owner.svg");
+    await page.goto("/viewtopic.php?t=1&lang=pl");
+    await expect(rank).toHaveText("Ranga: Właściciel");
+    await expect(rank.locator("img")).toHaveAttribute("src", "/ranks/default/pl/rank_owner.svg");
+    const badge = await page.request.get("/ranks/default/pl/rank_owner.svg");
+    expect(badge.headers()["content-type"]).toContain("image/svg+xml");
+    // Back to the browser's language for the other tests in this context.
+    await page.goto("/?lang=auto");
+  });
+});

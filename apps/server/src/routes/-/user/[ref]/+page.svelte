@@ -25,6 +25,12 @@
     {#if p.lastSeen}
       <div><dt>{t("profile-last-seen")}</dt><dd><time datetime={isoDate(p.lastSeen)}>{formatDate(p.lastSeen, data.dates)}</time></dd></div>
     {/if}
+    {#if p.rank}
+      <div>
+        <dt>{t("rank-label")}</dt>
+        <dd class="rank">{#if p.rank.image}<img src={p.rank.image} alt="" referrerpolicy="no-referrer" />{/if}{p.rank.title}</dd>
+      </div>
+    {/if}
     <div><dt>{t("index-posts")}</dt><dd>{p.posts}</dd></div>
     {#if p.location}<div><dt>{t("post-author-from")}</dt><dd>{p.location}</dd></div>{/if}
     {#if p.website}

@@ -469,6 +469,7 @@ admin-overview = Overview
 admin-settings = Board settings
 admin-forums = Forums
 admin-groups = Groups
+admin-ranks = Ranks
 admin-permissions = Permissions
 admin-users = Members
 admin-access = Bans and invites
@@ -547,6 +548,52 @@ admin-groups-create = New group
 admin-groups-error-invalid = Check the form: a name is needed.
 admin-groups-error-exists = A group with that name exists.
 admin-groups-error-user = There's no member with that name.
+rank-label = Rank
+rank-default-owner = Owner
+rank-default-admin = Admin
+rank-default-mod = Mod
+rank-default-vip = VIP user
+rank-default-user = User
+admin-ranks-intro = A member shows the post-count rank whose minimum they have reached, unless you give them a special rank.
+admin-ranks-none = There are no ranks yet.
+admin-rank-title = Title
+admin-rank-translated-hint = A default rank: readers see its title and badge in their own language. Change the title to show the same one to everyone.
+admin-rank-kind = Kind
+admin-rank-kind-posts = Reached by post count
+admin-rank-kind-special = Special: given to members one by one
+admin-rank-min-posts = Minimum posts
+admin-rank-min-posts-hint = Only for ranks reached by post count.
+admin-rank-image = Image
+admin-rank-image-hint = PNG, GIF, JPEG or WebP, at most 256 KB. Leave empty to keep the current one.
+admin-rank-remove-image = Remove the image
+admin-rank-image-of = Image of the rank { $rank }
+admin-rank-from-posts = { $count ->
+    [one] from { $count } post
+   *[other] from { $count } posts
+}
+admin-rank-special-members = { $count ->
+    [one] special, { $count } member
+   *[other] special, { $count } members
+}
+admin-rank-delete = Delete
+admin-rank-edit = Edit
+admin-rank-delete-named = Delete the rank { $rank }
+admin-rank-create = New rank
+admin-rank-assign = Give a member a special rank
+admin-rank-assign-user = Member (username)
+admin-rank-assign-rank = Rank
+admin-rank-assign-none = No special rank (by post count)
+admin-rank-assign-submit = Give rank
+admin-rank-assigned = { $name } now has the rank { $rank }.
+admin-rank-unassigned = { $name } now has the rank of their post count.
+admin-rank-error-title = Enter a title of at most 50 characters.
+admin-rank-error-minPosts = Enter a minimum number of posts (0 or more).
+admin-rank-error-image-empty = The image file is empty.
+admin-rank-error-image-large = The image is larger than 256 KB.
+admin-rank-error-image-type = The image must be a PNG, GIF, JPEG or WebP file.
+admin-rank-error-missing = That rank no longer exists.
+admin-rank-error-user = There's no member with that name.
+admin-rank-error-rank = Choose a special rank.
 admin-simulator = Check a permission
 admin-sim-who = Who (username, or guest)
 admin-sim-hint = Shows whether they may, and which grants decided it.
