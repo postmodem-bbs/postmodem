@@ -408,11 +408,55 @@ jobs:
           path: var/playwright-report
           retention-days: 7
 
+  # The installer (#164) as a newcomer runs it: a solo demo board from the image under test,
+  # then a second run that must change nothing. Part of the `E2E` required check below.
+  installer:
+    name: Installer (solo demo)
+    needs: image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: actions/checkout@v7
+      - name: Get the image under test
+        run: |
+          if [ "$CAN_PUSH" = "true" ]; then
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+            docker pull "$IMAGE@${{ needs.image.outputs.digest }}"
+            docker tag "$IMAGE@${{ needs.image.outputs.digest }}" postmodem:ci
+          fi
+      - if: env.CAN_PUSH != 'true'
+        uses: actions/download-artifact@v8
+        with: { name: postmodem-image, path: /tmp }
+      - if: env.CAN_PUSH != 'true'
+        run: docker load -i /tmp/postmodem-image.tar
+      - name: Shellcheck
+        run: shellcheck deploy/install.sh
+      - name: Install a solo demo board
+        run: sh deploy/install.sh --solo --demo --yes --image postmodem:ci --dir "$RUNNER_TEMP/board" --port 8080
+      - name: It answers, and the sign-in page offers the demo accounts
+        run: |
+          curl -fsS http://localhost:8080/readyz
+          curl -fsS http://localhost:8080/login.php | grep -q "Sign in as Admin"
+          cd "$RUNNER_TEMP/board"
+          docker compose -f compose.solo.yaml exec -T postmodem /nodejs/bin/node /app/postmodem.js doctor
+      - name: Running it again keeps .env and the board
+        run: |
+          before=$(sha256sum "$RUNNER_TEMP/board/.env")
+          sh deploy/install.sh --solo --demo --yes --image postmodem:ci --dir "$RUNNER_TEMP/board" --port 8080 | tee /tmp/again.log
+          grep -q "Keeping the existing" /tmp/again.log
+          grep -q "The demo board is ready." /tmp/again.log
+          test "$before" = "$(sha256sum "$RUNNER_TEMP/board/.env")"
+      - name: Container logs
+        if: failure()
+        run: cd "$RUNNER_TEMP/board" && docker compose -f compose.solo.yaml logs --no-color
+
   # The required check for the e2e matrix (.github/rulesets/main.json). It runs even when an
   # e2e job fails or the image job never ran, and passes only if every e2e job passed.
   e2e-gate:
     name: E2E
-    needs: [plan, image, e2e]
+    needs: [plan, image, e2e, installer]
     if: always() && (github.ref != 'refs/heads/main' || github.event_name != 'push')
     runs-on: ubuntu-latest
     steps:
@@ -421,9 +465,11 @@ jobs:
           PLAN_RESULT: ${{ needs.plan.result }}
           IMAGE_RESULT: ${{ needs.image.result }}
           E2E_RESULT: ${{ needs.e2e.result }}
+          INSTALLER_RESULT: ${{ needs.installer.result }}
         run: |
-          echo "plan: $PLAN_RESULT, image: $IMAGE_RESULT, e2e: $E2E_RESULT"
+          echo "plan: $PLAN_RESULT, image: $IMAGE_RESULT, e2e: $E2E_RESULT, installer: $INSTALLER_RESULT"
           test "$PLAN_RESULT" = success && test "$IMAGE_RESULT" = success && test "$E2E_RESULT" = success
+          test "$INSTALLER_RESULT" = success
 
   # Main: the merge queue built, tested and pushed sha-<sha> for this exact commit, so this
   # only re-tags it. Release tags: the digest this run built and tested.
