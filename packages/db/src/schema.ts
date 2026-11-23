@@ -57,6 +57,7 @@ export interface UsersTable {
   rulesVersion: number | null;
   rulesAcceptedAt: number | null;
   notifyPm: Bool;
+  allowEmail: Bool;
   autoWatch: Bool;
 }
 

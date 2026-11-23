@@ -22,6 +22,7 @@ import {
   loadSnapshot,
   MAIL_IP_POLICY,
   MAIL_POLICY,
+  MEMBER_MAIL_POLICY,
   type Permissions,
   POSTING_POLICY,
   permissionsFor,
@@ -62,6 +63,7 @@ export interface AppContext {
     register: Throttle;
     mail: Throttle;
     mailIp: Throttle;
+    memberMail: Throttle;
     search: Pick<Throttle, "wait" | "fail" | "reset">;
     posting: Pick<Throttle, "wait" | "fail" | "reset">;
   };
@@ -230,6 +232,7 @@ export async function createContext(opts: {
           : new Throttle({ ...POSTING_POLICY, free }, db.repos.throttle, "posting");
       },
       mailIp: new Throttle(MAIL_IP_POLICY, db.repos.throttle, "mail-ip"),
+      memberMail: new Throttle(MEMBER_MAIL_POLICY, db.repos.throttle, "member-mail"),
     },
     mailer,
     externalSearch: config.searchUrl === "builtin://" ? null : new Meilisearch(config, db, log),

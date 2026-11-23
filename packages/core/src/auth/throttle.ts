@@ -66,6 +66,14 @@ export const MAIL_IP_POLICY: ThrottlePolicy = {
   windowMs: 60 * MINUTE,
 };
 
+/** E-mails a member sends another through the board (#132): a few an hour, then slower. */
+export const MEMBER_MAIL_POLICY: ThrottlePolicy = {
+  free: 5,
+  baseMs: 5 * MINUTE,
+  maxMs: 60 * MINUTE,
+  windowMs: 60 * MINUTE,
+};
+
 export type ThrottleStore = Omit<ThrottleRepository, "purge">;
 
 export class Throttle {

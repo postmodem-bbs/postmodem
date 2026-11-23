@@ -109,6 +109,11 @@ export interface User {
   rulesAcceptedAt: Millis | null;
   /** E-mail when a private message arrives (phpBB2 user_notify_pm). */
   notifyPm: boolean;
+  /**
+   * Members may e-mail them through the board, which never shows the address (phpBB2
+   * user_viewemail, #132). Off unless they choose it.
+   */
+  allowEmail: boolean;
   /** Watch topics one starts or replies to (phpBB2 user_notify), for reply e-mails. */
   autoWatch: boolean;
 }

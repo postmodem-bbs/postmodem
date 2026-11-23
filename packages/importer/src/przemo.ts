@@ -147,6 +147,7 @@ const USED: Record<string, string[]> = {
     "user_avatar_type",
     "user_notify",
     "user_notify_pm",
+    "user_viewemail",
   ],
   groups: [
     "group_id",
@@ -541,6 +542,7 @@ export async function importPrzemo(
             locale: LOCALES[plain(row.user_lang)] ?? null,
             avatar: legacyAvatar(num(row.user_avatar_type), plain(row.user_avatar)),
             notifyPm: num(row.user_notify_pm) !== 0,
+            allowEmail: num(row.user_viewemail) === 1,
             autoWatch: num(row.user_notify) === 1,
           });
           if (num(row.user_avatar_type) === 2 && !legacyAvatar(2, plain(row.user_avatar)))
