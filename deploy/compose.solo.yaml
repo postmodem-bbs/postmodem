@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Postmodem, solo mode: one container, SQLite and local files in a named volume.
-#   docker compose -f compose.solo.yaml up -d
+#   sh install.sh --solo     (or by hand: docker compose -f compose.solo.yaml up -d)
 # Put a TLS-terminating proxy in front for anything public, or use compose.yaml.
 name: postmodem-solo
 
@@ -18,6 +18,8 @@ services:
       POSTMODEM_MAIL_URL: ${POSTMODEM_MAIL_URL:-log://}
       POSTMODEM_MAIL_FROM: ${POSTMODEM_MAIL_FROM:-}
       POSTMODEM_REGISTRATIONS_PER_IP_HOUR: ${POSTMODEM_REGISTRATIONS_PER_IP_HOUR:-10}
+      # 1: an empty board starts as the demo (postmodem demo). Never for a real board.
+      POSTMODEM_DEMO: ${POSTMODEM_DEMO:-}
     volumes: ["postmodem-data:/data"]
     read_only: true
     tmpfs: ["/tmp"]

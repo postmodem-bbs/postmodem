@@ -1,6 +1,8 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Postmodem, stack mode (CONTAINERS.md §4.3). One image, several roles.
 #
+#   sh install.sh --stack           # writes .env and secrets, starts it, creates the admin
+# or by hand:
 #   cp .env.example .env            # then edit
 #   mkdir -p secrets && openssl rand -base64 32 > secrets/db_password && openssl rand -base64 48 > secrets/secret_key
 #   docker compose up -d
@@ -32,6 +34,8 @@ x-postmodem: &postmodem
     POSTMODEM_SEARCH_KEY: ${MEILI_MASTER_KEY:-}
     POSTMODEM_COUNTERS_URL: ${POSTMODEM_COUNTERS_URL:-}
     POSTMODEM_REALTIME_URL: ${POSTMODEM_REALTIME_URL:-}
+    # 1: `migrate` sets an empty board up as the demo (postmodem demo). Never for a real board.
+    POSTMODEM_DEMO: ${POSTMODEM_DEMO:-}
   secrets: [db_password, secret_key]
   volumes: ["postmodem-data:/data"]
   read_only: true
