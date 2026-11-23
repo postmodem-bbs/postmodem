@@ -2,6 +2,10 @@
 
 Status: **draft** · 2026-11-17 · companions: [DESIGN.md](DESIGN.md) · [PARITY.md](PARITY.md) · [CONTAINERS.md](CONTAINERS.md)
 
+> **Design document.** It describes where Postmodem is going, so parts of it are planned, not
+> built. For installing, running and developing the board as it is today, see the
+> [guides](README.md).
+
 ## 0. The exercise
 
 **Rule:** the core does what **vanilla phpBB 2.0.x** did. Everything Przemo

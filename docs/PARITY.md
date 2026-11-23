@@ -2,6 +2,10 @@
 
 Status: **draft** · 2026-11-17 · companion to [DESIGN.md](DESIGN.md)
 
+> **Design document.** It describes where Postmodem is going, so parts of it are planned, not
+> built. For installing, running and developing the board as it is today, see the
+> [guides](README.md).
+
 Source: the legacy ACP (`admin/`), board settings (`lang_admin_board.php`,
 ~200 toggles), user preferences (`customize.php`) and the Przemo-specific
 scripts in `old_przemo_phpBB/`. Each row says where the feature goes in Postmodem.

@@ -2,6 +2,10 @@
 
 Status: **draft for discussion** · 2026-11-17
 
+> **Design document.** It describes where Postmodem is going, so parts of it are planned, not
+> built. For installing, running and developing the board as it is today, see the
+> [guides](README.md).
+
 ---
 
 ## 1. Why this exists

@@ -39,128 +39,95 @@
 </p>
 
 <p align="center">
-  <a href="#run-it">Run it</a> ·
-  <a href="#develop">Develop</a> ·
-  <a href="docs/DESIGN.md">Design</a> ·
+  <a href="#try-it">Try it</a> ·
+  <a href="docs/guide/install.md">Install</a> ·
+  <a href="docs/guide/develop.md">Develop</a> ·
+  <a href="docs/README.md">Docs</a> ·
   <a href="docs/milestones/">Milestones</a> ·
-  <a href="docs/releases/0.1.0.md">0.1.0 notes</a> ·
   <a href="https://postmodem-bbs.github.io/postmodem/">Website</a>
 </p>
 
-> **Status: 0.1.0, an early preview. Not ready for production.** It is already a usable
-> board: reading, posting, moderation, private messages, notifications, search, an admin
-> panel, spam protection, and an **experimental** importer for phpBB2 / Przemo boards that
-> keeps their links working (it's finished in the Beta phase before 1.0). Data formats may
-> still change before 1.0. Migrations carry a board forward, but there is no downgrade. The project doesn't run a public board of its own yet; that waits
-> for a more complete build ([M2.md, decision 5](docs/milestones/M2.md)). See the
-> [0.1.0 release notes](docs/releases/0.1.0.md) for what's in it and what isn't yet, and
-> the [milestones](docs/milestones/) and [design](docs/DESIGN.md) for where it's going.
-> [CONTAINERS.md §4.6](docs/CONTAINERS.md#46-a-public-staging-board-m2a) covers running a
-> test board in public.
->
-> Try it with demo content: `pnpm cli seed-demo`, then `pnpm dev`
-> (or `postmodem seed-demo` inside the container). Demo members `Łukasz Żółć`,
-> `retro_fan` and `Ola` sign in with the password `postmodem-demo`. New accounts confirm
-> their e-mail address: set `POSTMODEM_MAIL_URL` (the dev stack's Mailpit at
-> http://localhost:8025 shows every message), or find the link in the log with the
-> default `log://`.
+> **Status: an early preview (0.x). Not ready for production.** It is already a usable
+> board: reading, posting, moderation, private messages, notifications, search, profiles
+> with avatars, signatures and ranks, an admin panel, spam protection, and an
+> **experimental** importer for phpBB2 / Przemo boards that keeps their links working (it's
+> finished in the Beta phase before 1.0). Data formats may still change before 1.0:
+> migrations carry a board forward, but there is no downgrade. See the
+> [release notes](docs/releases/) for what's in each release, and the
+> [milestones](docs/milestones/) for where it's going.
 
 ## What's in the box
 
-|                     |                                                                                       |
-| ------------------- | ------------------------------------------------------------------------------------- |
-| 📖 **Reading**      | phpBB2-style index, forums, topics and profiles; old phpBB2/Przemo links keep working |
-| ✍️ **Writing**      | topics, replies, quotes, preview, BBCode toolbar, signatures                          |
-| 🛡️ **Moderating**   | lock, move, split, merge, sticky; bans by member, IP and e-mail; everything audited   |
-| 💬 **Members**      | private messages, watches with e-mail notifications, search, data export              |
-| 🧹 **Anti-spam**    | self-hosted proof-of-work, e-mail confirmation, invite-only mode, rate limits         |
-| 🧳 **Importing**    | phpBB2 / Przemo boards, passwords included (experimental, [guide](docs/IMPORTING.md)) |
-| 🐳 **Running it**   | one signed image; solo (SQLite) or stack (Postgres + Caddy); web admin and CLI        |
-| ♿ **For everyone** | WCAG 2.2 AA, light and dark themes, English and Polish, no JavaScript required        |
+|                     |                                                                                                         |
+| ------------------- | ------------------------------------------------------------------------------------------------------- |
+| 📖 **Reading**      | phpBB2-style index, forums, topics and profiles; old phpBB2/Przemo links keep working                   |
+| ✍️ **Writing**      | topics, replies, quotes, preview, BBCode toolbar, signatures                                            |
+| 🛡️ **Moderating**   | lock, move, split, merge, sticky; bans by member, IP and e-mail; everything audited                     |
+| 💬 **Members**      | profiles with avatars, signatures and ranks, private messages, watches, search, time zones, data export |
+| 🧹 **Anti-spam**    | self-hosted proof-of-work, e-mail confirmation, invite-only mode, rate limits                           |
+| 🧳 **Importing**    | phpBB2 / Przemo boards, passwords included (experimental, [guide](docs/guide/importing.md))             |
+| 🐳 **Running it**   | one signed image; solo (SQLite) or stack (Postgres + Caddy); an installer; web admin and CLI            |
+| ♿ **For everyone** | WCAG 2.2 AA, light and dark themes, English and Polish, no JavaScript required                          |
 
-## Run it
+## Try it
 
-**Solo** (one container, SQLite, data in a named volume):
+A demo board on your machine, every account one click away (password `postmodem-demo`):
+
+```bash
+docker run -d --name postmodem-demo -p 8080:8080 -e POSTMODEM_DEMO=1 -v postmodem-demo:/data ghcr.io/postmodem-bbs/postmodem:edge
+```
+
+Then open <http://localhost:8080> and sign in from the sign-in page. The
+[demo guide](docs/guide/demo.md) has a 15-minute tour, and how to run the demo from a
+checkout or with the installer.
+
+## Install
+
+The installer asks a few questions, then starts a solo board (one container, SQLite) or a
+stack (Postgres, Caddy with automatic HTTPS) and creates the first administrator:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/postmodem-bbs/postmodem/main/deploy/install.sh | sh
+```
+
+Or by hand, solo:
 
 ```bash
 docker run -d --name postmodem -p 8080:8080 -v postmodem-data:/data --read-only --tmpfs /tmp ghcr.io/postmodem-bbs/postmodem:0.1
 ```
 
 Images are signed with cosign. `:0.1` follows the latest 0.1.x release, and `:edge` is the
-latest tested build of `main`.
+latest tested build of `main`. Inside the container, `postmodem` is the board's command line
+(`docker exec -i postmodem postmodem doctor`).
 
-**Stack** (Postgres, Caddy with automatic HTTPS, several web replicas): see
-[deploy/compose.yaml](deploy/compose.yaml) and [deploy/.env.example](deploy/.env.example).
-
-```bash
-cd deploy && docker compose up -d
-```
-
-To run your own build instead, run
-`docker build --target runtime -t postmodem:local .` and set
-`POSTMODEM_IMAGE=postmodem:local`.
-
-### Commands
-
-The image's entrypoint is the `postmodem` CLI. One image, many roles:
-
-| Command                        | Purpose                                                                      |
-| ------------------------------ | ---------------------------------------------------------------------------- |
-| `run`                          | web + worker + scheduler in one process (default, solo mode)                 |
-| `web` / `worker` / `scheduler` | single roles for stack mode                                                  |
-| `migrate`                      | apply database migrations (safe to run concurrently)                         |
-| `init`                         | first administrator from `POSTMODEM_ADMIN_*`, default ranks (idempotent)     |
-| `seed-demo`                    | fill an empty board with demo content (refuses if forums exist)              |
-| `import przemo`                | move a phpBB2 / Przemo board over, experimental ([guide](docs/IMPORTING.md)) |
-| `perms explain`                | why a user may or may not do something in a forum                            |
-| `user set-password <name>`     | set a password (prompted without echo, or `--password-file`)                 |
-| `doctor`                       | check configuration, data directory, database, migrations                    |
-| `healthcheck`                  | used by Docker's `HEALTHCHECK`                                               |
-| `config print`                 | effective configuration and where each value came from, secrets redacted     |
-
-```bash
-docker exec postmodem /nodejs/bin/node /app/postmodem.js doctor
-```
-
-Configuration is environment-first (`POSTMODEM_*`, with `*_FILE` variants for
-Docker secrets), optionally from `/data/postmodem.toml`. See
-[docs/CONTAINERS.md §3](docs/CONTAINERS.md).
+| Guide                                   |                                                               |
+| --------------------------------------- | ------------------------------------------------------------- |
+| [Install](docs/guide/install.md)        | the installer, solo and stack by hand, behind a reverse proxy |
+| [Configure](docs/guide/configure.md)    | `POSTMODEM_*` variables and board settings                    |
+| [Run a board](docs/guide/administer.md) | the command line, backups, upgrades, before going public      |
+| [Import](docs/guide/importing.md)       | from phpBB2 / Przemo (experimental)                           |
 
 ## Develop
 
-Docker is the only requirement:
-
-```bash
-docker compose -f deploy/dev/compose.dev.yaml up --build --watch
-```
-
-This runs the board at <http://localhost:5173> (Vite dev server, live sync),
-Postgres, and Mailpit at <http://localhost:8025>. The same setup opens as a
-**Dev Container** (`.devcontainer/`) in VS Code, JetBrains or Codespaces.
-
-With Node 24 and pnpm 12 installed locally instead:
+With Node 24 and pnpm 12:
 
 ```bash
 pnpm install
-pnpm dev            # http://localhost:5173, SQLite in ./data
-pnpm check          # lint, architecture rules, typecheck, unit tests, SPDX, licences
-pnpm e2e            # Playwright + axe against a running board (PM_BASE_URL)
 ```
 
-## Repository layout
+```bash
+pnpm dev
+```
 
-| Path            | What                                                                       |
-| --------------- | -------------------------------------------------------------------------- |
-| `apps/server`   | SvelteKit web layer and the `postmodem` CLI                                |
-| `packages/core` | framework-free domain: config, typed settings, logging                     |
-| `packages/db`   | SQLite (`node:sqlite`) and Postgres adapters, migrations                   |
-| `packages/i18n` | Fluent translations (English, Polish)                                      |
-| `packages/ui`   | theme tokens → CSS, contrast checks                                        |
-| `deploy/`       | Compose files (solo, stack, dev) and Caddy config                          |
-| `e2e/`          | end-to-end and accessibility tests                                         |
-| `docs/`         | design documents and [ADRs](docs/adr/)                                     |
-| `tools/`        | fixtures generator, load tests, spikes ([tools/README](tools/README.md))   |
-| `var/`          | everything generated locally; ignored by git ([var/README](var/README.md)) |
+The board runs at <http://localhost:5173> on SQLite in `var/data`; `pnpm cli demo` fills it
+with the demo content, and `pnpm check` runs lint, typecheck, unit tests and the licence
+checks. With Docker only, `docker compose -f deploy/dev/compose.dev.yaml up --build --watch`
+runs the same on Postgres, with Mailpit for e-mail; it also opens as a Dev Container.
+
+The [develop guide](docs/guide/develop.md) covers tests and where things are.
+[CONTRIBUTING.md](CONTRIBUTING.md) has the rules: every commit signed off (DCO), work
+tracked on the [roadmap Project](https://github.com/orgs/postmodem-bbs/projects/2), and a
+visible change shows up on the demo board.
 
 ## Licence
 

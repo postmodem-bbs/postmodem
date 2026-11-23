@@ -151,18 +151,20 @@
     ghcr.io/postmodem-bbs/postmodem:0.1</code></pre>
           </div>
           <div class="card">
-            <h3>Stack</h3>
-            <p>Postgres, Caddy with automatic HTTPS, several web replicas.</p>
-            <pre><code><span class="prompt">$ </span>cd deploy
-<span class="prompt">$ </span>docker compose up -d</code></pre>
-            <p style="margin:12px 0 0">See <a href="https://github.com/postmodem-bbs/postmodem/blob/main/deploy/compose.yaml">compose.yaml</a> and <a href="https://github.com/postmodem-bbs/postmodem/blob/main/docs/CONTAINERS.md">CONTAINERS.md</a>.</p>
+            <h3>Installer</h3>
+            <p>Solo or stack (Postgres, Caddy with automatic HTTPS): it asks, then starts the board and creates the administrator.</p>
+            <pre><code><span class="prompt">$ </span>curl -fsSL https://raw.githubusercontent.com/\
+postmodem-bbs/postmodem/main/deploy/install.sh | sh</code></pre>
+            <p style="margin:12px 0 0">See the <a href="https://github.com/postmodem-bbs/postmodem/blob/main/docs/guide/install.md">install guide</a>, <a href="https://github.com/postmodem-bbs/postmodem/blob/main/docs/guide/configure.md">configuration</a> and <a href="https://github.com/postmodem-bbs/postmodem/blob/main/docs/guide/administer.md">running a board</a>.</p>
           </div>
           <div class="card">
             <h3>Try the demo</h3>
-            <p>Fill an empty board with demo content, then sign in as a demo member.</p>
-            <pre><code><span class="prompt">$ </span>docker exec postmodem \
-    /nodejs/bin/node /app/postmodem.js \
-    seed-demo</code></pre>
+            <p>A board full of demo content; every account signs in with one click.</p>
+            <pre><code><span class="prompt">$ </span>docker run -d --name postmodem-demo \
+    -p 8080:8080 -e POSTMODEM_DEMO=1 \
+    -v postmodem-demo:/data \
+    ghcr.io/postmodem-bbs/postmodem:edge</code></pre>
+            <p style="margin:12px 0 0">Then a 15-minute tour: the <a href="https://github.com/postmodem-bbs/postmodem/blob/main/docs/guide/demo.md">demo guide</a>.</p>
           </div>
         </div>
       </div>
@@ -185,6 +187,7 @@
             <pre><code><span class="prompt">$ </span>pnpm install
 <span class="prompt">$ </span>pnpm dev
 <span class="prompt">$ </span>pnpm check</code></pre>
+            <p style="margin:12px 0 0">See the <a href="https://github.com/postmodem-bbs/postmodem/blob/main/docs/guide/develop.md">develop guide</a>.</p>
           </div>
         </div>
       </div>

@@ -3,6 +3,10 @@
 Status: **draft** · 2026-11-17 · builds on [DESIGN.md §6](DESIGN.md),
 [EXTENSION-POINTS.md](EXTENSION-POINTS.md), [PACKAGES.md](PACKAGES.md)
 
+> **Design document.** It describes where Postmodem is going, so parts of it are planned, not
+> built. For installing, running and developing the board as it is today, see the
+> [guides](README.md).
+
 > **v0 implemented (M2b slice 10, 2026-11-19)** for first-party packages: preferences (§4),
 > entity fields (§5), collections (§6), channels (§7) and counters (§8), declared in a
 > package's TypeScript definition (`@postmodem/core` `platform/`). Rules are TypeScript
