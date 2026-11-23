@@ -2,6 +2,7 @@
 // /account/export — everything the board holds about the member, as JSON (GDPR art. 15/20).
 // Never the password hash or other members' private data beyond the messages they exchanged.
 import { error } from "@sveltejs/kit";
+import { avatarForExport } from "#lib/server/avatars.ts";
 import type { RequestHandler } from "./$types";
 
 export const GET: RequestHandler = async ({ locals }) => {
@@ -37,6 +38,7 @@ export const GET: RequestHandler = async ({ locals }) => {
       location: user.location,
       website: user.website,
       signature: user.signatureSource,
+      avatar: await avatarForExport(locals.ctx.config.dataDir, user.avatar),
       locale: user.locale,
       rulesAccepted:
         user.rulesVersion === null ? null : { version: user.rulesVersion, at: iso(user.rulesAcceptedAt) },

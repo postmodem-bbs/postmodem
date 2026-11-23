@@ -6,6 +6,12 @@ import { createServer, type RequestListener, type Server } from "node:http";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 import {
+  avatarMaxBytes,
+  avatarMaxHeight,
+  avatarMaxWidth,
+  avatarsGallery,
+  avatarsRemote,
+  avatarsUpload,
   boardDescription,
   boardName,
   ConfigError,
@@ -309,6 +315,20 @@ async function importBoard(args: string[]): Promise<number> {
       if (s.boardDescription !== undefined)
         await ctx.settings.set(boardDescription, s.boardDescription.slice(0, 300));
       if (s.defaultLocale) await ctx.settings.set(defaultLocale, s.defaultLocale);
+      // phpBB2's avatar limits and sources (#131). Its remote avatars were shown from the other
+      // site; here a link is downloaded once, so the same switch is the safer behaviour.
+      const avatarKeys = {
+        upload: avatarsUpload,
+        remote: avatarsRemote,
+        gallery: avatarsGallery,
+        maxBytes: avatarMaxBytes,
+        maxWidth: avatarMaxWidth,
+        maxHeight: avatarMaxHeight,
+      } as const;
+      for (const [key, def] of Object.entries(avatarKeys)) {
+        const value = s.avatars?.[key as keyof typeof avatarKeys];
+        if (value !== undefined) await ctx.settings.set<number | boolean>(def, value);
+      }
       if (s.loginSecurity) {
         for (const key of [
           "maxFailures",

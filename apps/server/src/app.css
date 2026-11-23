@@ -620,10 +620,43 @@ main:focus {
 .profile-facts .rank img {
   margin-block: 0 var(--pm-space-1);
 }
+/* The account page's avatar gallery: a grid of choices, each a radio button with its image. */
+.avatar-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: var(--pm-space-2);
+}
+.avatar-gallery li {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--pm-space-1);
+  text-align: center;
+}
+ul.avatar-gallery {
+  padding: 0;
+}
+.avatar-gallery label {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--pm-space-1);
+}
+.avatar-gallery img,
+.panel > .avatar {
+  max-width: 80px;
+  max-height: 80px;
+  height: auto;
+}
 .post-author .avatar {
   display: block;
-  max-width: 80px;
+  /* Avatars may be up to the board's limit (512 × 512 by default) in any shape: shown at most
+     80 px either way, keeping their proportions. */
+  width: auto;
   height: auto;
+  max-width: 80px;
+  max-height: 80px;
   margin-block: var(--pm-space-2);
 }
 /* Blocks that tests look into (poll, recent topics, preview) are plain <div>s with a heading,

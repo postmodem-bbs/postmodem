@@ -1,6 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { expect, it } from "vitest";
-import { legacyAvatar, legacyMessageView, legacyRankImage, postSubject, safeRelativePath } from "./przemo.ts";
+import {
+  importAvatarSettings,
+  legacyAvatar,
+  legacyMessageView,
+  legacyRankImage,
+  postSubject,
+  safeRelativePath,
+} from "./przemo.ts";
 
 it("keeps a post's own subject and drops ones that only repeat the topic title", () => {
   expect(postSubject("", "Nowy komputer")).toBe("");
@@ -39,4 +46,25 @@ it("rank images keep their path under uploads/ranks, or an https URL (#130)", ()
   expect(legacyRankImage("../config.php")).toBeNull();
   expect(legacyRankImage("/etc/passwd")).toBeNull();
   expect(legacyRankImage("")).toBeNull();
+});
+
+it("carries phpBB2's avatar settings over, within Postmodem's range (#131)", () => {
+  const config = new Map([
+    ["allow_avatar_upload", "1"],
+    ["allow_avatar_remote", "0"],
+    ["allow_avatar_local", "1"],
+    ["avatar_filesize", "6144"],
+    ["avatar_max_width", "80"],
+    ["avatar_max_height", "5000"],
+  ]);
+  expect(importAvatarSettings(config)).toEqual({
+    upload: true,
+    remote: false,
+    gallery: true,
+    maxBytes: 6144,
+    maxWidth: 80,
+    maxHeight: 2048,
+  });
+  expect(importAvatarSettings(new Map([["avatar_filesize", "12"]]))).toEqual({ maxBytes: 1024 });
+  expect(importAvatarSettings(new Map([["avatar_filesize", "lots"]]))).toBeUndefined();
 });

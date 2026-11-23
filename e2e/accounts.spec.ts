@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Accounts (M1 slice 4) against the seeded demo: demo members sign in with "postmodem-demo".
 // Mail tests read the board's e-mails from Mailpit (PM_MAILPIT_URL), as CI provides.
+import { join } from "node:path";
 import { expect, type Page, test } from "@playwright/test";
 import {
   ESSENTIALS,
@@ -291,6 +292,60 @@ test("guests see the board's time zone and date format (#129)", async ({ page })
     timeZone: "UTC",
   }).format(utc);
   await expect(time).toHaveText(expected);
+});
+
+const IMAGES = join(import.meta.dirname, "../apps/server/src/lib/server/fixtures/images");
+
+test("a member sets an avatar without JavaScript: limits, metadata, links, removal (#131)", async ({
+  browser,
+}) => {
+  const context = await browser.newContext({ javaScriptEnabled: false, locale: "en-US" });
+  const page = await context.newPage();
+  const section = page.getByRole("region", { name: "Avatar" });
+  const upload = page.locator("form[action='?/avatarUpload']");
+  try {
+    await signIn(page, "Ola", DEMO_PASSWORD);
+    await page.goto("/account");
+    await expect(section.getByText("You have no avatar.")).toBeVisible();
+    await expect(upload).toContainText("at most 64 KB and 512 × 512 pixels");
+
+    // 600 × 400 is over the default 512 × 512: refused, not shrunk.
+    await upload.getByLabel("Upload an image").setInputFiles(join(IMAGES, "exif-600x400.jpg"));
+    await upload.getByRole("button", { name: "Use this avatar" }).click();
+    await expect(section.getByRole("alert")).toHaveText("The image is larger than 512 × 512 pixels.");
+
+    // A link to this machine is never fetched.
+    await upload.getByLabel("Or take it from a link").fill("http://127.0.0.1/avatar.png");
+    await upload.getByRole("button", { name: "Use this avatar" }).click();
+    await expect(section.getByRole("alert")).toHaveText(
+      "That link points to an address the board doesn't download from.",
+    );
+
+    await upload.getByLabel("Upload an image").setInputFiles(join(IMAGES, "text-64x48.png"));
+    await upload.getByRole("button", { name: "Use this avatar" }).click();
+    await expect(section.getByRole("status")).toHaveText("Saved.");
+    const src = (await section.getByRole("img", { name: "Your avatar" }).getAttribute("src")) ?? "";
+    expect(src).toMatch(/^\/avatars\/upload\/[0-9a-f]{32}\.png$/);
+    const served = await page.request.get(src);
+    expect(served.headers()["content-type"]).toBe("image/png");
+    // The text chunks the file carried ("Secret Author") are gone.
+    expect((await served.body()).toString("latin1").toLowerCase()).not.toContain("secret");
+  } finally {
+    await page.goto("/account");
+    const remove = page.getByRole("button", { name: "Remove my avatar" });
+    if (await remove.count()) {
+      await remove.click();
+      await expect(section.getByText("You have no avatar.")).toBeVisible();
+    }
+    await context.close();
+  }
+});
+
+test("the avatar section passes axe (#131)", async ({ page }) => {
+  await signIn(page, "Ola", DEMO_PASSWORD);
+  await page.goto("/account");
+  await expect(page.getByRole("heading", { name: "Avatar" })).toBeVisible();
+  await expectNoAxeViolations(page);
 });
 
 test("sign-in returns to the page it started from, by e-mail address too", async ({ page }) => {

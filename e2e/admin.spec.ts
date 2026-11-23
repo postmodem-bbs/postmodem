@@ -3,6 +3,7 @@
 // `postmodem user set-password` and passes it as PM_ADMIN_PASSWORD; without it these skip.
 // Nothing here bans or resets a demo member (other specs sign in as them in parallel).
 import { isIP } from "node:net";
+import { join } from "node:path";
 import { expect, type Page, test } from "@playwright/test";
 import { ESSENTIALS, enablePackage, expectNoAxeViolations, guardCsp, signIn } from "./helpers.ts";
 
@@ -271,6 +272,39 @@ test.describe("as the administrator", () => {
         .click();
       await expect(page.getByRole("region", { name: title })).toHaveCount(0);
     }
+  });
+
+  test("avatar gallery: add an image, a member picks it, deleting takes it away (#131)", async ({ page }) => {
+    const category = `e2e ${unique()}`;
+    await asAdmin(page, "/admin/avatars");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Avatar gallery");
+    const add = page.locator("form[action='?/add']");
+    await add.getByLabel("Category").fill(category);
+    await add
+      .getByLabel("Image")
+      .setInputFiles(
+        join(import.meta.dirname, "../apps/server/src/lib/server/fixtures/images/anim-32x32.gif"),
+      );
+    await add.getByRole("button", { name: "Create" }).click();
+    const section = page.getByRole("region", { name: category });
+    await expect(section.getByRole("img")).toHaveCount(1);
+    await expectNoAxeViolations(page);
+
+    // The admin is a member too: pick it on the account page.
+    await page.goto(`/account?gallery=${encodeURIComponent(category)}#avatar`);
+    const pick = page.locator("form[action='?/avatarGallery']");
+    await pick.getByRole("radio").first().check();
+    await pick.getByRole("button", { name: "Use this avatar" }).click();
+    await expect(
+      page.getByRole("region", { name: "Avatar" }).getByRole("img", { name: "Your avatar" }),
+    ).toBeVisible();
+
+    await page.goto("/admin/avatars");
+    await expect(section).toContainText("used by 1 member");
+    await section.getByRole("button", { name: /^Delete / }).click();
+    await expect(page.getByRole("region", { name: category })).toHaveCount(0);
+    await page.goto("/account");
+    await expect(page.getByRole("region", { name: "Avatar" }).getByText("You have no avatar.")).toBeVisible();
   });
 
   test("bans and invites", async ({ page }) => {

@@ -48,6 +48,17 @@ const GROUPS: { label: string; fields: Field[] }[] = [
     ],
   },
   {
+    label: "admin-settings-avatars",
+    fields: [
+      { key: "core.avatars.upload", type: "boolean" },
+      { key: "core.avatars.remote", type: "boolean" },
+      { key: "core.avatars.gallery", type: "boolean" },
+      { key: "core.avatars.maxBytes", type: "number" },
+      { key: "core.avatars.maxWidth", type: "number" },
+      { key: "core.avatars.maxHeight", type: "number" },
+    ],
+  },
+  {
     label: "admin-settings-posting",
     fields: [
       { key: "core.posting.floodSeconds", type: "number" },
