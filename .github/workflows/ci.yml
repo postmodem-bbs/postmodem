@@ -385,6 +385,18 @@ jobs:
           PM_BASE_URL: http://localhost:8080
           PM_TEST_THEME_SETTING: "1"
         run: pnpm exec playwright test e2e/themes.spec.ts --grep "admin changes the board default"
+      # Last, because it changes the board: `postmodem demo` turns the e2e board into the demo
+      # (shared password, no e-mail confirmation), then the sign-in buttons are tested (#162).
+      - name: Demo board (postmodem demo)
+        if: matrix.name == 'solo'
+        working-directory: deploy
+        env:
+          PM_BASE_URL: http://localhost:8080
+          PM_DEMO: "1"
+          PW_BROWSERS: ${{ matrix.browser }}
+        run: |
+          docker compose -f compose.solo.yaml -f ci/mailpit.yaml exec -T postmodem /nodejs/bin/node /app/postmodem.js demo
+          pnpm --dir .. exec playwright test e2e/demo.spec.ts
       - name: Container logs
         if: failure()
         working-directory: deploy

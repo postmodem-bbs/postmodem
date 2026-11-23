@@ -59,6 +59,25 @@
       <p class="muted">{t("login-no-account")} <a href="/register">{t("register-link")}</a></p>
     {/if}
   </form>
+  {#if data.demo}
+    <section class="panel narrow demo-accounts" aria-labelledby="demo-title">
+      <h2 id="demo-title">{t("login-demo-title")}</h2>
+      <p>{t("login-demo-intro", { password: data.demo.password })}</p>
+      <ul>
+        {#each data.demo.accounts as account (account.username)}
+          <li>
+            <form method="POST" action="?/login">
+              <input type="hidden" name="login" value={account.username} />
+              <input type="hidden" name="password" value={data.demo.password} />
+              <input type="hidden" name="redirect" value={form?.redirectTo ?? data.redirectTo} />
+              <button type="submit" class="demo-signin">{t("login-demo-as", { name: account.username })}</button>
+              <span class="muted">{t(`login-demo-${account.role}`)}</span>
+            </form>
+          </li>
+        {/each}
+      </ul>
+    </section>
+  {/if}
   {#if form && "error" in form && form.error === "unverified"}
     <form method="POST" action="?/resend" class="panel narrow actions">
       <input type="hidden" name="login" value={form.login} />

@@ -973,6 +973,27 @@ tr.pm-unread a {
   color: var(--pm-color-text-muted);
   font-size: 0.9rem;
 }
+/* The demo board's accounts on the sign-in page (#162) */
+.demo-accounts {
+  margin-block-start: var(--pm-space-3);
+}
+.demo-accounts ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--pm-space-2);
+}
+.demo-accounts form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--pm-space-1) var(--pm-space-3);
+}
+.demo-accounts .demo-signin {
+  padding: var(--pm-space-2) var(--pm-space-3);
+}
 .field-error,
 .form-error {
   margin: 0;
