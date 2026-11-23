@@ -83,6 +83,11 @@ jobs:
       - run: pnpm test
       - run: pnpm check:spdx
       - run: pnpm check:licenses
+      - name: CLI from source (README quickstart, #160)
+        env: { POSTMODEM_DATA_DIR: "${{ runner.temp }}/cli-smoke" }
+        run: |
+          pnpm cli seed-demo
+          pnpm cli doctor
 
   image:
     name: Build image
