@@ -16,7 +16,7 @@
 <ul class="panel">
   {#each data.bans as b (b.id)}
     <li>
-      <code>{b.kind}</code> {b.value}{#if b.expiresAt} · {t("admin-until", { date: formatDate(b.expiresAt, data.locale) })}{/if}{#if b.reason} · {b.reason}{/if}
+      <code>{b.kind}</code> {b.value}{#if b.expiresAt} · {t("admin-until", { date: formatDate(b.expiresAt, data.dates) })}{/if}{#if b.reason} · {b.reason}{/if}
       <form method="POST" action="?/unban" class="slot-form inline">
         <input type="hidden" name="id" value={b.id} />
         <button type="submit" class="link-button" aria-label={t("admin-remove-ban", { value: b.value })}>{t("admin-remove")}</button>
@@ -50,7 +50,7 @@
 <ul class="panel">
   {#each data.invites as i (i.id)}
     <li>
-      #{i.id} · {t("admin-invite-uses", { count: i.usesLeft })}{#if i.expiresAt} · {i.expired ? t("admin-expired") : t("admin-until", { date: formatDate(i.expiresAt, data.locale) })}{/if}{#if i.note} · {i.note}{/if}
+      #{i.id} · {t("admin-invite-uses", { count: i.usesLeft })}{#if i.expiresAt} · {i.expired ? t("admin-expired") : t("admin-until", { date: formatDate(i.expiresAt, data.dates) })}{/if}{#if i.note} · {i.note}{/if}
       <form method="POST" action="?/revoke" class="slot-form inline">
         <input type="hidden" name="id" value={i.id} />
         <button type="submit" class="link-button" aria-label={t("admin-revoke-invite", { id: i.id })}>{t("admin-remove")}</button>

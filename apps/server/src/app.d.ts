@@ -17,6 +17,8 @@ declare global {
       requestContext: RequestContext;
       themeId: import("@postmodem/core").ThemeId;
       colorScheme: "light" | "dark" | "system";
+      /** How this reader sees dates: their time zone and date format, else the board's (#129). */
+      dates: import("#lib/format.ts").DateFormat;
       /** The reader's preferences (platform service): stored for members, a cookie for guests. */
       prefs: PreferenceView;
       /** Link builder in the board's URL style (ADR 0012). */

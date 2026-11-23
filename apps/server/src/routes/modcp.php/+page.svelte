@@ -84,7 +84,7 @@
         {#each data.posts as p (p.id)}
           <label class="check split-post">
             <input type="checkbox" name="post" value={p.id} disabled={p.first} />
-            <span><strong>{p.author}</strong> · {formatDateTime(p.at, data.locale)}<br /><span class="muted">{p.text}</span></span>
+            <span><strong>{p.author}</strong> · {formatDateTime(p.at, data.dates)}<br /><span class="muted">{p.text}</span></span>
           </label>
         {/each}
       </fieldset>

@@ -79,12 +79,13 @@ test("account settings save the profile and refuse a wrong current password", as
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Your account");
   await expectNoAxeViolations(page);
   const sig = `Pozdrawiam, Ola ${unique()}`;
+  const profile = page.locator("form[action='?/profile']");
   await page.getByLabel("Website").fill("not a link");
-  await page.getByRole("button", { name: "Save" }).click();
+  await profile.getByRole("button", { name: "Save" }).click();
   await expect(page.locator("#website-error")).toHaveText("Enter a full link, starting with https://");
   await page.getByLabel("Website").fill("https://example.org");
   await page.getByLabel("Signature").fill(`[i]${sig}[/i]`);
-  await page.getByRole("button", { name: "Save" }).click();
+  await profile.getByRole("button", { name: "Save" }).click();
   await expect(page.getByRole("status").first()).toHaveText("Saved.");
   await expect(page.locator(".signature-preview em")).toHaveText(sig);
   // Her signature now shows under her posts.

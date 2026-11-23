@@ -34,7 +34,7 @@
     {#each data.members as m (m.ref.id)}
       <tr>
         <th scope="row"><a href={urls.user(m.ref)}>{m.name}</a></th>
-        <td><time datetime={isoDate(m.joined)}>{formatDate(m.joined, data.locale)}</time></td>
+        <td><time datetime={isoDate(m.joined)}>{formatDate(m.joined, data.dates)}</time></td>
         <td class="num">{m.posts}</td>
         <td>{m.location}</td>
       </tr>

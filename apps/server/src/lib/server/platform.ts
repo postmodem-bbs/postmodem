@@ -10,6 +10,7 @@ import {
   Collections,
   type Config,
   Counters,
+  DATE_FORMATS,
   defineChannel,
   defineCounter,
   definePreference,
@@ -47,6 +48,14 @@ export const language = definePreference({
   schema: z.enum(["auto", ...SUPPORTED]),
   default: "auto" as const,
   guest: "cookie",
+});
+
+/** How dates are written; "board" follows the board's setting. Members only (guests get the board's). */
+export const dateFormat = definePreference({
+  key: "core.dateFormat",
+  schema: z.enum(["board", ...DATE_FORMATS]),
+  default: "board" as const,
+  guest: "none",
 });
 
 /**
@@ -178,6 +187,7 @@ export function createPlatform(opts: {
     readerTheme,
     colorScheme,
     language,
+    dateFormat,
     replyMail,
   ]);
   const fields = new Fields(db.platform.fields);

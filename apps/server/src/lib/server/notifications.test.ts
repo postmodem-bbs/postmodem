@@ -3,11 +3,11 @@
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createTopic, type Repositories, reply, type User } from "@postmodem/core";
+import { boardTimeZone, createTopic, type Repositories, reply, type User } from "@postmodem/core";
 import { afterEach, describe, expect, it } from "vitest";
 import { type AppContext, createContext } from "./bootstrap.ts";
 import { urlsFor } from "./links.ts";
-import { afterPost, nextDigestAt, sendDigests, topicVisited } from "./notifications.ts";
+import { afterPost, memberTimeZone, nextDigestAt, sendDigests, topicVisited } from "./notifications.ts";
 
 const at = (iso: string) => Date.parse(iso);
 
@@ -88,6 +88,15 @@ describe("reply e-mail", () => {
     };
     return { ctx: c, topic, alice, bob, carol, post, mail };
   }
+
+  it("times a digest by the board's time zone for members who haven't chosen one (#129)", async () => {
+    const { ctx, bob, carol } = await board();
+    expect(memberTimeZone(ctx, carol)).toBe("UTC");
+    await ctx.settings.set(boardTimeZone, "Asia/Tokyo");
+    expect(memberTimeZone(ctx, carol)).toBe("Asia/Tokyo");
+    expect(memberTimeZone(ctx, bob)).toBe("Europe/Warsaw");
+    expect(memberTimeZone(ctx, { ...carol, timezone: "Mars/Olympus_Mons" })).toBe("Asia/Tokyo");
+  });
 
   it("sends right away by default, and collects a daily digest for members who chose it", async () => {
     const { ctx, topic, alice, bob, post, mail } = await board();

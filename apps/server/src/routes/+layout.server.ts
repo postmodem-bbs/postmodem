@@ -10,6 +10,7 @@ export const load: LayoutServerLoad = async ({ locals, url, depends }) => {
   const { config, settings } = locals.ctx;
   return {
     locale: locals.locale,
+    dates: locals.dates,
     theme: locals.prefs.get(readerTheme),
     colorScheme: locals.colorScheme,
     boardName: settings.get(boardName),

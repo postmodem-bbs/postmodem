@@ -21,9 +21,9 @@
 
 <div class="panel">
   <dl class="profile-facts">
-    <div><dt>{t("post-author-joined")}</dt><dd><time datetime={isoDate(p.joined)}>{formatDate(p.joined, data.locale)}</time></dd></div>
+    <div><dt>{t("post-author-joined")}</dt><dd><time datetime={isoDate(p.joined)}>{formatDate(p.joined, data.dates)}</time></dd></div>
     {#if p.lastSeen}
-      <div><dt>{t("profile-last-seen")}</dt><dd><time datetime={isoDate(p.lastSeen)}>{formatDate(p.lastSeen, data.locale)}</time></dd></div>
+      <div><dt>{t("profile-last-seen")}</dt><dd><time datetime={isoDate(p.lastSeen)}>{formatDate(p.lastSeen, data.dates)}</time></dd></div>
     {/if}
     <div><dt>{t("index-posts")}</dt><dd>{p.posts}</dd></div>
     {#if p.location}<div><dt>{t("post-author-from")}</dt><dd>{p.location}</dd></div>{/if}
@@ -40,7 +40,7 @@
       {#each data.recentTopics as topic (topic.ref.id)}
         <li>
           <a href={urls.topic(topic.ref)}>{topic.title}</a>
-          <span class="muted">· {topic.forum} · <time datetime={isoDate(topic.at)}>{formatDate(topic.at, data.locale)}</time></span>
+          <span class="muted">· {topic.forum} · <time datetime={isoDate(topic.at)}>{formatDate(topic.at, data.dates)}</time></span>
         </li>
       {/each}
     </ul>

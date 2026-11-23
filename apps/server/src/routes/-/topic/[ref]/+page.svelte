@@ -79,7 +79,7 @@
     {/if}
     {#if poll.endsAt}
       <p class="muted">
-        {poll.ended ? t("poll-ended") : t("poll-ends")} <time datetime={isoDate(poll.endsAt)}>{formatDateTime(poll.endsAt, data.locale)}</time>
+        {poll.ended ? t("poll-ended") : t("poll-ends")} <time datetime={isoDate(poll.endsAt)}>{formatDateTime(poll.endsAt, data.dates)}</time>
       </p>
     {/if}
   </div>
@@ -99,7 +99,7 @@
           <dl class="author-facts">
             {#if post.authorPosts !== null}<div><dt class="visually-hidden">{t("index-posts")}</dt><dd>{t("post-author-posts", { count: post.authorPosts })}</dd></div>{/if}
             {#if post.authorJoined !== null}
-              <div><dt>{t("post-author-joined")}</dt><dd><time datetime={isoDate(post.authorJoined)}>{formatDate(post.authorJoined, data.locale)}</time></dd></div>
+              <div><dt>{t("post-author-joined")}</dt><dd><time datetime={isoDate(post.authorJoined)}>{formatDate(post.authorJoined, data.dates)}</time></dd></div>
             {/if}
             {#if post.authorLocation}<div><dt>{t("post-author-from")}</dt><dd>{post.authorLocation}</dd></div>{/if}
           </dl>
@@ -108,14 +108,14 @@
       <div class="post-main">
         <p class="post-meta">
           <a href={urls.postOnPage(data.topic, data.start, post.id)} aria-label={t("post-permalink")}>#</a>
-          <time datetime={isoDate(post.at)}>{formatDateTime(post.at, data.locale)}</time>
+          <time datetime={isoDate(post.at)}>{formatDateTime(post.at, data.dates)}</time>
           {#if post.subject}<span class="post-subject">{post.subject}</span>{/if}
         </p>
         <!-- Rendered by @postmodem/markup: allow-listed, sanitised HTML (ADR 0014). -->
         <div class="post-body">{@html post.html}</div>
         {#if post.signature}<div class="post-signature">{@html post.signature}</div>{/if}
         {#if post.editedAt && post.editCount > 0}
-          <p class="muted post-edited">{t("post-edited", { count: post.editCount })} <time datetime={isoDate(post.editedAt)}>{formatDateTime(post.editedAt, data.locale)}</time></p>
+          <p class="muted post-edited">{t("post-edited", { count: post.editCount })} <time datetime={isoDate(post.editedAt)}>{formatDateTime(post.editedAt, data.dates)}</time></p>
         {/if}
         {#if data.topic.canReply || post.canEdit || post.canDelete || post.slots.length}
           <p class="post-actions">

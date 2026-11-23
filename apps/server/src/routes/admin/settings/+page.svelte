@@ -28,7 +28,7 @@
             <textarea id={id(f.key)} name={f.key} rows={f.type === "list" ? 4 : 8} aria-invalid={errors[f.key] ? "true" : undefined}>{String(f.value ?? "")}</textarea>
           {:else if f.type === "select"}
             <select id={id(f.key)} name={f.key}>
-              {#each f.options as o (o)}<option value={o} selected={f.value === o}>{f.key === "core.board.defaultTheme" ? THEMES[o]?.name ?? o : o}</option>{/each}
+              {#each f.options as o (o)}<option value={o} selected={f.value === o}>{f.key === "core.board.defaultTheme" ? THEMES[o]?.name ?? o : f.key === "core.board.dateFormat" ? data.dateLabels[o] ?? o : o}</option>{/each}
             </select>
           {:else}
             <input id={id(f.key)} name={f.key} type={f.type === "number" ? "number" : "text"} value={String(f.value ?? "")} aria-invalid={errors[f.key] ? "true" : undefined} />

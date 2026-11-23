@@ -26,7 +26,7 @@
       {#if form && "closed" in form && form.closed === r.id}{:else}
         <li class="panel">
           <p>
-            <strong>{t("reports-by", { name: r.reporter })}</strong> · {formatDateTime(r.at, data.locale)} · {r.forum}
+            <strong>{t("reports-by", { name: r.reporter })}</strong> · {formatDateTime(r.at, data.dates)} · {r.forum}
             {#if r.topic} · <a href={urls.topic(r.topic)}>{r.topic.title}</a>{/if}
           </p>
           <blockquote class="report-reason">{r.reason}</blockquote>

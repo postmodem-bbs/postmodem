@@ -16,7 +16,7 @@
   <tbody>
     {#each data.entries as e (e.id)}
       <tr>
-        <td><time datetime={isoDate(e.at)}>{formatDateTime(e.at, data.locale)}</time></td>
+        <td><time datetime={isoDate(e.at)}>{formatDateTime(e.at, data.dates)}</time></td>
         <td>{e.actor ?? t("admin-system")}</td>
         <th scope="row"><code>{e.action}</code>{#if e.details}<br /><span class="muted audit-details">{e.details}</span>{/if}</th>
         <td>{e.target}</td>

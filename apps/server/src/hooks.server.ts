@@ -1,11 +1,21 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-import { defaultLocale, defaultTheme, endSession, findBan, resolveSession, urlStyle } from "@postmodem/core";
+import {
+  boardDateFormat,
+  boardTimeZone,
+  defaultLocale,
+  defaultTheme,
+  endSession,
+  findBan,
+  isTimeZone,
+  resolveSession,
+  urlStyle,
+} from "@postmodem/core";
 import { negotiate, translator } from "@postmodem/i18n";
 import type { Handle } from "@sveltejs/kit/hooks";
 import { clearSessionCookie, sessionCookieName } from "#lib/server/auth.ts";
 import { getContext } from "#lib/server/bootstrap.ts";
 import { urlsFor } from "#lib/server/links.ts";
-import { colorScheme, language, readerTheme } from "#lib/server/platform.ts";
+import { colorScheme, dateFormat, language, readerTheme } from "#lib/server/platform.ts";
 import { choose, guestPreferenceCookie } from "#lib/server/preferences.ts";
 
 const SECURITY_HEADERS: Record<string, string> = {
@@ -89,6 +99,17 @@ export const handle: Handle = async ({ event, resolve }) => {
   const theme = event.locals.prefs.get(readerTheme);
   event.locals.themeId = theme === "board" ? ctx.settings.get(defaultTheme) : theme;
   event.locals.colorScheme = event.locals.prefs.get(colorScheme);
+  const style = event.locals.prefs.get(dateFormat);
+  const zone = event.locals.user?.timezone;
+  event.locals.dates = {
+    locale: event.locals.locale,
+    timeZone: isTimeZone(zone) ? zone : ctx.settings.get(boardTimeZone),
+    style: style === "board" ? ctx.settings.get(boardDateFormat) : style,
+  };
+  // E-mails go out in the language the member last saw the board in (users.locale), so a
+  // change made in the footer or on /account reaches them too.
+  if (event.locals.user && event.locals.user.locale !== event.locals.locale)
+    await ctx.db.repos.users.update(event.locals.user.id, { locale: event.locals.locale });
   event.locals.requestContext = {
     via: "web",
     ip,

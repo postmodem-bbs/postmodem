@@ -1,11 +1,11 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
   import type { Translate } from "@postmodem/i18n";
-  import { formatDateTime, isoDate } from "#lib/format.ts";
+  import { type DateFormat, formatDateTime, isoDate } from "#lib/format.ts";
   import type { ForumRow } from "#lib/server/board.ts";
   import { links } from "#lib/links.ts";
 
-  let { rows, caption, t, locale }: { rows: ForumRow[]; caption: string; t: Translate; locale: string } = $props();
+  let { rows, caption, t, dates }: { rows: ForumRow[]; caption: string; t: Translate; dates: DateFormat } = $props();
   const urls = $derived(links());
 </script>
 
@@ -43,7 +43,7 @@
             <a href={urls.post(f.lastPost.postId)}>{f.lastPost.topicTitle}</a><br />
             <span class="muted">
               {t("by-author", { name: f.lastPost.author || t("guest") })},
-              <time datetime={isoDate(f.lastPost.at)}>{formatDateTime(f.lastPost.at, locale)}</time>
+              <time datetime={isoDate(f.lastPost.at)}>{formatDateTime(f.lastPost.at, dates)}</time>
             </span>
           {:else}
             <span class="muted">{t("index-no-posts")}</span>

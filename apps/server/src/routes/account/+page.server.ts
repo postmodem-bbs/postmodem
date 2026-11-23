@@ -1,26 +1,34 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // /account — a member's own settings (phpBB2's profile.php?mode=editprofile, which redirects
-// here): profile fields, signature, notifications, credentials and account deletion.
+// here): profile fields, signature, notifications, time and language, credentials and account
+// deletion.
 import {
+  boardDateFormat,
+  boardTimeZone,
   confirmEmailChange,
+  DATE_FORMATS,
   defaultLocale,
   deleteAccount,
   deletedMemberPosts,
   emailProblem,
   findBan,
   hashPassword,
+  isTimeZone,
   maxPostLength,
   PASSWORD_MIN,
   passwordProblem,
   pendingEmailChange,
   requestEmailChange,
+  TIME_ZONES,
   verifyPassword,
 } from "@postmodem/core";
-import { translator } from "@postmodem/i18n";
+import { SUPPORTED, translator } from "@postmodem/i18n";
 import { fail, redirect } from "@sveltejs/kit";
 import { z } from "zod";
+import { formatDateTime } from "#lib/format.ts";
 import { clearSessionCookie } from "#lib/server/auth.ts";
 import { mayMail, queueAccountMail } from "#lib/server/emails.ts";
+import { dateFormat, language } from "#lib/server/platform.ts";
 import { readerOf } from "#lib/server/reader.ts";
 import type { Actions, PageServerLoad, RequestEvent } from "./$types";
 
@@ -37,6 +45,37 @@ async function notificationChoices(ctx: App.Locals["ctx"], userId: number) {
     const options = def.schema instanceof z.ZodEnum ? (def.schema.options as string[]) : null;
     return { key: def.key, label, value: prefs.get(def) as string | boolean, options };
   });
+}
+
+/** Time zones as the picker shows them: grouped by region ("Europe/Warsaw" under Europe). */
+const ZONE_GROUPS = (() => {
+  const groups = new Map<string, string[]>();
+  for (const zone of TIME_ZONES) {
+    const region = zone.includes("/") ? zone.slice(0, zone.indexOf("/")) : "";
+    groups.set(region, [...(groups.get(region) ?? []), zone]);
+  }
+  return [...groups].map(([region, zones]) => ({ region, zones }));
+})();
+
+/** phpBB2's date, time zone and language choices (#129), with an example of each date format. */
+async function regionalChoices(event: Pick<RequestEvent, "locals">, timezone: string | null) {
+  const { locals } = event;
+  const { settings, platform } = locals.ctx;
+  const prefs = await platform.preferences.forReader(locals.user!.id, undefined);
+  const zone = isTimeZone(timezone) ? timezone : settings.get(boardTimeZone);
+  const now = Date.now();
+  const example = (style: (typeof DATE_FORMATS)[number]) =>
+    formatDateTime(now, { locale: locals.locale, timeZone: zone, style });
+  return {
+    language: prefs.get(language),
+    languages: [...SUPPORTED],
+    timezone: isTimeZone(timezone) ? timezone : "",
+    boardTimeZone: settings.get(boardTimeZone),
+    zoneGroups: ZONE_GROUPS,
+    dateFormat: prefs.get(dateFormat),
+    boardDateExample: example(settings.get(boardDateFormat)),
+    dateExamples: DATE_FORMATS.map((style) => ({ style, example: example(style) })),
+  };
 }
 
 function me({ locals, url }: Pick<RequestEvent, "locals" | "url">) {
@@ -64,6 +103,7 @@ export const load: PageServerLoad = async (event) => {
       autoWatch: user.autoWatch,
     },
     notifications: await notificationChoices(event.locals.ctx, user.id),
+    regional: await regionalChoices(event, user.timezone),
     signatureHtml: user.signatureSource
       ? await event.locals.ctx.renderer.preview(user.signatureSource, readerOf(event.locals))
       : "",
@@ -108,6 +148,24 @@ export const actions: Actions = {
       autoWatch: form.get("autoWatch") === "on",
     });
     return { section: "profile", saved: true };
+  },
+  regional: async (event) => {
+    const user = me(event);
+    const form = await event.request.formData();
+    const lang = String(form.get("language") ?? "");
+    const zone = String(form.get("timezone") ?? "");
+    const style = String(form.get("dateFormat") ?? "");
+    const errors: Record<string, string> = {};
+    if (!language.schema.safeParse(lang).success) errors.language = "invalid";
+    if (zone !== "" && !isTimeZone(zone)) errors.timezone = "invalid";
+    if (!dateFormat.schema.safeParse(style).success) errors.dateFormat = "invalid";
+    if (Object.keys(errors).length) return fail(400, { section: "regional", errors });
+    const { preferences } = event.locals.ctx.platform;
+    await preferences.set(user.id, language.key, lang);
+    await preferences.set(user.id, dateFormat.key, style);
+    // Empty: the board's time zone, which follows the board if an admin changes it.
+    await event.locals.ctx.db.repos.users.update(user.id, { timezone: zone || null });
+    return { section: "regional", saved: true };
   },
   password: async (event) => {
     const user = me(event);

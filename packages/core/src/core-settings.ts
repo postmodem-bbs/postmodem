@@ -24,6 +24,32 @@ export const defaultLocale = defineSetting<Locale>({
   default: "en",
 });
 
+/** IANA time zones the runtime knows, plus UTC (phpBB2 stored a fixed offset instead). */
+export const TIME_ZONES: readonly string[] = [
+  "UTC",
+  ...Intl.supportedValuesOf("timeZone").filter((z) => z !== "UTC"),
+];
+const ZONES = new Set(TIME_ZONES);
+export const isTimeZone = (v: unknown): v is string => typeof v === "string" && ZONES.has(v);
+
+/** How dates are written: the locale's own styles, or ISO 8601 (phpBB2's `date()` strings are gone). */
+export const DATE_FORMATS = ["medium", "long", "short", "iso"] as const;
+export type DateStyle = (typeof DATE_FORMATS)[number];
+
+/** The board's time zone: guests see it, and members who haven't chosen one (phpBB2 board_timezone). */
+export const boardTimeZone = defineSetting({
+  key: "core.board.timeZone",
+  schema: z.string().refine(isTimeZone),
+  default: "UTC",
+});
+
+/** The board's date format, for guests and members who keep the board's (phpBB2 default_dateformat). */
+export const boardDateFormat = defineSetting<DateStyle>({
+  key: "core.board.dateFormat",
+  schema: z.enum(DATE_FORMATS),
+  default: "medium",
+});
+
 export const THEME_IDS = ["classic", "modern", "terminal"] as const;
 export type ThemeId = (typeof THEME_IDS)[number];
 
@@ -186,6 +212,8 @@ export function coreSettings(): SettingsRegistry {
     boardDescription,
     defaultLocale,
     defaultTheme,
+    boardTimeZone,
+    boardDateFormat,
     registrationOpen,
     registrationInviteOnly,
     newMemberPosts,

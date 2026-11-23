@@ -2,8 +2,16 @@
 // /admin/settings: the board settings people actually change, as a form. Values are checked
 // by each setting's own schema (core settings.ts); running replicas pick changes up within
 // seconds, as with `postmodem settings set`.
-import { defaultTheme, THEME_IDS } from "@postmodem/core";
+import {
+  boardDateFormat,
+  boardTimeZone,
+  DATE_FORMATS,
+  defaultTheme,
+  THEME_IDS,
+  TIME_ZONES,
+} from "@postmodem/core";
 import { fail } from "@sveltejs/kit";
+import { formatDateTime } from "#lib/format.ts";
 import { adminAudit, requireAdmin } from "#lib/server/admin.ts";
 import type { Actions, PageServerLoad } from "./$types";
 
@@ -20,6 +28,8 @@ const GROUPS: { label: string; fields: Field[] }[] = [
       { key: "core.board.description", type: "text" },
       { key: "core.board.defaultLocale", type: "select", options: ["en", "pl"] },
       { key: defaultTheme.key, type: "select", options: [...THEME_IDS] },
+      { key: boardTimeZone.key, type: "select", options: [...TIME_ZONES] },
+      { key: boardDateFormat.key, type: "select", options: [...DATE_FORMATS] },
       { key: "core.urls.style", type: "select", options: ["classic", "numbered", "slug"] },
       { key: "core.board.privacy", type: "textarea" },
       { key: "core.accounts.deletedPosts", type: "select", options: ["keep", "remove"] },
@@ -54,7 +64,16 @@ const GROUPS: { label: string; fields: Field[] }[] = [
 export const load: PageServerLoad = ({ locals, url }) => {
   requireAdmin(locals, url, "admin.config");
   const { settings } = locals.ctx;
+  // Date formats are listed as an example date, in the board's own time zone.
+  const now = Date.now();
+  const dateLabels = Object.fromEntries(
+    DATE_FORMATS.map((style) => [
+      style,
+      formatDateTime(now, { locale: locals.locale, timeZone: settings.get(boardTimeZone), style }),
+    ]),
+  );
   return {
+    dateLabels,
     groups: GROUPS.map((g) => ({
       label: g.label,
       fields: g.fields

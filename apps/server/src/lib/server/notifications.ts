@@ -4,8 +4,10 @@
 // can still read what it's about (a watcher who lost access to a forum gets nothing).
 import {
   boardName,
+  boardTimeZone,
   defaultLocale,
   digestHour,
+  isTimeZone,
   loadSnapshot,
   type Post,
   type PrivateMessage,
@@ -70,7 +72,7 @@ export async function afterPost(
     const mode = (await ctx.platform.preferences.forReader(id, undefined)).get(replyMail);
     if (mode === "off") continue;
     if (mode === "daily") {
-      const dueAt = nextDigestAt(Date.now(), ctx.settings.get(digestHour), user.timezone);
+      const dueAt = nextDigestAt(Date.now(), ctx.settings.get(digestHour), memberTimeZone(ctx, user));
       await repos.digests.add({ userId: id, topicId: topic.id, since: post.createdAt, dueAt });
       continue;
     }
@@ -115,6 +117,10 @@ function wallClock(at: number, timeZone: string) {
   const n = (type: string) => Number(parts.find((p) => p.type === type)?.value);
   return Date.UTC(n("year"), n("month") - 1, n("day"), n("hour"), n("minute"), n("second"));
 }
+
+/** The member's own time zone, else the board's (#129). */
+export const memberTimeZone = (ctx: AppContext, user: User): string =>
+  isTimeZone(user.timezone) ? user.timezone : ctx.settings.get(boardTimeZone);
 
 /**
  * The next time it's `hour`:00 in the member's time zone (UTC when unset or unknown), after
