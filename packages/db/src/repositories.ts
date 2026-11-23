@@ -897,6 +897,22 @@ export function createRepositories(db: Db, dialect: "sqlite" | "pg"): Repositori
       const r = await db.selectFrom("users").selectAll().where("slug", "=", slug).executeTakeFirst();
       return r && toUser(r);
     },
+    async countWithAvatar(avatar) {
+      const r = await db
+        .selectFrom("users")
+        .select((eb) => eb.fn.countAll<number | string>().as("count"))
+        .where("avatar", "=", avatar)
+        .executeTakeFirst();
+      return n(r?.count);
+    },
+    async clearAvatar(avatar) {
+      const r = await db
+        .updateTable("users")
+        .set({ avatar: null })
+        .where("avatar", "=", avatar)
+        .executeTakeFirst();
+      return n(r.numUpdatedRows);
+    },
     async lookalike(username) {
       const r = await db
         .selectFrom("users")
