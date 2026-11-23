@@ -101,6 +101,7 @@ export interface ImportReport {
     boardName?: string;
     boardDescription?: string;
     defaultLocale?: "en" | "pl";
+    avatars?: AvatarSettings;
     loginSecurity?: {
       maxFailures?: number;
       blockMinutes?: number;
@@ -211,7 +212,45 @@ const USED: Record<string, string[]> = {
   topics_watch: ["topic_id", "user_id"],
   banlist: ["ban_userid"],
 };
-const CONFIG_USED = ["sitename", "site_desc", "default_lang"];
+/** phpBB2's avatar settings and where they go (#131), with the range Postmodem accepts. */
+const AVATAR_CONFIG = [
+  ["allow_avatar_upload", "upload", "flag"],
+  ["allow_avatar_remote", "remote", "flag"],
+  ["allow_avatar_local", "gallery", "flag"],
+  ["avatar_filesize", "maxBytes", [1024, 1024 * 1024]],
+  ["avatar_max_width", "maxWidth", [16, 2048]],
+  ["avatar_max_height", "maxHeight", [16, 2048]],
+] as const;
+
+const CONFIG_USED = [
+  "sitename",
+  "site_desc",
+  "default_lang",
+  ...AVATAR_CONFIG.map(([key]) => key),
+  "avatar_path",
+  "avatar_gallery_path",
+];
+
+type AvatarSettings = {
+  upload?: boolean;
+  remote?: boolean;
+  gallery?: boolean;
+  maxBytes?: number;
+  maxWidth?: number;
+  maxHeight?: number;
+};
+
+/** The board's avatar settings. Numbers outside Postmodem's range are brought into it. */
+export function importAvatarSettings(config: ReadonlyMap<string, unknown>): AvatarSettings | undefined {
+  const out: AvatarSettings = {};
+  for (const [source, target, range] of AVATAR_CONFIG) {
+    const value = String(config.get(source) ?? "").trim();
+    if (!/^\d+$/.test(value)) continue;
+    if (range === "flag") (out as Record<string, boolean>)[target] = value === "1";
+    else (out as Record<string, number>)[target] = Math.min(range[1], Math.max(range[0], Number(value)));
+  }
+  return Object.keys(out).length ? out : undefined;
+}
 
 /** Map only board configuration. Historical lockouts and per-user IP choices stay in the report. */
 export function importLoginSecuritySettings(config: ReadonlyMap<string, unknown>) {
@@ -391,6 +430,7 @@ export async function importPrzemo(
       boardName: config.has("sitename") ? plain(config.get("sitename")) || undefined : undefined,
       boardDescription: config.has("site_desc") ? plain(config.get("site_desc")) : undefined,
       defaultLocale: LOCALES[plain(config.get("default_lang"))],
+      avatars: importAvatarSettings(new Map([...config].map(([key, value]) => [key, plain(value)]))),
     };
     report.notImported.config = [...config.keys()]
       .filter((k) => !CONFIG_USED.includes(k) && !loginSecurity.used.has(k))

@@ -50,6 +50,45 @@ export const boardDateFormat = defineSetting<DateStyle>({
   default: "medium",
 });
 
+/** Where members may take an avatar from (phpBB2 allow_avatar_upload, _remote, _local). */
+export const avatarsUpload = defineSetting({
+  key: "core.avatars.upload",
+  schema: z.boolean(),
+  default: true,
+});
+/** A link the board downloads and keeps a copy of: never shown from the other site. */
+export const avatarsRemote = defineSetting({
+  key: "core.avatars.remote",
+  schema: z.boolean(),
+  default: true,
+});
+export const avatarsGallery = defineSetting({
+  key: "core.avatars.gallery",
+  schema: z.boolean(),
+  default: true,
+});
+/** phpBB2 avatar_filesize: larger avatars are refused, not resized (#131). */
+export const avatarMaxBytes = defineSetting({
+  key: "core.avatars.maxBytes",
+  schema: z
+    .number()
+    .int()
+    .min(1024)
+    .max(1024 * 1024),
+  default: 64 * 1024,
+});
+/** phpBB2 avatar_max_width / avatar_max_height. The page shows avatars smaller. */
+export const avatarMaxWidth = defineSetting({
+  key: "core.avatars.maxWidth",
+  schema: z.number().int().min(16).max(2048),
+  default: 512,
+});
+export const avatarMaxHeight = defineSetting({
+  key: "core.avatars.maxHeight",
+  schema: z.number().int().min(16).max(2048),
+  default: 512,
+});
+
 export const THEME_IDS = ["classic", "modern", "terminal"] as const;
 export type ThemeId = (typeof THEME_IDS)[number];
 
@@ -214,6 +253,12 @@ export function coreSettings(): SettingsRegistry {
     defaultTheme,
     boardTimeZone,
     boardDateFormat,
+    avatarsUpload,
+    avatarsRemote,
+    avatarsGallery,
+    avatarMaxBytes,
+    avatarMaxWidth,
+    avatarMaxHeight,
     registrationOpen,
     registrationInviteOnly,
     newMemberPosts,

@@ -201,6 +201,10 @@ export interface NewUser {
 
 export interface UserRepository {
   create(input: NewUser): Promise<User>;
+  /** How many members use this avatar: an uploaded file goes only when none do (#131). */
+  countWithAvatar(avatar: string): Promise<number>;
+  /** Takes this avatar away from every member who uses it (a deleted gallery image). */
+  clearAvatar(avatar: string): Promise<number>;
   get(id: Id, options?: { forUpdate: boolean }): Promise<User | undefined>;
   getMany(ids: Id[]): Promise<Map<Id, User>>;
   byUsername(username: string): Promise<User | undefined>;

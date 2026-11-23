@@ -8,6 +8,8 @@
   const p = $derived(data.profile);
   const r = $derived(data.regional);
   const rErrors = $derived((form?.section === "regional" ? errors : {}) as Record<string, string>);
+  const av = $derived(data.avatar);
+  const avError = $derived(form?.section === "avatar" && "error" in form ? (form.error as string) : null);
   const v = $derived((form?.section === "profile" && "values" in form ? form.values : p) as { location: string; website: string; signature: string });
 </script>
 
@@ -108,6 +110,66 @@
   </fieldset>
   <div class="actions"><button type="submit">{t("posting-save")}</button></div>
 </form>
+
+<!-- A plain block with a heading, not a <section> landmark: Firefox crashes when axe runs over
+     a landmark Playwright has looked inside (commit 03ee522). -->
+<div class="panel avatar-panel">
+  <h2 id="avatar">{t("account-avatar")}</h2>
+  {#if form?.section === "avatar" && "saved" in form}<p class="notice" role="status">{t("account-saved")}</p>{/if}
+  {#if avError}
+    <p class="form-error" role="alert">
+      {t(`account-avatar-error-${avError}`, { kb: Math.round(av.limits.maxBytes / 1024), width: av.limits.maxWidth, height: av.limits.maxHeight })}
+    </p>
+  {/if}
+  {#if av.current}
+    <img class="avatar" src={av.current} alt={t("account-avatar-current")} referrerpolicy="no-referrer" />
+    <form method="POST" action="?/avatarRemove" class="slot-form">
+      <button type="submit" class="secondary">{t("account-avatar-remove")}</button>
+    </form>
+  {:else}
+    <p class="muted">{t("account-avatar-none")}</p>
+  {/if}
+
+  {#if av.upload || av.remote}
+    <form method="POST" action="?/avatarUpload" enctype="multipart/form-data" class="form" novalidate>
+      <p class="muted" id="avatar-limits">
+        {t("account-avatar-limits", { kb: Math.round(av.limits.maxBytes / 1024), width: av.limits.maxWidth, height: av.limits.maxHeight })}
+      </p>
+      {#if av.upload}
+        <label for="avatar-file">{t("account-avatar-file")}</label>
+        <input id="avatar-file" name="file" type="file" accept="image/png,image/gif,image/jpeg,image/webp" aria-describedby="avatar-limits" />
+      {/if}
+      {#if av.remote}
+        <label for="avatar-link">{t("account-avatar-link")}</label>
+        <input id="avatar-link" name="link" type="url" inputmode="url" autocomplete="off" placeholder="https://" aria-describedby="avatar-limits avatar-link-hint" />
+        <p class="muted" id="avatar-link-hint">{t("account-avatar-link-hint")}</p>
+      {/if}
+      <div class="actions"><button type="submit">{t("account-avatar-use")}</button></div>
+    </form>
+  {/if}
+
+  {#if av.category}
+    <h3>{t("account-avatar-gallery")}</h3>
+    {#if av.categories.length > 1}
+      <form method="GET" action="#avatar" class="slot-form inline">
+        <label for="avatar-category">{t("account-avatar-category")}</label>
+        <select id="avatar-category" name="gallery">
+          {#each av.categories as c (c)}<option value={c} selected={c === av.category.name}>{c}</option>{/each}
+        </select>
+        <button type="submit" class="secondary">{t("account-avatar-show")}</button>
+      </form>
+    {/if}
+    <form method="POST" action="?/avatarGallery" class="form">
+      <fieldset class="avatar-gallery">
+        <legend>{av.category.name}</legend>
+        {#each av.category.images as img (img.value)}
+          <label><input type="radio" name="image" value={img.value} /><img src={img.url} alt={img.name} loading="lazy" /></label>
+        {/each}
+      </fieldset>
+      <div class="actions"><button type="submit">{t("account-avatar-use")}</button></div>
+    </form>
+  {/if}
+</div>
 
 {#if data.emailChanged}
   <p class="notice" role="status">{t("account-email-changed")}</p>

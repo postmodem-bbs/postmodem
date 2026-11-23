@@ -26,7 +26,9 @@ import { SUPPORTED, translator } from "@postmodem/i18n";
 import { fail, redirect } from "@sveltejs/kit";
 import { z } from "zod";
 import { formatDateTime } from "#lib/format.ts";
+import { avatarActions, avatarSection } from "#lib/server/account-avatar.ts";
 import { clearSessionCookie } from "#lib/server/auth.ts";
+import { releaseAvatar } from "#lib/server/avatars.ts";
 import { mayMail, queueAccountMail } from "#lib/server/emails.ts";
 import { dateFormat, language } from "#lib/server/platform.ts";
 import { readerOf } from "#lib/server/reader.ts";
@@ -104,6 +106,7 @@ export const load: PageServerLoad = async (event) => {
     },
     notifications: await notificationChoices(event.locals.ctx, user.id),
     regional: await regionalChoices(event, user.timezone),
+    avatar: await avatarSection(event, user.avatar),
     signatureHtml: user.signatureSource
       ? await event.locals.ctx.renderer.preview(user.signatureSource, readerOf(event.locals))
       : "",
@@ -114,6 +117,18 @@ export const load: PageServerLoad = async (event) => {
 };
 
 export const actions: Actions = {
+  avatarUpload: async (event) => {
+    me(event);
+    return avatarActions.avatarUpload(event);
+  },
+  avatarGallery: async (event) => {
+    me(event);
+    return avatarActions.avatarGallery(event);
+  },
+  avatarRemove: async (event) => {
+    me(event);
+    return avatarActions.avatarRemove(event);
+  },
   profile: async (event) => {
     const user = me(event);
     const form = await event.request.formData();
@@ -264,6 +279,8 @@ export const actions: Actions = {
     await ctx.db.platform.preferences.deleteAll(user.id);
     await ctx.platform.fields.removeEntity("user", user.id);
     await ctx.db.platform.docs.removeByAuthor(user.id);
+    // Their uploaded avatar's file, unless someone else uses the same image.
+    await releaseAvatar(ctx.config.dataDir, ctx.db.repos, user.avatar);
     clearSessionCookie(event.cookies, ctx.config);
     ctx.log.info("account deleted", { userId: user.id });
     redirect(303, "/?notice=deleted");
