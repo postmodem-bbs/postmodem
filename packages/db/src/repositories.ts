@@ -50,6 +50,7 @@ import type {
   JobsTable,
   NodesTable,
   PostsTable,
+  RanksTable,
   Schema,
   SessionsTable,
   TopicsTable,
@@ -164,6 +165,14 @@ const toPost = (r: Selectable<PostsTable>): Post => ({
   createdAt: n(r.createdAt),
   editedAt: r.editedAt === null ? null : n(r.editedAt),
   editCount: r.editCount,
+});
+
+const toRank = (r: Selectable<RanksTable>): Rank => ({
+  id: r.id,
+  title: r.title,
+  minPosts: r.minPosts === null ? null : n(r.minPosts),
+  special: r.special === 1,
+  image: r.image,
 });
 
 const toUser = (r: Selectable<UsersTable>): User => ({
@@ -1299,15 +1308,36 @@ export function createRepositories(db: Db, dialect: "sqlite" | "pg"): Repositori
         .orderBy("minPosts")
         .orderBy("id")
         .execute();
-      return rows.map(
-        (r): Rank => ({
-          id: r.id,
-          title: r.title,
-          minPosts: r.minPosts === null ? null : n(r.minPosts),
-          special: r.special === 1,
-          image: r.image,
-        }),
-      );
+      return rows.map(toRank);
+    },
+    async get(id) {
+      const r = await db.selectFrom("ranks").selectAll().where("id", "=", id).executeTakeFirst();
+      return r && toRank(r);
+    },
+    async update(id, patch) {
+      const set: Partial<{ title: string; minPosts: number | null; special: 0 | 1; image: string | null }> =
+        {};
+      if (patch.title !== undefined) set.title = patch.title;
+      if (patch.minPosts !== undefined) set.minPosts = patch.minPosts;
+      if (patch.special !== undefined) set.special = patch.special ? 1 : 0;
+      if (patch.image !== undefined) set.image = patch.image;
+      if (Object.keys(set).length) await db.updateTable("ranks").set(set).where("id", "=", id).execute();
+      return ranks.get(id);
+    },
+    async delete(id) {
+      await atomic(db, async (db) => {
+        await db.updateTable("users").set({ rankId: null }).where("rankId", "=", id).execute();
+        await db.deleteFrom("ranks").where("id", "=", id).execute();
+      });
+    },
+    async memberCounts() {
+      const rows = await db
+        .selectFrom("users")
+        .select(["rankId", (eb) => eb.fn.countAll<number | string>().as("count")])
+        .where("rankId", "is not", null)
+        .groupBy("rankId")
+        .execute();
+      return new Map(rows.map((r) => [n(r.rankId), n(r.count)]));
     },
   };
 

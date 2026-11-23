@@ -39,6 +39,7 @@ export const ADMIN_SECTIONS: { path: string; label: string; capability?: AdminCa
   { path: "/admin/settings", label: "admin-settings", capability: "admin.config" },
   { path: "/admin/forums", label: "admin-forums", capability: "admin.forums" },
   { path: "/admin/groups", label: "admin-groups", capability: "admin.users" },
+  { path: "/admin/ranks", label: "admin-ranks", capability: "admin.users" },
   { path: "/admin/permissions", label: "admin-permissions", capability: "admin.permissions" },
   { path: "/admin/users", label: "admin-users", capability: "admin.users" },
   { path: "/admin/access", label: "admin-access", capability: "admin.users" },

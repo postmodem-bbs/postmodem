@@ -478,6 +478,7 @@ admin-overview = Przegląd
 admin-settings = Ustawienia forum
 admin-forums = Fora
 admin-groups = Grupy
+admin-ranks = Rangi
 admin-permissions = Uprawnienia
 admin-users = Użytkownicy
 admin-access = Bany i zaproszenia
@@ -554,6 +555,47 @@ admin-groups-create = Nowa grupa
 admin-groups-error-invalid = Sprawdź formularz: potrzebna jest nazwa.
 admin-groups-error-exists = Grupa o tej nazwie już istnieje.
 admin-groups-error-user = Nie ma użytkownika o takiej nazwie.
+rank-label = Ranga
+admin-ranks-intro = Użytkownik ma rangę za liczbę postów, której minimum osiągnął, chyba że nadasz mu rangę specjalną.
+admin-ranks-none = Nie ma jeszcze żadnych rang.
+admin-rank-title = Nazwa
+admin-rank-kind = Rodzaj
+admin-rank-kind-posts = Za liczbę postów
+admin-rank-kind-special = Specjalna: nadawana wybranym użytkownikom
+admin-rank-min-posts = Minimalna liczba postów
+admin-rank-min-posts-hint = Tylko dla rang za liczbę postów.
+admin-rank-image = Obrazek
+admin-rank-image-hint = PNG, GIF, JPEG lub WebP, najwyżej 256 KB. Zostaw puste, aby zachować obecny.
+admin-rank-remove-image = Usuń obrazek
+admin-rank-image-of = Obrazek rangi { $rank }
+admin-rank-from-posts = { $count ->
+    [one] od { $count } postu
+   *[other] od { $count } postów
+}
+admin-rank-special-members = { $count ->
+    [one] specjalna, { $count } użytkownik
+    [few] specjalna, { $count } użytkowników
+   *[other] specjalna, { $count } użytkowników
+}
+admin-rank-delete = Usuń
+admin-rank-edit = Edytuj
+admin-rank-delete-named = Usuń rangę { $rank }
+admin-rank-create = Nowa ranga
+admin-rank-assign = Nadaj użytkownikowi rangę specjalną
+admin-rank-assign-user = Użytkownik (nazwa)
+admin-rank-assign-rank = Ranga
+admin-rank-assign-none = Bez rangi specjalnej (według liczby postów)
+admin-rank-assign-submit = Nadaj rangę
+admin-rank-assigned = { $name } ma teraz rangę { $rank }.
+admin-rank-unassigned = { $name } ma teraz rangę według liczby postów.
+admin-rank-error-title = Podaj nazwę, najwyżej 50 znaków.
+admin-rank-error-minPosts = Podaj minimalną liczbę postów (0 lub więcej).
+admin-rank-error-image-empty = Plik obrazka jest pusty.
+admin-rank-error-image-large = Obrazek jest większy niż 256 KB.
+admin-rank-error-image-type = Obrazek musi być plikiem PNG, GIF, JPEG lub WebP.
+admin-rank-error-missing = Ta ranga już nie istnieje.
+admin-rank-error-user = Nie ma użytkownika o tej nazwie.
+admin-rank-error-rank = Wybierz rangę specjalną.
 admin-simulator = Sprawdź uprawnienie
 admin-sim-who = Kto (nazwa użytkownika albo guest)
 admin-sim-hint = Pokazuje, czy może, i które nadania o tym zdecydowały.

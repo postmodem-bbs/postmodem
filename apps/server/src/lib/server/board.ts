@@ -15,7 +15,9 @@ import {
   type Poll,
   type Post,
   packageDenial,
+  type Rank,
   type Repositories,
+  resolveRank,
   type Topic,
 } from "@postmodem/core";
 import { excerpt } from "@postmodem/markup";
@@ -342,6 +344,8 @@ export interface PostView {
   authorLocation: string;
   /** Image URL: one of ours (/avatars/…) or an https URL from an imported remote avatar. */
   authorAvatar: string | null;
+  /** phpBB2's rank under the author's name, with its image (#130). */
+  authorRank: RankView | null;
   subject: string;
   html: string;
   canEdit: boolean;
@@ -375,6 +379,34 @@ function pollView(poll: Poll | undefined, now = Date.now()): PollView | null {
       percent: showResults && totalVotes ? Math.round((o.votes / totalVotes) * 100) : 0,
     })),
   };
+}
+
+export interface RankView {
+  title: string;
+  /** /ranks/… or an imported https URL. */
+  image: string | null;
+}
+
+/** Where a stored rank image (a path under uploads/ranks, or an https URL) is served from. */
+export function rankImageUrl(image: string | null): string | null {
+  if (!image) return null;
+  if (image.startsWith("https://")) return image;
+  return safeUploadPath(image) ? `/ranks/${image.split("/").map(encodeURIComponent).join("/")}` : null;
+}
+
+const safeUploadPath = (p: string) =>
+  p.length < 256 &&
+  !p.startsWith("/") &&
+  !/[\\\0]/.test(p) &&
+  p.split("/").every((s) => s && s !== "." && s !== "..");
+
+/** The rank a member shows, ready for a page (#130). */
+export function rankView(
+  ranks: readonly Rank[],
+  member: { rankId: Id | null; postCount: number },
+): RankView | null {
+  const rank = resolveRank(ranks, member);
+  return rank && { title: rank.title, image: rankImageUrl(rank.image) };
 }
 
 /** Where a stored avatar (`upload/…`, `gallery/…`, or an https URL) is served from. */
@@ -436,6 +468,7 @@ export async function loadTopic(
   });
   const html = await render(page.items, node);
   const users = await repos.users.getMany(page.items.flatMap((p) => (p.authorId ? [p.authorId] : [])));
+  const ranks = await repos.ranks.all();
   views.add(topic.id);
   const admins = hooks?.policy ? await boardAdmins(repos) : new Set<Id>();
   const now = Date.now();
@@ -454,6 +487,7 @@ export async function loadTopic(
       authorJoined: u ? u.createdAt : null,
       authorLocation: u?.location ?? "",
       authorAvatar: avatarUrl(u?.avatar ?? null),
+      authorRank: u ? rankView(ranks, u) : null,
       subject: p.subject,
       canEdit: may.edit(perms, node, topic, p, perms.viewer.userId) && packagesAllow("post.edit", p),
       canDelete: may.delete(perms, node, topic, p, perms.viewer.userId) && packagesAllow("post.delete", p),

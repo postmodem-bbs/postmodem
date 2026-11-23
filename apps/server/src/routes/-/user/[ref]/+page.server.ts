@@ -3,6 +3,7 @@
 // /u/ID-slug or /user/slug: public fields, the post count and recent topics in forums the
 // viewer may read.
 import { error } from "@sveltejs/kit";
+import { rankView } from "#lib/server/board.ts";
 import { absoluteUrl, ensureCanonical, resolveUser } from "#lib/server/links.ts";
 import type { PageServerLoad } from "./$types";
 
@@ -34,6 +35,7 @@ export const load: PageServerLoad = async ({ url, params, locals }) => {
       joined: user.createdAt,
       lastSeen: user.lastSeenAt,
       posts: user.postCount,
+      rank: rankView(await repos.ranks.all(), user),
       location: user.location,
       website: /^https?:\/\//i.test(user.website) ? user.website : "",
     },

@@ -267,6 +267,17 @@ export function legacyAvatar(type: number, value: string): string | null {
   return `${kind}/${value}`;
 }
 
+/**
+ * phpBB2's rank image (a path from the board's root, e.g. `images/ranks/star.gif`) as
+ * Postmodem stores it: the same path under the uploads' ranks directory, or an https URL.
+ * Paths that could leave the directory, and plain-http URLs, give no image.
+ */
+export function legacyRankImage(value: string): string | null {
+  if (!value) return null;
+  if (/^https?:\/\//i.test(value)) return /^https:\/\/[^\s"'<>]+$/i.test(value) ? value : null;
+  return safeRelativePath(value) ? value : null;
+}
+
 /** A relative path with no "..", no absolute start, no backslashes or control characters. */
 export function safeRelativePath(path: string): boolean {
   return (
@@ -413,7 +424,7 @@ export async function importPrzemo(
             title: plain(row.rank_title),
             minPosts: special ? null : num(row.rank_min),
             special,
-            image: plain(row.rank_image) || null,
+            image: legacyRankImage(plain(row.rank_image)),
           });
           count("ranks", "imported");
         }
@@ -1028,6 +1039,11 @@ export async function importPrzemo(
     for (const s of await source.query("SELECT DISTINCT smile_url FROM {p}smilies"))
       if (safeRelativePath(plain(s.smile_url)))
         report.files.push({ from: `${smileDir}/${plain(s.smile_url)}`, to: `smilies/${plain(s.smile_url)}` });
+    for (const rk of await source.query("SELECT DISTINCT rank_image FROM {p}ranks WHERE rank_image <> ''")) {
+      const stored = legacyRankImage(plain(rk.rank_image));
+      if (stored && !stored.startsWith("https://"))
+        report.files.push({ from: stored, to: `ranks/${stored}` });
+    }
     const avatarDirs: Record<number, string> = {
       1: dir("avatar_path", "images/avatars"),
       3: dir("avatar_gallery_path", "images/avatars/gallery"),

@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { copyLegacyFiles, inside, serveUpload } from "./uploads.ts";
+import { copyLegacyFiles, inside, saveUploadedImage, serveUpload, sniffImage } from "./uploads.ts";
 
 const GIF = Buffer.from("R0lGODlhAQABAAAAACw=", "base64");
 
@@ -38,5 +38,35 @@ describe("uploads", () => {
     expect(res?.headers.get("content-security-policy")).toContain("sandbox");
     expect(await serveUpload(uploads, "smilies/gone.gif")).toBeNull();
     expect(await serveUpload(uploads, "../pm-old/config.php")).toBeNull();
+  });
+});
+
+describe("uploaded images (#130)", () => {
+  const PNG = Uint8Array.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0, 0, 0, 0]);
+  const GIF = new TextEncoder().encode("GIF89a........");
+
+  it("recognises images by their first bytes, not their name", () => {
+    expect(sniffImage(PNG)).toBe(".png");
+    expect(sniffImage(GIF)).toBe(".gif");
+    expect(sniffImage(Uint8Array.from([0xff, 0xd8, 0xff, 0xe0]))).toBe(".jpg");
+    expect(sniffImage(new TextEncoder().encode("RIFF\0\0\0\0WEBPVP8 "))).toBe(".webp");
+    expect(sniffImage(new TextEncoder().encode("<svg onload=alert(1)>"))).toBeNull();
+  });
+
+  it("stores an image under a name taken from its content, and refuses others", async () => {
+    const uploads = mkdtempSync(join(tmpdir(), "pm-upload-"));
+    const saved = await saveUploadedImage(uploads, "ranks", new File([PNG], "star.gif"), 1024);
+    expect(saved).toEqual({ path: expect.stringMatching(/^upload\/[0-9a-f]{32}\.png$/) });
+    const path = "path" in saved ? saved.path : "";
+    expect(readFileSync(join(uploads, "ranks", path))).toEqual(Buffer.from(PNG));
+    expect(await saveUploadedImage(uploads, "ranks", new File([PNG], "a.png"), 4)).toEqual({
+      problem: "large",
+    });
+    expect(await saveUploadedImage(uploads, "ranks", new File([], "a.png"), 1024)).toEqual({
+      problem: "empty",
+    });
+    expect(
+      await saveUploadedImage(uploads, "ranks", new File(["<svg/>"], "a.png", { type: "image/png" }), 1024),
+    ).toEqual({ problem: "type" });
   });
 });
