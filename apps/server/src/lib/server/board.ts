@@ -20,6 +20,7 @@ import {
   resolveRank,
   type Topic,
 } from "@postmodem/core";
+import { messageIds, type SupportedLocale, translator } from "@postmodem/i18n";
 import { excerpt } from "@postmodem/markup";
 import { normaliseStart, POSTS_PER_PAGE, TOPICS_PER_PAGE } from "../pagination.ts";
 import type { NodeRef, TopicRef, UserRef } from "../urls.ts";
@@ -387,11 +388,29 @@ export interface RankView {
   image: string | null;
 }
 
-/** Where a stored rank image (a path under uploads/ranks, or an https URL) is served from. */
-export function rankImageUrl(image: string | null): string | null {
+/**
+ * Where a stored rank image (a path under uploads/ranks, or an https URL) is served from, for
+ * a reader of `locale`. `{LANG}` in the path is that reader's language, as in phpBB2's
+ * template images (`images/{LANG}/…`): the default ranks' badges carry their title.
+ */
+export function rankImageUrl(image: string | null, locale: SupportedLocale): string | null {
   if (!image) return null;
   if (image.startsWith("https://")) return image;
-  return safeUploadPath(image) ? `/ranks/${image.split("/").map(encodeURIComponent).join("/")}` : null;
+  const path = image.replaceAll("{LANG}", locale);
+  return safeUploadPath(path) ? `/ranks/${path.split("/").map(encodeURIComponent).join("/")}` : null;
+}
+
+const titleKeys = new Map<SupportedLocale, Set<string>>();
+
+/** A rank's title for a reader: a default rank's in their language, any other as typed. */
+export function rankTitle(rank: Rank, locale: SupportedLocale): string {
+  if (!rank.titleKey) return rank.title;
+  let known = titleKeys.get(locale);
+  if (!known) {
+    known = new Set(messageIds(locale));
+    titleKeys.set(locale, known);
+  }
+  return known.has(rank.titleKey) ? translator(locale)(rank.titleKey) : rank.title;
 }
 
 const safeUploadPath = (p: string) =>
@@ -404,9 +423,10 @@ const safeUploadPath = (p: string) =>
 export function rankView(
   ranks: readonly Rank[],
   member: { rankId: Id | null; postCount: number },
+  locale: SupportedLocale,
 ): RankView | null {
   const rank = resolveRank(ranks, member);
-  return rank && { title: rank.title, image: rankImageUrl(rank.image) };
+  return rank && { title: rankTitle(rank, locale), image: rankImageUrl(rank.image, locale) };
 }
 
 /** Where a stored avatar (`upload/…`, `gallery/…`, or an https URL) is served from. */
@@ -446,6 +466,8 @@ export async function loadTopic(
   classic?: ClassicIds,
   /** Packages' access filters (EP-5): they may hide Edit and Delete the core would offer. */
   hooks?: ContentHooks,
+  /** The reader's language: default ranks' titles and badges follow it (#130). */
+  locale: SupportedLocale = "en",
 ) {
   if (topic.visibility !== "core:public") return null;
   const node = await repos.nodes.get(topic.nodeId);
@@ -487,7 +509,7 @@ export async function loadTopic(
       authorJoined: u ? u.createdAt : null,
       authorLocation: u?.location ?? "",
       authorAvatar: avatarUrl(u?.avatar ?? null),
-      authorRank: u ? rankView(ranks, u) : null,
+      authorRank: u ? rankView(ranks, u, locale) : null,
       subject: p.subject,
       canEdit: may.edit(perms, node, topic, p, perms.viewer.userId) && packagesAllow("post.edit", p),
       canDelete: may.delete(perms, node, topic, p, perms.viewer.userId) && packagesAllow("post.delete", p),

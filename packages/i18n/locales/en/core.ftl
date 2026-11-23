@@ -547,6 +547,7 @@ rank-default-user = User
 admin-ranks-intro = A member shows the post-count rank whose minimum they have reached, unless you give them a special rank.
 admin-ranks-none = There are no ranks yet.
 admin-rank-title = Title
+admin-rank-translated-hint = A default rank: readers see its title and badge in their own language. Change the title to show the same one to everyone.
 admin-rank-kind = Kind
 admin-rank-kind-posts = Reached by post count
 admin-rank-kind-special = Special: given to members one by one

@@ -73,9 +73,16 @@ describe.each(testEngines())("%s", (engine) => {
 
   describe("ranks (#130)", () => {
     it("are edited and deleted, and a deleted special rank leaves its members", async () => {
-      const stars = await r.ranks.create({ title: "Stars", minPosts: 10, special: false, image: null });
+      const stars = await r.ranks.create({
+        title: "Stars",
+        titleKey: null,
+        minPosts: 10,
+        special: false,
+        image: null,
+      });
       const crew = await r.ranks.create({
         title: "Crew",
+        titleKey: null,
         minPosts: null,
         special: true,
         image: "upload/a.png",
@@ -389,8 +396,8 @@ describe.each(testEngines())("%s", (engine) => {
         action: "import.finished",
         details: { posts: 3 },
       });
-      await r.ranks.create({ title: "Nowicjusz", minPosts: 0, special: false, image: null });
-      await r.ranks.create({ title: "Admin", minPosts: null, special: true, image: null });
+      await r.ranks.create({ title: "Nowicjusz", titleKey: null, minPosts: 0, special: false, image: null });
+      await r.ranks.create({ title: "Admin", titleKey: null, minPosts: null, special: true, image: null });
       expect((await r.ranks.all()).map((x) => x.title)).toEqual(["Admin", "Nowicjusz"]);
       await r.smilies.create({ code: ":-)", image: "icon_smile.gif", emotion: "Smile", position: 1 });
       await expect(

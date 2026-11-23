@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { SUPPORTED } from "@postmodem/i18n";
 import { afterEach, describe, expect, it } from "vitest";
-import { rankImageUrl } from "./board.ts";
+import { rankImageUrl, rankTitle } from "./board.ts";
 import { type AppContext, createContext } from "./bootstrap.ts";
 import { DEFAULT_RANKS, seedDefaultRanks } from "./ranks.ts";
 
@@ -49,7 +49,16 @@ describe("default ranks", () => {
       ["VIP", true, null],
       ["Użytkownik", false, 0],
     ]);
-    expect(rankImageUrl(ranks!.get("mod")!.image)).toBe("/ranks/default/pl/rank_mod.svg");
+    // Titles and badges follow each reader's language; the stored title is the board's.
+    const mod = ranks!.get("mod")!;
+    expect(rankImageUrl(mod.image, "pl")).toBe("/ranks/default/pl/rank_mod.svg");
+    expect(rankImageUrl(mod.image, "en")).toBe("/ranks/default/en/rank_mod.svg");
+    const owner = ranks!.get("owner")!;
+    expect(rankTitle(owner, "en")).toBe("Owner");
+    expect(rankTitle(owner, "pl")).toBe("Właściciel");
+    // Renamed (no key) or an unknown key: the title as typed, for everyone.
+    expect(rankTitle({ ...owner, titleKey: null, title: "Szef" }, "en")).toBe("Szef");
+    expect(rankTitle({ ...owner, titleKey: "rank-default-nope" }, "en")).toBe("Właściciel");
     expect(await seedDefaultRanks(repos, "en")).toBeNull();
     expect(await repos.ranks.all()).toHaveLength(5);
   });

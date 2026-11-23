@@ -192,7 +192,13 @@ export interface Grant {
 
 export interface Rank {
   id: Id;
+  /** The title as typed; for a default rank, in the board's language when it was created. */
   title: string;
+  /**
+   * A default rank's message id (`rank-default-<key>`): its title is translated for each reader,
+   * as phpBB2's language packs did. Null once an admin renames it.
+   */
+  titleKey: string | null;
   minPosts: number | null;
   special: boolean;
   image: string | null;

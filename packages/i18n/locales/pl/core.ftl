@@ -564,6 +564,7 @@ rank-default-user = Użytkownik
 admin-ranks-intro = Użytkownik ma rangę za liczbę postów, której minimum osiągnął, chyba że nadasz mu rangę specjalną.
 admin-ranks-none = Nie ma jeszcze żadnych rang.
 admin-rank-title = Nazwa
+admin-rank-translated-hint = Ranga domyślna: każdy widzi jej nazwę i obrazek w swoim języku. Zmień nazwę, aby wszyscy widzieli tę samą.
 admin-rank-kind = Rodzaj
 admin-rank-kind-posts = Za liczbę postów
 admin-rank-kind-special = Specjalna: nadawana wybranym użytkownikom

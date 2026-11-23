@@ -94,7 +94,8 @@
         </strong>
         {#if post.authorRank}
           <p class="rank">
-            <span class="visually-hidden">{t("rank-label")}: </span>{post.authorRank.title}
+            <span class="visually-hidden">{t("rank-label")}:</span>
+            {post.authorRank.title}
             {#if post.authorRank.image}<img src={post.authorRank.image} alt="" referrerpolicy="no-referrer" />{/if}
           </p>
         {/if}

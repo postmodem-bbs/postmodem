@@ -25,9 +25,17 @@
   </p>
 {/if}
 
-{#snippet fields(prefix: string, rank: { title: string; special: boolean; minPosts: number | null; imageUrl?: string | null } | null)}
+{#snippet fields(prefix: string, rank: { title: string; translated?: boolean; special: boolean; minPosts: number | null; imageUrl?: string | null } | null)}
   <label for={`${prefix}-title`}>{t("admin-rank-title")}</label>
-  <input id={`${prefix}-title`} name="title" maxlength="50" required value={rank?.title ?? ""} />
+  <input
+    id={`${prefix}-title`}
+    name="title"
+    maxlength="50"
+    required
+    value={rank?.title ?? ""}
+    aria-describedby={rank?.translated ? `${prefix}-title-hint` : undefined}
+  />
+  {#if rank?.translated}<p class="muted" id={`${prefix}-title-hint`}>{t("admin-rank-translated-hint")}</p>{/if}
   <fieldset class="choices">
     <legend>{t("admin-rank-kind")}</legend>
     <label class="check"><input type="radio" name="kind" value="posts" checked={!rank?.special} /> {t("admin-rank-kind-posts")}</label>

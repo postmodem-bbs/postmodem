@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // The ranks a new board starts with (#130), as phpBB2's installer gave its admin "Site Admin".
-// Their badges ship with the app (static/ranks/default/<lang>/), in the board's language, and
-// are never uploaded: SVG is refused as an upload. Seeded once, on a board with no ranks yet.
+// Their badges ship with the app (static/ranks/default/<lang>/) and, like their titles, follow
+// each reader's language, as phpBB2's language packs did. They are never uploaded: SVG is refused as an upload. Seeded once, on a board with no ranks yet.
 import type { Rank, Repositories } from "@postmodem/core";
 import { type SupportedLocale, translator } from "@postmodem/i18n";
 
@@ -22,10 +22,12 @@ export async function seedDefaultRanks(
     out.set(
       key,
       await repos.ranks.create({
+        // The title as typed is the board's language; readers see theirs through the key.
         title: t(`rank-default-${key}`),
+        titleKey: `rank-default-${key}`,
         special,
         minPosts: special ? null : 0,
-        image: `default/${locale}/rank_${key}.svg`,
+        image: `default/{LANG}/rank_${key}.svg`,
       }),
     );
   }

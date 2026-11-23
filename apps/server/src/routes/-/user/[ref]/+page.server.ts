@@ -35,7 +35,7 @@ export const load: PageServerLoad = async ({ url, params, locals }) => {
       joined: user.createdAt,
       lastSeen: user.lastSeenAt,
       posts: user.postCount,
-      rank: rankView(await repos.ranks.all(), user),
+      rank: rankView(await repos.ranks.all(), user, locals.locale),
       location: user.location,
       website: /^https?:\/\//i.test(user.website) ? user.website : "",
     },

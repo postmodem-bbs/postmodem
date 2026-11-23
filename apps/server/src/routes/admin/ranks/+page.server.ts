@@ -4,7 +4,7 @@
 import { RANK_TITLE_MAX, type Rank } from "@postmodem/core";
 import { fail } from "@sveltejs/kit";
 import { adminAudit, requireAdmin } from "#lib/server/admin.ts";
-import { rankImageUrl } from "#lib/server/board.ts";
+import { rankImageUrl, rankTitle } from "#lib/server/board.ts";
 import { saveUploadedImage, uploadsDir } from "#lib/server/uploads.ts";
 import type { Actions, PageServerLoad, RequestEvent } from "./$types";
 
@@ -19,7 +19,9 @@ export const load: PageServerLoad = async ({ locals, url }) => {
   return {
     ranks: (await repos.ranks.all()).map((r) => ({
       ...r,
-      imageUrl: rankImageUrl(r.image),
+      title: rankTitle(r, locals.locale),
+      translated: r.titleKey !== null,
+      imageUrl: rankImageUrl(r.image, locals.locale),
       members: r.special ? (counts.get(r.id) ?? 0) : null,
     })),
   };
@@ -30,7 +32,7 @@ async function guarded(event: RequestEvent) {
   return { form: await event.request.formData(), repos: event.locals.ctx.db.repos };
 }
 
-type Fields = Omit<Rank, "id" | "image"> & { image?: string | null };
+type Fields = Omit<Rank, "id" | "image" | "titleKey"> & { image?: string | null };
 
 /** A rank as the form describes it, with a new image stored if one was uploaded. */
 async function readRank(event: RequestEvent, form: FormData): Promise<Fields | { error: string }> {
@@ -60,7 +62,7 @@ export const actions: Actions = {
     const { form, repos } = await guarded(event);
     const fields = await readRank(event, form);
     if ("error" in fields) return fail(400, { action: "create", error: fields.error });
-    const rank = await repos.ranks.create({ ...fields, image: fields.image ?? null });
+    const rank = await repos.ranks.create({ ...fields, titleKey: null, image: fields.image ?? null });
     await adminAudit(event.locals, "rank.created", "rank", rank.id, { title: rank.title });
     return { done: "create" };
   },
@@ -71,8 +73,12 @@ export const actions: Actions = {
     if (!before) return fail(404, { action: "update", error: "missing", id });
     const fields = await readRank(event, form);
     if ("error" in fields) return fail(400, { action: "update", error: fields.error, id });
-    await repos.ranks.update(id, fields);
-    await adminAudit(event.locals, "rank.updated", "rank", id, { title: fields.title });
+    // A default rank keeps following each reader's language until its title is changed; then
+    // it is the typed title for everyone, as any other rank.
+    const { title, ...rest } = fields;
+    const renamed = title !== rankTitle(before, event.locals.locale);
+    await repos.ranks.update(id, renamed ? { ...fields, titleKey: null } : rest);
+    await adminAudit(event.locals, "rank.updated", "rank", id, { title, renamed });
     return { done: "update", id };
   },
   delete: async (event) => {
@@ -93,6 +99,10 @@ export const actions: Actions = {
     if (choice !== "none" && !rank?.special) return fail(400, { action: "assign", error: "rank" });
     await repos.users.update(user.id, { rankId: rank?.id ?? null });
     await adminAudit(event.locals, "rank.assigned", "user", user.id, { rankId: rank?.id ?? null });
-    return { done: "assign", username: user.username, rank: rank?.title ?? null };
+    return {
+      done: "assign",
+      username: user.username,
+      rank: rank ? rankTitle(rank, event.locals.locale) : null,
+    };
   },
 };

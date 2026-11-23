@@ -170,6 +170,7 @@ const toPost = (r: Selectable<PostsTable>): Post => ({
 const toRank = (r: Selectable<RanksTable>): Rank => ({
   id: r.id,
   title: r.title,
+  titleKey: r.titleKey,
   minPosts: r.minPosts === null ? null : n(r.minPosts),
   special: r.special === 1,
   image: r.image,
@@ -1292,6 +1293,7 @@ export function createRepositories(db: Db, dialect: "sqlite" | "pg"): Repositori
         .values({
           ...(rank.id !== undefined ? { id: rank.id } : {}),
           title: rank.title,
+          titleKey: rank.titleKey,
           minPosts: rank.minPosts,
           special: rank.special ? 1 : 0,
           image: rank.image,
@@ -1315,9 +1317,15 @@ export function createRepositories(db: Db, dialect: "sqlite" | "pg"): Repositori
       return r && toRank(r);
     },
     async update(id, patch) {
-      const set: Partial<{ title: string; minPosts: number | null; special: 0 | 1; image: string | null }> =
-        {};
+      const set: Partial<{
+        title: string;
+        titleKey: string | null;
+        minPosts: number | null;
+        special: 0 | 1;
+        image: string | null;
+      }> = {};
       if (patch.title !== undefined) set.title = patch.title;
+      if (patch.titleKey !== undefined) set.titleKey = patch.titleKey;
       if (patch.minPosts !== undefined) set.minPosts = patch.minPosts;
       if (patch.special !== undefined) set.special = patch.special ? 1 : 0;
       if (patch.image !== undefined) set.image = patch.image;

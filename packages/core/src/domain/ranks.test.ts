@@ -6,6 +6,7 @@ import type { Rank } from "./types.ts";
 const rank = (id: number, title: string, minPosts: number | null, special = false): Rank => ({
   id,
   title,
+  titleKey: null,
   minPosts,
   special,
   image: null,

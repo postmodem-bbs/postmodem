@@ -422,6 +422,7 @@ export async function importPrzemo(
           await tx.ranks.create({
             id: num(row.rank_id),
             title: plain(row.rank_title),
+            titleKey: null,
             minPosts: special ? null : num(row.rank_min),
             special,
             image: legacyRankImage(plain(row.rank_image)),

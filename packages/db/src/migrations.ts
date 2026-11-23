@@ -657,5 +657,11 @@ export function migrations(dialect: Dialect): Record<string, Migration> {
         await sql`insert into search_index_state (id, applied_version) values (1, '[]')`.execute(db);
       },
     },
+    "0019_rank_title_keys": {
+      async up(db: Db) {
+        // A default rank's title follows each reader's language (#130); null: the title as typed.
+        await db.schema.alterTable("ranks").addColumn("title_key", "text").execute();
+      },
+    },
   };
 }
