@@ -23,7 +23,7 @@
     "check": "pnpm lint && pnpm typecheck && pnpm test && pnpm check:spdx && pnpm check:licenses",
     "fixtures:generate": "pnpm --filter @postmodem/fixtures generate",
     "fixtures:image": "pnpm --filter @postmodem/fixtures image",
-    "cli": "POSTMODEM_DATA_DIR=${POSTMODEM_DATA_DIR:-var/data} node apps/server/src/cli/postmodem.ts",
+    "cli": "POSTMODEM_DATA_DIR=${POSTMODEM_DATA_DIR:-var/data} node --import ./scripts/raw-imports.mjs apps/server/src/cli/postmodem.ts",
     "check:dco": "node scripts/dco.mjs origin/main..HEAD"
   },
   "devDependencies": {
