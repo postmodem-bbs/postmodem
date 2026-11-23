@@ -1,9 +1,30 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // `postmodem seed-demo`: fills an EMPTY board with content that shows what's implemented —
-// nested forums, announcements and stickies, long paginated topics, guest posts, and posts
-// exercising every BBCode feature. Refuses to touch a board that already has forums.
+// nested forums, announcements and stickies, long paginated topics, guest posts, posts
+// exercising every BBCode feature, and the feature tour (#163): members with avatars,
+// signatures and ranks, private messages, watches, a poll, a locked topic, an open report, a
+// banned and a pending member. The words are in demo-content.ts. Refuses to touch a board
+// that already has forums.
 import { hashPassword, type Id, installCorePermissions, type Repositories } from "@postmodem/core";
 import type { SupportedLocale } from "@postmodem/i18n";
+import { reportsStore } from "@postmodem/modules";
+import type { AvatarLimits } from "./avatars.ts";
+import { storeAvatar } from "./avatars.ts";
+import { demoAvatarPng } from "./demo-avatars.ts";
+import {
+  GUEST_ANSWER,
+  MEMORIES,
+  RULES,
+  SHOWCASE,
+  TOUR_CATEGORY,
+  TOUR_FORUMS,
+  TOUR_GALLERY,
+  TOUR_MEMBERS,
+  TOUR_MESSAGES,
+  TOUR_RANK,
+  TOUR_REPORTS,
+  TOUR_TOPICS,
+} from "./demo-content.ts";
 import { INSTALLED_PACKAGES, packagePermissions } from "./packages.ts";
 import { seedDefaultRanks } from "./ranks.ts";
 
@@ -15,49 +36,6 @@ export const DEMO_PASSWORD = "postmodem-demo";
 
 const DAY = 86_400_000;
 
-const SHOWCASE = `Witajcie na forum [b]Postmodem[/b]! :-D
-
-To jest pokaz tego, co już działa (stan po M1 slice 2):
-
-[list]
-[*][b]pogrubienie[/b], [i]kursywa[/i], [u]podkreślenie[/u]
-[*][color=red]kolory[/color] z palety phpBB2, [color=#336699]także zapisane szesnastkowo[/color]
-[*]rozmiary: [size=9]mały[/size], [size=18]duży[/size], [size=24]ogromny[/size]
-[*]efekty Przemo: [glow=blue]poświata[/glow], [shadow=red]cień[/shadow], [fade]pulsowanie[/fade]
-[/list]
-
-[quote="Przemo"]Wszystkie dodatkowe funkcje można wyłączyć w Panelu Administracyjnym.[/quote]
-
-[code]// kod pokazany dosłownie, [b]bez[/b] formatowania:
-for (const post of topic.posts) render(post);[/code]
-
-[center]Linki: [url=https://github.com/postmodem-bbs/postmodem]repozytorium[/url], albo po prostu www.example.org :-)[/center]
-
-Cześć, [you]! Ten fragment widzi każdy, ale [hide]ten jest ukryty[/hide] — do czasu odpowiedzi w tym temacie.
-
-[scroll]Przewijany tekst, jak w 2005 roku ;-)[/scroll]`;
-
-const RULES = `[b]Regulamin / Rules[/b]
-
-[list=1]
-[*]Bądźcie dla siebie mili. / Be kind to each other.
-[*]Bez spamu i reklam. / No spam, no ads.
-[*]Pisz po polsku albo po angielsku. / Polish or English, both are fine.
-[/list]
-
-Naruszenia zgłaszajcie moderatorom 8-)`;
-
-const MEMORIES = [
-  "Mój pierwszy był [b]Commodore 64[/b]. Kasety ładowały się wieki :lol:",
-  "Atari 65XE i joystick Quickshot. Do dziś pamiętam [i]River Raid[/i].",
-  "ZX Spectrum od wujka. Gumowa klawiatura!",
-  "Pentium 75 MHz, 8 MB RAM, Windows 95. I modem 33.6k — ten dźwięk :-D",
-  "Amiga 500 z rozszerzeniem pamięci. [color=green]Najlepsze gry na świecie[/color].",
-  "Mine was a 486DX2 with a Sound Blaster. Doom ran beautifully.",
-  '[quote="retro_fan"]Gumowa klawiatura![/quote]O tak, i ten kolorowy ekran ładowania :-)',
-  "Pierwszy dostęp do internetu w kafejce — i pierwsze forum na phpBB2 ;-)",
-];
-
 export interface SeedResult {
   created: boolean;
   forums: number;
@@ -65,10 +43,17 @@ export interface SeedResult {
   posts: number;
 }
 
+/** Where avatar images go. Without it (unit tests), the tour's members have no avatars. */
+export interface DemoFiles {
+  dataDir: string;
+  limits: AvatarLimits;
+}
+
 export async function seedDemo(
   repos: Repositories,
   now = Date.now(),
   locale: SupportedLocale = "en",
+  files?: DemoFiles,
 ): Promise<SeedResult> {
   if ((await repos.nodes.tree()).length) return { created: false, forums: 0, topics: 0, posts: 0 };
 
@@ -244,7 +229,7 @@ export async function seedDemo(
       "normal",
       [
         [null, "Czy trzeba się rejestrować, żeby czytać? :-("],
-        [ola.id, "Nie, czytanie jest otwarte. Rejestracja przyjdzie w slice 4 ;-)"],
+        [ola.id, GUEST_ANSWER],
       ],
       "Anonim",
     );
@@ -299,9 +284,20 @@ export async function seedDemo(
     await r.grants.create(roles.readOnly, { type: "registered" }, archive.id);
     await r.grants.create(roles.admin, { type: "user", id: admin.id }, null);
 
-    for (const node of [news, park, retro, computers, software, members, modroom, archive])
+    // ── the feature tour (#163), after the base board so its IDs stay the same ──
+    const tour = await seedTour(r, {
+      tick,
+      topic,
+      credential: demoCredential,
+      original: { admin, ola, lukasz, fan },
+      ranks,
+      files,
+    });
+
+    for (const node of [news, park, retro, computers, software, members, modroom, archive, ...tour.forums])
       await r.nodes.recount(node.id);
-    for (const person of people) await r.users.update(person.id, { postCount: authored.get(person.id) ?? 0 });
+    for (const person of [...people, ...tour.members])
+      await r.users.update(person.id, { postCount: authored.get(person.id) ?? 0 });
     await r.audit.append({
       actorId: null,
       action: "demo.seeded",
@@ -309,8 +305,158 @@ export async function seedDemo(
       targetId: "demo",
       details: { topics: topicCount, posts: postCount },
     });
-    return { created: true, forums: 8, topics: topicCount, posts: postCount };
+    return { created: true, forums: 8 + tour.forums.length, topics: topicCount, posts: postCount };
   });
+}
+
+interface TourContext {
+  tick: (ms?: number) => number;
+  topic: (
+    nodeId: Id,
+    title: string,
+    type: string,
+    posts: [Id | null, string][],
+  ) => Promise<Awaited<ReturnType<Repositories["topics"]["recount"]>>>;
+  credential: Awaited<ReturnType<typeof hashPassword>>;
+  original: Record<"admin" | "ola" | "lukasz" | "fan", { id: Id }>;
+  ranks: Awaited<ReturnType<typeof seedDefaultRanks>>;
+  files?: DemoFiles;
+}
+
+/** The feature tour: everything in demo-content.ts's second part. */
+async function seedTour(r: Repositories, c: TourContext) {
+  const who = new Map<string, { id: Id }>(Object.entries(c.original));
+
+  // The gallery the avatar picker shows, and the members' own avatars.
+  const gallery: string[] = [];
+  if (c.files)
+    for (const name of TOUR_GALLERY.images) {
+      const png = demoAvatarPng(`gallery-${name}`);
+      const stored = await storeAvatar(
+        c.files.dataDir,
+        png,
+        c.files.limits,
+        `gallery/${TOUR_GALLERY.category}`,
+        `${name}.png`,
+      );
+      if ("avatar" in stored) gallery.push(stored.avatar);
+    }
+
+  const rank = await r.ranks.create({
+    title: TOUR_RANK,
+    titleKey: null,
+    minPosts: null,
+    special: true,
+    image: null,
+  });
+  const members = [];
+  for (const m of TOUR_MEMBERS) {
+    let avatar: string | null = null;
+    if (c.files && m.avatar === "upload") {
+      const stored = await storeAvatar(c.files.dataDir, demoAvatarPng(m.username), c.files.limits);
+      if ("avatar" in stored) avatar = stored.avatar;
+    } else if (m.avatar === "gallery") avatar = gallery[0] ?? null;
+    const user = await r.users.create({
+      username: m.username,
+      email: m.email ?? null,
+      status: m.status,
+      createdAt: c.tick(),
+      rankId: m.specialRank ? rank.id : null,
+      signatureSource: m.signature ?? "",
+      avatar,
+      location: m.location ?? "",
+      website: m.website ?? "",
+      locale: m.locale ?? null,
+      timezone: m.timezone ?? null,
+    });
+    if (m.status === "active") await r.credentials.set(user.id, c.credential.scheme, c.credential.hash);
+    if (m.banned)
+      await r.bans.create({
+        kind: "user",
+        value: String(user.id),
+        reason: m.banned,
+        createdBy: c.original.admin.id,
+        expiresAt: null,
+      });
+    who.set(m.key, user);
+    members.push(user);
+  }
+  const id = (key: string) => {
+    const found = who.get(key);
+    if (!found) throw new Error(`demo-content: no member '${key}'`);
+    return found.id;
+  };
+
+  const category = await r.nodes.create({
+    parentId: null,
+    kind: "category",
+    title: TOUR_CATEGORY,
+    position: 3,
+  });
+  const forums = new Map<string, { id: Id }>();
+  for (const [i, f] of TOUR_FORUMS.entries())
+    forums.set(
+      f.key,
+      await r.nodes.create({
+        parentId: category.id,
+        kind: "forum",
+        title: f.title,
+        description: f.description,
+        position: i + 1,
+      }),
+    );
+
+  const topics = new Map<string, Id>();
+  for (const t of TOUR_TOPICS) {
+    const forum = forums.get(t.forum);
+    if (!forum) throw new Error(`demo-content: no forum '${t.forum}'`);
+    const created = await c.topic(
+      forum.id,
+      t.title,
+      t.type ?? "normal",
+      t.posts.map(([author, source]) => [id(author), source]),
+    );
+    if (!created) continue;
+    topics.set(t.title, created.id);
+    if (t.locked) await r.topics.setLocked(created.id, true);
+    if (t.poll)
+      await r.polls.create({
+        topicId: created.id,
+        question: t.poll.question,
+        startsAt: c.tick(0),
+        endsAt: null,
+        hideResults: false,
+        options: t.poll.options.map(([text, votes], i) => ({ position: i + 1, text, votes })),
+      });
+    for (const watcher of t.watchedBy ?? []) await r.watches.watch(id(watcher), created.id);
+  }
+
+  for (const m of TOUR_MESSAGES) {
+    const at = c.tick(9 * 60_000);
+    await r.messages.create({
+      senderId: id(m.from),
+      recipientId: id(m.to),
+      subject: m.subject,
+      source: m.source,
+      createdAt: at,
+      readAt: m.read ? at + 60_000 : null,
+    });
+  }
+
+  const reports = reportsStore(r.raw);
+  for (const report of TOUR_REPORTS) {
+    const topicId = topics.get(report.topic);
+    const post = topicId ? (await r.posts.allInTopic(topicId))[report.post] : undefined;
+    if (post)
+      await reports.create({
+        postId: post.id,
+        reporterId: id(report.by),
+        reason: report.reason,
+        now: c.tick(),
+      });
+  }
+
+  return { forums: [...forums.values()], members };
 }
 
 /**

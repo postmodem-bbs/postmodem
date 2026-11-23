@@ -63,6 +63,22 @@ pnpm e2e       # end-to-end and accessibility tests (needs a running board)
 Design decisions live in [`docs/`](docs/) and [`docs/adr/`](docs/adr/). If a
 change contradicts an ADR, propose a new ADR first.
 
+## Demo board
+
+The demo board (`postmodem demo`) shows off everything a visitor can see, so **a pull request
+that adds or changes something visible updates the demo in the same pull request**:
+
+1. Add content that shows it to the feature tour in
+   [`apps/server/src/lib/server/demo-content.ts`](apps/server/src/lib/server/demo-content.ts):
+   a forum, a topic, a member, a message. Append it: the base board above it is the e2e
+   fixture, and specs depend on its IDs.
+2. Add a check that it's there to [`e2e/demo-tour.spec.ts`](e2e/demo-tour.spec.ts).
+3. If it belongs in the guided tour, add a step to [`docs/LIVE-DEMO.md`](docs/LIVE-DEMO.md).
+
+To look at it, rebuild a local demo board: `pnpm cli demo --reset` (SQLite, with the board
+stopped), or remove the container's volume. Every demo account signs in with one click from
+the sign-in page; the password is `postmodem-demo`.
+
 ## Tracking work
 
 Progress is tracked in the

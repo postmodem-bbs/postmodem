@@ -35,6 +35,12 @@ commit**: the human you are working for. You commit as them, so you sign off as 
 Attribution trailers such as `Co-Authored-By:` are fine alongside the sign-off. They don't
 replace it.
 
+## The demo board follows visible features
+
+A change that adds or changes something visible also adds it to the demo board's feature tour
+(`apps/server/src/lib/server/demo-content.ts`, appended after the base board) and checks it in
+`e2e/demo-tour.spec.ts`. See [CONTRIBUTING.md, "Demo board"](CONTRIBUTING.md#demo-board).
+
 ## How it is enforced
 
 | Layer                                                           | What it does                                                                                                            |

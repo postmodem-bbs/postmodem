@@ -31,7 +31,7 @@ import { IP_LOG_RETENTION_DAYS, ipLogStore, loginSecuritySettings } from "@postm
 import { backup, restore } from "../lib/server/backup.ts";
 import { type AppContext, createContext, readConfig } from "../lib/server/bootstrap.ts";
 import { DEMO_PASSWORD, seedDemo, seedLongTopic } from "../lib/server/demo.ts";
-import { demoAccountsTable, isDemoBoard, setupDemo } from "../lib/server/demo-setup.ts";
+import { demoAccountsTable, demoFiles, isDemoBoard, setupDemo } from "../lib/server/demo-setup.ts";
 import { sendDigests } from "../lib/server/notifications.ts";
 import { INSTALLED_PACKAGES, packageMigrations, packagePermissions } from "../lib/server/packages.ts";
 import { seedDefaultRanks } from "../lib/server/ranks.ts";
@@ -750,13 +750,18 @@ async function main(argv: string[]): Promise<number> {
         await ctx.db.close();
         return 0;
       }
-      const result = await seedDemo(ctx.db.repos, Date.now(), ctx.settings.get(defaultLocale));
+      const result = await seedDemo(
+        ctx.db.repos,
+        Date.now(),
+        ctx.settings.get(defaultLocale),
+        demoFiles(ctx),
+      );
       if (result.created)
         await rebuildSearch(ctx.db.repos, undefined, searchPlan(ctx.packages.searchContributions()));
       if (result.created)
         ctx.log.info("demo board created", {
           ...result,
-          logins: `Łukasz Żółć, retro_fan, Ola (moderator group) with password "${DEMO_PASSWORD}"`,
+          logins: `Łukasz Żółć, retro_fan, Ola (moderator group), Kasia, Tom, Mika with password "${DEMO_PASSWORD}"`,
         });
       else ctx.log.warn("the board already has forums; demo content was not added");
       await ctx.db.close();

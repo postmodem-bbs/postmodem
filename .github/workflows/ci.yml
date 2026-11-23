@@ -396,7 +396,7 @@ jobs:
           PW_BROWSERS: ${{ matrix.browser }}
         run: |
           docker compose -f compose.solo.yaml -f ci/mailpit.yaml exec -T postmodem /nodejs/bin/node /app/postmodem.js demo
-          pnpm --dir .. exec playwright test e2e/demo.spec.ts
+          pnpm --dir .. exec playwright test e2e/demo.spec.ts e2e/demo-tour.spec.ts
       - name: Container logs
         if: failure()
         working-directory: deploy

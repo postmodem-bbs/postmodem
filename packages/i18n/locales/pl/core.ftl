@@ -191,6 +191,7 @@ login-demo-as = Zaloguj jako { $name }
 login-demo-admin = Panel administracyjny: ustawienia, fora, grupy, użytkownicy, uprawnienia.
 login-demo-moderator = Moderator: zgłoszenia, zamykanie, przenoszenie, dzielenie i łączenie tematów.
 login-demo-member = Użytkownik: pisanie, prywatne wiadomości, obserwowanie, zgłoszenia i własny profil.
+login-demo-showcase = Użytkowniczka z pełnym profilem: awatar, podpis, specjalna ranga, prywatne wiadomości.
 reset-title = Reset hasła
 reset-request-text = Podaj adres e-mail swojego konta, a wyślemy link do ustawienia nowego hasła.
 reset-request-submit = Wyślij link
