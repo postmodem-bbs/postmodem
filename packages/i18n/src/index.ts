@@ -5,9 +5,9 @@ import { negotiateLanguages } from "@fluent/langneg";
 import en from "../locales/en/core.ftl?raw";
 import pl from "../locales/pl/core.ftl?raw";
 
-import { SUPPORTED, type SupportedLocale } from "./locales.ts";
+import { LANGUAGE_NAMES, SUPPORTED, type SupportedLocale } from "./locales.ts";
 
-export { SUPPORTED, type SupportedLocale };
+export { LANGUAGE_NAMES, SUPPORTED, type SupportedLocale };
 
 const FALLBACK: SupportedLocale = "en";
 

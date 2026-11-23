@@ -3,3 +3,5 @@
 // CLI bundle has no loader for .ftl files).
 export const SUPPORTED = ["en", "pl"] as const;
 export type SupportedLocale = (typeof SUPPORTED)[number];
+/** Each language in its own words, for language pickers. */
+export const LANGUAGE_NAMES: Record<SupportedLocale, string> = { en: "English", pl: "Polski" };

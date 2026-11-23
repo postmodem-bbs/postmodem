@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
-import { boardName, coreSettings } from "./core-settings.ts";
+import { boardName, boardTimeZone, coreSettings, isTimeZone, TIME_ZONES } from "./core-settings.ts";
 import { defineSetting, Settings, type SettingsStore, SettingValidationError } from "./settings.ts";
 
 const memoryStore = (
@@ -42,5 +42,17 @@ describe("Settings", () => {
     expect(() => defineSetting({ key: "x.y.z", schema: z.number(), default: "no" as never })).toThrow(
       /default/,
     );
+  });
+});
+
+describe("time zones (#129)", () => {
+  it("knows the IANA zones and UTC, and nothing else", () => {
+    expect(TIME_ZONES[0]).toBe("UTC");
+    expect(TIME_ZONES).toContain("Europe/Warsaw");
+    expect(isTimeZone("America/New_York")).toBe(true);
+    expect(isTimeZone("Mars/Olympus_Mons")).toBe(false);
+    expect(isTimeZone(null)).toBe(false);
+    expect(boardTimeZone.schema.safeParse("Europe/Warsaw").success).toBe(true);
+    expect(boardTimeZone.schema.safeParse("+01:00").success).toBe(false);
   });
 });

@@ -3,6 +3,7 @@
 <script lang="ts">
   import type { Translate } from "@postmodem/i18n";
   import ForumTable from "#lib/components/ForumTable.svelte";
+  import type { DateFormat } from "#lib/format.ts";
   import { links } from "#lib/links.ts";
   import type { ForumRow } from "#lib/server/board.ts";
   import type { NodeRef, UserRef } from "#lib/urls.ts";
@@ -10,6 +11,7 @@
   interface IndexData {
     boardName: string;
     locale: string;
+    dates: DateFormat;
     categories: { id: number; ref: NodeRef | null; title: string; forums: ForumRow[] }[];
     stats: {
       posts: number;
@@ -32,7 +34,7 @@
     <h2 id={`c${cat.id}-title`} class="category-title">
       {#if cat.ref}<a href={urls.category(cat.ref)}>{cat.title}</a>{:else}{data.boardName}{/if}
     </h2>
-    <ForumTable rows={cat.forums} caption={cat.title || data.boardName} {t} locale={data.locale} />
+    <ForumTable rows={cat.forums} caption={cat.title || data.boardName} {t} dates={data.dates} />
   </section>
 {/each}
 

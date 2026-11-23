@@ -28,7 +28,7 @@
 {#each data.versions as v (v.id)}
   <div class="panel revision">
     <h2>
-      {t("revisions-replaced", { when: formatDateTime(v.replacedAt, data.locale) })}{#if v.editor}
+      {t("revisions-replaced", { when: formatDateTime(v.replacedAt, data.dates) })}{#if v.editor}
         · {t("revisions-by", { name: v.editor })}{/if}
     </h2>
     {#if v.subject}<p><strong>{v.subject}</strong></p>{/if}

@@ -22,5 +22,5 @@
 {#if data.mail === "log"}<p class="panel notice">{t("admin-mail-log-warning")}</p>{/if}
 <h2>{t("admin-recent")}</h2>
 <ul class="panel">
-  {#each data.recent as e (e.id)}<li>{formatDateTime(e.at, data.locale)} · <code>{e.action}</code></li>{/each}
+  {#each data.recent as e (e.id)}<li>{formatDateTime(e.at, data.dates)} · <code>{e.action}</code></li>{/each}
 </ul>

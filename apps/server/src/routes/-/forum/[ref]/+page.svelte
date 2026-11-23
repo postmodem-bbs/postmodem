@@ -28,7 +28,7 @@
 {#if data.subforums.length}
   <section aria-labelledby="subforums-title">
     <h2 id="subforums-title" class="category-title">{t("index-subforums")}</h2>
-    <ForumTable rows={data.subforums} caption={t("index-subforums")} {t} locale={data.locale} />
+    <ForumTable rows={data.subforums} caption={t("index-subforums")} {t} dates={data.dates} />
   </section>
 {/if}
 
@@ -69,7 +69,7 @@
             <td class="last-post">
               {#if topic.lastPost}
                 <a href={urls.post(topic.lastPost.postId)}>
-                  <time datetime={isoDate(topic.lastPost.at)}>{formatDateTime(topic.lastPost.at, data.locale)}</time>
+                  <time datetime={isoDate(topic.lastPost.at)}>{formatDateTime(topic.lastPost.at, data.dates)}</time>
                 </a><br />
                 <span class="muted">{t("by-author", { name: topic.lastPost.author || t("guest") })}</span>
               {/if}

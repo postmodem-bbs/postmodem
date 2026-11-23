@@ -25,7 +25,7 @@
       <p><a href={`/admin/users/${u.id}/ips`}>{t("ip-logging-title")}</a></p>
     {/if}
     <h2>{u.name} <span class="muted">· #{u.id} · {t(`admin-status-${u.status}`)}{#if u.banned} · {t("admin-banned")}{/if}</span></h2>
-    <p class="muted">{u.email || t("admin-no-email")} · {t("posts-count", { count: u.posts })} · {t("post-author-joined")} {formatDate(u.joined, data.locale)}</p>
+    <p class="muted">{u.email || t("admin-no-email")} · {t("posts-count", { count: u.posts })} · {t("post-author-joined")} {formatDate(u.joined, data.dates)}</p>
     <div class="admin-actions">
       {#if u.banned}
         <form method="POST" action="?/unban" class="slot-form inline"><input type="hidden" name="id" value={u.id} /><button type="submit" class="secondary">{t("admin-unban")}</button></form>

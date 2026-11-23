@@ -1,10 +1,10 @@
 <!-- SPDX-License-Identifier: AGPL-3.0-or-later -->
 <script lang="ts">
   import { translator } from "@postmodem/i18n";
+  import { formatDateTime, isoDate } from "#lib/format.ts";
 
   let { data } = $props();
   const t = $derived(translator(data.locale));
-  const format = $derived(new Intl.DateTimeFormat(data.locale, { dateStyle: "medium", timeStyle: "short", timeZone: "UTC" }));
 </script>
 
 <svelte:head><title>{t("ip-logging-title")} · {data.boardName}</title></svelte:head>
@@ -19,7 +19,7 @@
         <tr>
           <td>{entry.ip}</td>
           <td>{t(`ip-logging-kind-${entry.kind}`)}</td>
-          <td><time datetime={new Date(entry.at).toISOString()}>{format.format(entry.at)}</time></td>
+          <td><time datetime={isoDate(entry.at)}>{formatDateTime(entry.at, data.dates)}</time></td>
         </tr>
       {/each}
     </tbody>

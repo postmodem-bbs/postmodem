@@ -223,6 +223,76 @@ test("a member chooses how they hear about replies, without JavaScript", async (
   }
 });
 
+test("a member sets their time zone and date format, and the board's dates follow (#129)", async ({
+  browser,
+}) => {
+  const context = await browser.newContext({ javaScriptEnabled: false, locale: "en-US" });
+  const page = await context.newPage();
+  const form = page.locator("form[action='?/regional']");
+  const save = async () => {
+    await form.getByRole("button", { name: "Save" }).click();
+    await expect(form.getByRole("status").filter({ hasText: "Saved." })).toBeVisible();
+  };
+  try {
+    await signIn(page, "Ola", DEMO_PASSWORD);
+    await page.goto("/account");
+    await expect(page.getByRole("heading", { name: "Time and language" })).toBeVisible();
+    await expect(form.getByLabel("Language")).toHaveValue("auto");
+    await expect(form.getByLabel("Time zone")).toHaveValue("");
+    await expect(
+      form.getByRole("group", { name: "Date format" }).getByLabel(/The board's format/),
+    ).toBeChecked();
+
+    await form.getByLabel("Time zone").selectOption("Asia/Tokyo");
+    await form.locator("input[name=dateFormat][value=iso]").check();
+    await save();
+    await expect(form.getByLabel("Time zone")).toHaveValue("Asia/Tokyo");
+
+    // The index's last-post times: ISO 8601, on Tokyo's wall clock.
+    await page.goto("/");
+    const time = page.locator("td time").first();
+    const utc = Date.parse((await time.getAttribute("datetime")) ?? "");
+    const tokyo = new Intl.DateTimeFormat("sv-SE", {
+      timeZone: "Asia/Tokyo",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+      hourCycle: "h23",
+    }).format(utc);
+    await expect(time).toHaveText(tokyo);
+  } finally {
+    // Back to the board's defaults, so other tests see Ola as seeded.
+    await page.goto("/account");
+    await form.getByLabel("Time zone").selectOption("");
+    await form.locator("input[name=dateFormat][value=board]").check();
+    await save();
+    await context.close();
+  }
+});
+
+// axe needs JavaScript, so the section's check runs in a page that has it.
+test("the time and language section passes axe (#129)", async ({ page }) => {
+  await signIn(page, "Ola", DEMO_PASSWORD);
+  await page.goto("/account");
+  await expect(page.getByRole("heading", { name: "Time and language" })).toBeVisible();
+  await expectNoAxeViolations(page);
+});
+
+test("guests see the board's time zone and date format (#129)", async ({ page }) => {
+  await page.goto("/");
+  const time = page.locator("td time").first();
+  const utc = Date.parse((await time.getAttribute("datetime")) ?? "");
+  // The seeded board keeps the defaults: UTC, the locale's medium style.
+  const expected = new Intl.DateTimeFormat("en-US", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "UTC",
+  }).format(utc);
+  await expect(time).toHaveText(expected);
+});
+
 test("sign-in returns to the page it started from, by e-mail address too", async ({ page }) => {
   await page.goto("/viewtopic.php?t=1");
   await page.getByRole("link", { name: "Sign in" }).click();

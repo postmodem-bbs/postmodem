@@ -3,14 +3,13 @@
   import { THEMES } from "@postmodem/ui";
   import Slot from "#lib/components/Slot.svelte";
   import "../app.css";
-  import { SUPPORTED, translator } from "@postmodem/i18n";
+  import { LANGUAGE_NAMES, SUPPORTED, translator } from "@postmodem/i18n";
   import { invalidate } from "$app/navigation";
   import { page } from "$app/state";
   import { follow } from "#lib/live.ts";
 
   let { data, children } = $props();
   const t = $derived(translator(data.locale));
-  const LANGUAGE_NAMES: Record<string, string> = { en: "English", pl: "Polski" };
 
   // Live header counts: a new private message, or a change in the reports queue (the server
   // drops subscriptions this reader may not have, so asking for the queue is harmless).

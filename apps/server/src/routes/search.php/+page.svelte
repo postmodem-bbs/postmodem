@@ -48,7 +48,7 @@
               <a class="topic-title" href={urls.post(r.postId)}>{r.topic.title}</a>
               <span class="muted"> · <a href={urls.forum(r.forum)}>{r.forum.title}</a></span>
             </p>
-            <p class="muted">{r.author} · <time datetime={isoDate(r.at)}>{formatDateTime(r.at, data.locale)}</time></p>
+            <p class="muted">{r.author} · <time datetime={isoDate(r.at)}>{formatDateTime(r.at, data.dates)}</time></p>
             <p>{r.excerpt}</p>
           </li>
         {/each}

@@ -44,7 +44,7 @@
               {#if m.unread}<span class="badge pkg-badge pkg-unread">{data.folder === "inbox" ? t("unread-new") : t("pm-not-read")}</span>{/if}
             </th>
             <td>{m.other}</td>
-            <td><time datetime={isoDate(m.at)}>{formatDateTime(m.at, data.locale)}</time></td>
+            <td><time datetime={isoDate(m.at)}>{formatDateTime(m.at, data.dates)}</time></td>
           </tr>
         {/each}
       </tbody>
@@ -56,7 +56,7 @@
     <h2>{data.message.subject}</h2>
     <p class="muted">
       {t("pm-from")}: <strong>{data.message.from}</strong> · {t("pm-to")}: {data.message.to} ·
-      <time datetime={isoDate(data.message.at)}>{formatDateTime(data.message.at, data.locale)}</time>
+      <time datetime={isoDate(data.message.at)}>{formatDateTime(data.message.at, data.dates)}</time>
     </p>
     <!-- Rendered by @postmodem/markup: allow-listed, sanitised HTML (ADR 0014). -->
     <div class="post-body">{@html data.message.html}</div>
