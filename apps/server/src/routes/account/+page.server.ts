@@ -15,6 +15,7 @@ import {
   hashPassword,
   isTimeZone,
   maxPostLength,
+  memberEmail,
   PASSWORD_MIN,
   passwordProblem,
   pendingEmailChange,
@@ -101,7 +102,9 @@ export const load: PageServerLoad = async (event) => {
       signature: user.signatureSource,
       notifyPm: user.notifyPm,
       autoWatch: user.autoWatch,
+      allowEmail: user.allowEmail,
     },
+    memberEmail: event.locals.ctx.settings.get(memberEmail),
     notifications: await notificationChoices(event.locals.ctx, user.id),
     regional: await regionalChoices(event, user.timezone),
     signatureHtml: user.signatureSource
@@ -146,6 +149,7 @@ export const actions: Actions = {
       signatureSource: signature,
       notifyPm: form.get("notifyPm") === "on",
       autoWatch: form.get("autoWatch") === "on",
+      allowEmail: form.get("allowEmail") === "on",
     });
     return { section: "profile", saved: true };
   },

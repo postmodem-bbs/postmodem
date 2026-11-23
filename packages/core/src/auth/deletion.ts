@@ -63,6 +63,7 @@ export async function deleteAccount(
       timezone: null,
       postCount: 0,
       notifyPm: false,
+      allowEmail: false,
       autoWatch: false,
     });
     await r.audit.append({

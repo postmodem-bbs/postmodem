@@ -193,6 +193,49 @@ reset-done-notice = Your password has been changed and you are signed in. Other 
 profile-title = Profile of { $name }
 profile-last-seen = Last visit
 profile-website = Website
+profile-avatar = Avatar of { $name }
+profile-contact = Contact { $name }
+profile-send-message = Send a private message
+profile-send-email = Send an e-mail through the board
+profile-find-posts = Find all posts by { $name }
+member-mail-title = E-mail { $name }
+member-mail-back = Back to { $name }'s profile
+member-mail-intro = The board sends your message. { $name } won't see your e-mail address, and you won't see theirs; they can answer with a private message.
+member-mail-copy = Send me a copy
+member-mail-send = Send e-mail
+member-mail-sent = Your message to { $name } is on its way.
+member-mail-error-disabled = E-mail between members is switched off on this board.
+member-mail-error-sign-in = Sign in to send e-mail.
+member-mail-error-forbidden = You can't send e-mail to members.
+member-mail-error-recipient = This member can't be e-mailed.
+member-mail-error-self = You can't e-mail yourself.
+member-mail-error-new-member = New members can send e-mail after their first posts.
+member-mail-error-subject-missing = Write a subject.
+member-mail-error-subject-long = The subject is too long.
+member-mail-error-body-missing = Write a message.
+member-mail-error-body-long = The message is too long (at most 5000 characters).
+member-mail-error-throttled = You've sent several e-mails in a short time. Try again later.
+mail-member-subject = [{ $board }] { $subject }
+mail-member-body =
+    Hello { $to },
+
+    { $from } sent you this message through { $board }. They haven't seen your e-mail address.
+
+    -----
+    { $message }
+    -----
+
+    To answer, send { $from } a private message: { $reply }
+    Their profile: { $profile }
+
+    You get these because you allow members to e-mail you. You can switch it off on your account page: { $account }
+mail-member-copy-subject = [{ $board }] Copy: { $subject }
+mail-member-copy-body =
+    This is a copy of the message you sent { $to } through { $board }.
+
+    -----
+    { $message }
+    -----
 profile-recent-topics = Recent topics
 profile-no-topics = No topics to show.
 
@@ -411,6 +454,7 @@ account-signature-now = Your signature now:
 account-notifications = Notifications
 account-notify-pm = E-mail me when I get a private message
 account-auto-watch = Watch the topics I start or reply to
+account-allow-email = Let members e-mail me through the board (they never see my address)
 account-regional = Time and language
 account-language-auto = Your browser's language
 account-language-hint = The board and the e-mails it sends you use this language.
@@ -511,6 +555,7 @@ setting-core-pm-inboxLimit = Messages an inbox holds
 setting-core-search-perMinute = Searches per IP and minute (0: no limit)
 setting-core-memberlist-guests = Guests may see the member list
 setting-core-notify-digestHour = Hour daily digests go out (0–23, in each member's time zone)
+setting-core-email-members = Members may e-mail each other through the board (to members who allow it)
 setting-core-board-timeZone = Time zone (for guests and members who keep the board's)
 setting-core-board-dateFormat = Date format (for guests and members who keep the board's)
 admin-kind = Kind

@@ -1,10 +1,13 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // A public profile, in any URL style (ADR 0012): /profile.php?mode=viewprofile&u=ID,
 // /u/ID-slug or /user/slug: public fields, the post count and recent topics in forums the
-// viewer may read.
+// viewer may read; the avatar, rank and signature, and ways to get in touch (#132), as
+// phpBB2's viewprofile had them.
+import { memberEmail, reachableByMail } from "@postmodem/core";
 import { error } from "@sveltejs/kit";
-import { rankView } from "#lib/server/board.ts";
+import { avatarUrl, rankView } from "#lib/server/board.ts";
 import { absoluteUrl, ensureCanonical, resolveUser } from "#lib/server/links.ts";
+import { readerOf } from "#lib/server/reader.ts";
 import type { PageServerLoad } from "./$types";
 
 const RECENT_TOPICS = 10;
@@ -38,6 +41,16 @@ export const load: PageServerLoad = async ({ url, params, locals }) => {
       rank: rankView(await repos.ranks.all(), user, locals.locale),
       location: user.location,
       website: /^https?:\/\//i.test(user.website) ? user.website : "",
+      avatar: avatarUrl(user.avatar),
+      signature: user.signatureSource.trim()
+        ? await locals.ctx.renderer.preview(user.signatureSource, readerOf(locals))
+        : "",
+    },
+    contact: {
+      // Not to oneself; a guest is offered the links and asked to sign in first, as in phpBB2.
+      self: locals.user?.id === user.id,
+      message: user.status === "active" && (!locals.user || locals.perms.can("pm.send", null)),
+      email: reachableByMail(user, locals.ctx.settings.get(memberEmail)),
     },
     canonical: absoluteUrl(locals.ctx.config.publicUrl, locals.urls.user(ref)),
   };

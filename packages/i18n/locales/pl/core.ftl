@@ -200,6 +200,49 @@ reset-done-notice = Hasło zostało zmienione, a Ty jesteś zalogowany(-a). Pozo
 profile-title = Profil użytkownika { $name }
 profile-last-seen = Ostatnia wizyta
 profile-website = Strona WWW
+profile-avatar = Awatar użytkownika { $name }
+profile-contact = Kontakt z użytkownikiem { $name }
+profile-send-message = Wyślij prywatną wiadomość
+profile-send-email = Wyślij e-mail przez forum
+profile-find-posts = Znajdź wszystkie posty użytkownika { $name }
+member-mail-title = E-mail do użytkownika { $name }
+member-mail-back = Wróć do profilu użytkownika { $name }
+member-mail-intro = Forum wyśle Twoją wiadomość. { $name } nie zobaczy Twojego adresu e-mail, a Ty nie zobaczysz jego; odpowiedź może przyjść prywatną wiadomością.
+member-mail-copy = Wyślij mi kopię
+member-mail-send = Wyślij e-mail
+member-mail-sent = Twoja wiadomość do użytkownika { $name } jest w drodze.
+member-mail-error-disabled = E-maile między użytkownikami są na tym forum wyłączone.
+member-mail-error-sign-in = Zaloguj się, aby wysłać e-mail.
+member-mail-error-forbidden = Nie możesz wysyłać e-maili do użytkowników.
+member-mail-error-recipient = Do tego użytkownika nie można napisać e-maila.
+member-mail-error-self = Nie możesz wysłać e-maila do siebie.
+member-mail-error-new-member = Nowi użytkownicy mogą wysyłać e-maile po pierwszych postach.
+member-mail-error-subject-missing = Wpisz temat.
+member-mail-error-subject-long = Temat jest za długi.
+member-mail-error-body-missing = Wpisz wiadomość.
+member-mail-error-body-long = Wiadomość jest za długa (najwyżej 5000 znaków).
+member-mail-error-throttled = Wysłano kilka e-maili w krótkim czasie. Spróbuj później.
+mail-member-subject = [{ $board }] { $subject }
+mail-member-body =
+    Witaj { $to },
+
+    { $from } wysłał(a) Ci tę wiadomość przez forum { $board }. Twojego adresu e-mail nie widział(a).
+
+    -----
+    { $message }
+    -----
+
+    Aby odpowiedzieć, wyślij { $from } prywatną wiadomość: { $reply }
+    Profil: { $profile }
+
+    Dostajesz takie wiadomości, bo pozwalasz użytkownikom pisać do Ciebie e-maile. Możesz to wyłączyć na stronie konta: { $account }
+mail-member-copy-subject = [{ $board }] Kopia: { $subject }
+mail-member-copy-body =
+    To kopia wiadomości, którą wysłałeś(-aś) do { $to } przez forum { $board }.
+
+    -----
+    { $message }
+    -----
 profile-recent-topics = Ostatnie tematy
 profile-no-topics = Brak tematów do pokazania.
 
@@ -426,6 +469,7 @@ account-signature-now = Twój obecny podpis:
 account-notifications = Powiadomienia
 account-notify-pm = Wysyłaj mi e-mail, gdy dostanę prywatną wiadomość
 account-auto-watch = Obserwuj tematy, które zakładam lub w których odpowiadam
+account-allow-email = Pozwól użytkownikom pisać do mnie e-maile przez forum (nie zobaczą mojego adresu)
 account-regional = Czas i język
 account-language-auto = Język przeglądarki
 account-language-hint = W tym języku wyświetla się forum i przychodzą e-maile z forum.
@@ -528,6 +572,7 @@ setting-core-pm-inboxLimit = Pojemność skrzynki odbiorczej
 setting-core-search-perMinute = Wyszukiwania na IP na minutę (0: bez limitu)
 setting-core-memberlist-guests = Goście widzą listę użytkowników
 setting-core-notify-digestHour = Godzina wysyłki dziennych podsumowań (0–23, w strefie czasowej użytkownika)
+setting-core-email-members = Użytkownicy mogą pisać do siebie e-maile przez forum (do tych, którzy na to pozwalają)
 setting-core-board-timeZone = Strefa czasowa (dla gości i użytkowników, którzy zostawili ustawienie forum)
 setting-core-board-dateFormat = Format daty (dla gości i użytkowników, którzy zostawili ustawienie forum)
 admin-kind = Rodzaj

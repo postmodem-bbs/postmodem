@@ -50,6 +50,12 @@ export const boardDateFormat = defineSetting<DateStyle>({
   default: "medium",
 });
 
+/**
+ * Members may e-mail each other through the board (phpBB2 board_email_form). The board relays
+ * the message; neither address is shown, and only members who allow it can be written to.
+ */
+export const memberEmail = defineSetting({ key: "core.email.members", schema: z.boolean(), default: true });
+
 export const THEME_IDS = ["classic", "modern", "terminal"] as const;
 export type ThemeId = (typeof THEME_IDS)[number];
 
@@ -214,6 +220,7 @@ export function coreSettings(): SettingsRegistry {
     defaultTheme,
     boardTimeZone,
     boardDateFormat,
+    memberEmail,
     registrationOpen,
     registrationInviteOnly,
     newMemberPosts,

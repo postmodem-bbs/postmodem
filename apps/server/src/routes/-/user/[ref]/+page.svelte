@@ -8,6 +8,7 @@
   let { data } = $props();
   const t = $derived(translator(data.locale));
   const p = $derived(data.profile);
+  const c = $derived(data.contact);
   const urls = $derived(links());
 </script>
 
@@ -19,7 +20,8 @@
 <Breadcrumbs crumbs={[]} current={p.username} {t} />
 <h1 class="page-title">{t("profile-title", { name: p.username })}</h1>
 
-<div class="panel">
+<div class="panel profile">
+  {#if p.avatar}<img class="avatar" src={p.avatar} alt={t("profile-avatar", { name: p.username })} referrerpolicy="no-referrer" />{/if}
   <dl class="profile-facts">
     <div><dt>{t("post-author-joined")}</dt><dd><time datetime={isoDate(p.joined)}>{formatDate(p.joined, data.dates)}</time></dd></div>
     {#if p.lastSeen}
@@ -38,6 +40,25 @@
     {/if}
   </dl>
 </div>
+
+<div class="panel contact">
+  <h2>{t("profile-contact", { name: p.username })}</h2>
+  <ul>
+    {#if !c.self && c.message}
+      <li><a href={`/privmsg.php?mode=post&u=${encodeURIComponent(p.username)}`}>{t("profile-send-message")}</a></li>
+    {/if}
+    {#if !c.self && c.email}<li><a href={`/email/${p.id}`}>{t("profile-send-email")}</a></li>{/if}
+    <li><a href={`/search.php?search_author=${encodeURIComponent(p.username)}`}>{t("profile-find-posts", { name: p.username })}</a></li>
+  </ul>
+</div>
+
+{#if p.signature}
+  <div class="panel">
+    <h2>{t("account-signature")}</h2>
+    <!-- Rendered by @postmodem/markup: allow-listed, sanitised HTML (ADR 0014). -->
+    <div class="post-signature">{@html p.signature}</div>
+  </div>
+{/if}
 
 <div class="panel recent">
   <h2>{t("profile-recent-topics")}</h2>

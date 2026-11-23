@@ -196,6 +196,7 @@ export interface NewUser {
   rulesVersion?: number | null;
   rulesAcceptedAt?: Millis | null;
   notifyPm?: boolean;
+  allowEmail?: boolean;
   autoWatch?: boolean;
 }
 

@@ -57,6 +57,9 @@
     <legend>{t("account-notifications")}</legend>
     <label class="check"><input type="checkbox" name="notifyPm" checked={p.notifyPm} /> {t("account-notify-pm")}</label>
     <label class="check"><input type="checkbox" name="autoWatch" checked={p.autoWatch} /> {t("account-auto-watch")}</label>
+    {#if data.memberEmail}
+      <label class="check"><input type="checkbox" name="allowEmail" checked={p.allowEmail} /> {t("account-allow-email")}</label>
+    {/if}
     {#each data.notifications as pref (pref.key)}
       {#if pref.options}
         <fieldset class="choices">

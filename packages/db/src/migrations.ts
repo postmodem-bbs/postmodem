@@ -663,5 +663,14 @@ export function migrations(dialect: Dialect): Record<string, Migration> {
         await db.schema.alterTable("ranks").addColumn("title_key", "text").execute();
       },
     },
+    "0020_member_email": {
+      async up(db: Db) {
+        // Members may e-mail them through the board (phpBB2 user_viewemail, #132); off by default.
+        await db.schema
+          .alterTable("users")
+          .addColumn("allow_email", "integer", (c) => c.notNull().defaultTo(0))
+          .execute();
+      },
+    },
   };
 }

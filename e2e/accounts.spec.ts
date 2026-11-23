@@ -293,6 +293,80 @@ test("guests see the board's time zone and date format (#129)", async ({ page })
   await expect(time).toHaveText(expected);
 });
 
+test("profiles show the avatar, rank and signature, and ways to get in touch (#132)", async ({ page }) => {
+  await page.goto("/memberlist.php");
+  await page.getByRole("link", { name: "Ola", exact: true }).click();
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Profile of Ola");
+  const contact = page.getByRole("heading", { name: "Contact Ola" }).locator("..");
+  await expect(contact.getByRole("link", { name: "Send a private message" })).toBeVisible();
+  await expect(contact.getByRole("link", { name: "Find all posts by Ola" })).toHaveAttribute(
+    "href",
+    "/search.php?search_author=Ola",
+  );
+  // Ola hasn't allowed e-mail (and the demo members have no address): no link, and the form
+  // answers as if she didn't exist.
+  await expect(contact.getByRole("link", { name: "Send an e-mail through the board" })).toHaveCount(0);
+  const id = new URL(page.url(), "http://x").searchParams.get("u") ?? page.url().match(/\/(\d+)/)?.[1];
+  await signIn(page, "retro_fan", DEMO_PASSWORD);
+  expect((await page.goto(`/email/${id}`))?.status()).toBe(404);
+  await expectNoAxeViolations(page);
+});
+
+test("a member e-mails another through the board; neither address is shown (#132)", async ({ browser }) => {
+  test.skip(!MAILPIT, "needs Mailpit (PM_MAILPIT_URL)");
+  // Three e-mails in a row: room for a slow mail relay.
+  test.setTimeout(90_000);
+  const wait = { timeoutMs: 30_000 };
+  // The recipient: a new member with a confirmed address (the demo members have none).
+  const to = unique();
+  const recipient = await browser.newContext({ locale: "en-US" });
+  const rpage = await recipient.newPage();
+  // The sender: an established member (new members can't send yet). The demo Admin has an
+  // address, so with CI's admin password the copy to the sender is checked too.
+  const admin = process.env.PM_ADMIN_PASSWORD;
+  const sender = await browser.newContext({ javaScriptEnabled: false, locale: "en-US" });
+  const spage = await sender.newPage();
+  try {
+    await registerAccount(rpage, to);
+    const confirmation = await latestMail(`${to}@example.org`, wait);
+    await rpage.goto(linkIn(confirmation.text, "/verify"));
+    await rpage.getByRole("button", { name: "Confirm and sign in" }).click();
+    await expect(rpage.locator(".site-header")).toContainText(`Signed in as ${to}`);
+    await rpage.goto("/account");
+    await rpage.getByLabel(/Let members e-mail me through the board/).check();
+    await rpage.locator("form[action='?/profile']").getByRole("button", { name: "Save" }).click();
+    await expect(rpage.getByRole("status").filter({ hasText: "Saved." })).toBeVisible();
+
+    await signIn(spage, admin ? "Admin" : "retro_fan", admin ?? DEMO_PASSWORD);
+    const before = admin
+      ? (await latestMail("admin@example.invalid", { timeoutMs: 1 }).catch(() => null))?.id
+      : undefined;
+    await spage.goto("/memberlist.php?mode=joined&order=DESC");
+    await spage.getByRole("link", { name: to, exact: true }).click();
+    await spage.getByRole("link", { name: "Send an e-mail through the board" }).click();
+    await expect(spage.getByRole("heading", { level: 1 })).toHaveText(`E-mail ${to}`);
+    await spage.getByLabel("Subject").fill("Amiga 500");
+    await spage.getByLabel("Message").fill("Is it still for sale?");
+    if (admin) await spage.getByLabel("Send me a copy").check();
+    await spage.getByRole("button", { name: "Send e-mail" }).click();
+    await expect(spage.getByRole("status")).toHaveText(`Your message to ${to} is on its way.`);
+
+    const mail = await latestMail(`${to}@example.org`, { ...wait, after: confirmation.id });
+    expect(mail.subject).toBe("[Postmodem] Amiga 500");
+    expect(mail.text).toContain("sent you this message through Postmodem");
+    expect(mail.text).toContain("Is it still for sale?");
+    expect(mail.text).not.toMatch(/@example\.invalid|retro_fan@/);
+    if (admin) {
+      const copy = await latestMail("admin@example.invalid", { ...wait, after: before });
+      expect(copy.text).toContain(`This is a copy of the message you sent ${to}`);
+      expect(copy.text).not.toContain(`${to}@example.org`);
+    }
+  } finally {
+    await recipient.close();
+    await sender.close();
+  }
+});
+
 test("sign-in returns to the page it started from, by e-mail address too", async ({ page }) => {
   await page.goto("/viewtopic.php?t=1");
   await page.getByRole("link", { name: "Sign in" }).click();

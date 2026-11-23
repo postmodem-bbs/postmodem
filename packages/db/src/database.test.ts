@@ -71,6 +71,13 @@ describe.each(testEngines())("%s", (engine) => {
     expect(s2.get(boardName)).toBe("Kącik Retro");
   });
 
+  it("keeps whether a member takes e-mail through the board, off by default (#132)", async () => {
+    const ola = await r.users.create({ username: "Ola", email: "ola@example.org" });
+    expect(ola.allowEmail).toBe(false);
+    expect((await r.users.update(ola.id, { allowEmail: true })).allowEmail).toBe(true);
+    expect((await r.users.update(ola.id, { location: "Łódź" })).allowEmail).toBe(true);
+  });
+
   describe("ranks (#130)", () => {
     it("are edited and deleted, and a deleted special rank leaves its members", async () => {
       const stars = await r.ranks.create({

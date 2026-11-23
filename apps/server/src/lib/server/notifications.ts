@@ -24,9 +24,9 @@ import type { AppContext } from "./bootstrap.ts";
 import { urlsFor } from "./links.ts";
 import { replyMail } from "./platform.ts";
 
-const linkTo = (ctx: AppContext, path: string) => new URL(path, ctx.config.publicUrl).href;
+export const linkTo = (ctx: AppContext, path: string) => new URL(path, ctx.config.publicUrl).href;
 /** The recipient's language, else the board's. */
-const localeOf = (ctx: AppContext, user: User) =>
+export const localeOf = (ctx: AppContext, user: User) =>
   negotiate({ requested: user.locale ?? undefined, boardDefault: ctx.settings.get(defaultLocale) });
 const t = (ctx: AppContext, user: User) => translator(localeOf(ctx, user));
 

@@ -198,6 +198,7 @@ const toUser = (r: Selectable<UsersTable>): User => ({
   rulesVersion: r.rulesVersion === null ? null : n(r.rulesVersion),
   rulesAcceptedAt: r.rulesAcceptedAt === null ? null : n(r.rulesAcceptedAt),
   notifyPm: !!r.notifyPm,
+  allowEmail: !!r.allowEmail,
   autoWatch: !!r.autoWatch,
 });
 
@@ -860,6 +861,7 @@ export function createRepositories(db: Db, dialect: "sqlite" | "pg"): Repositori
           rulesVersion: input.rulesVersion ?? null,
           rulesAcceptedAt: input.rulesAcceptedAt ?? null,
           notifyPm: input.notifyPm === false ? 0 : 1,
+          allowEmail: input.allowEmail ? 1 : 0,
           autoWatch: input.autoWatch === false ? 0 : 1,
         })
         .returning("id")
@@ -915,13 +917,14 @@ export function createRepositories(db: Db, dialect: "sqlite" | "pg"): Repositori
       return r && toUser(r);
     },
     async update(id, patch) {
-      const { email, slug: _slug, notifyPm, autoWatch, ...rest } = patch;
+      const { email, slug: _slug, notifyPm, autoWatch, allowEmail, ...rest } = patch;
       const before = rest.username !== undefined ? await users.get(id) : undefined;
       await db
         .updateTable("users")
         .set({
           ...rest,
           ...(notifyPm !== undefined ? { notifyPm: notifyPm ? 1 : 0 } : {}),
+          ...(allowEmail !== undefined ? { allowEmail: allowEmail ? 1 : 0 } : {}),
           ...(autoWatch !== undefined ? { autoWatch: autoWatch ? 1 : 0 } : {}),
           ...(rest.username !== undefined
             ? { usernameKey: nameKey(rest.username), usernameSkeleton: skeleton(rest.username) }

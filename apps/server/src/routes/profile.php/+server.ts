@@ -9,5 +9,8 @@ export const GET: RequestHandler = ({ url }) => {
   if (mode === "register") redirect(301, "/register");
   if (mode === "sendpassword") redirect(301, "/reset");
   if (mode === "editprofile") redirect(301, "/account");
+  // E-mailing a member (#132); the page checks they take e-mail.
+  if (mode === "email" && /^\d+$/.test(url.searchParams.get("u") ?? ""))
+    redirect(301, `/email/${url.searchParams.get("u")}`);
   error(404, "Not found");
 };
