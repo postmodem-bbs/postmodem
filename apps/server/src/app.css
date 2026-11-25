@@ -1017,3 +1017,24 @@ tr.pm-unread a {
 .notice {
   border-inline-start: 4px solid var(--pm-color-link);
 }
+
+:where([data-board-theme="summit"]) tr.pm-unread :is(a.topic-title, a.forum-title) {
+  color: var(--pm-color-accent);
+}
+
+:where([data-board-theme="pit-lane"]) .category-title {
+  border-block-end: 2px solid var(--pm-color-focus);
+}
+
+:where([data-board-theme="underworld"]) .bb-quote {
+  border-inline-start-color: var(--pm-color-focus);
+}
+
+:where([data-board-theme="noticeboard"]) :is(main, footer) a {
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+}
+
+:where([data-board-theme="signal-stack"]) .site-header {
+  padding-block: var(--pm-space-2);
+}

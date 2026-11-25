@@ -94,7 +94,27 @@ export const avatarMaxHeight = defineSetting({
   default: 512,
 });
 
-export const THEME_IDS = ["classic", "modern", "terminal"] as const;
+export const THEME_IDS = [
+  "classic",
+  "modern",
+  "terminal",
+  "library",
+  "night-market",
+  "wasteland-post",
+  "union-hall",
+  "graphite",
+  "overworld",
+  "field-station",
+  "summit",
+  "test-chamber",
+  "pit-lane",
+  "underworld",
+  "orbital-club",
+  "rain-room",
+  "noticeboard",
+  "index-cards",
+  "signal-stack",
+] as const;
 export type ThemeId = (typeof THEME_IDS)[number];
 
 export const defaultTheme = defineSetting<ThemeId>({
